@@ -11,3 +11,17 @@ export class ForbiddenError extends Error {
     this.name = 'ForbiddenError';
   }
 }
+
+export class TrainerStatusNotFoundError extends Error {
+  constructor(trainerId: string) {
+    super(`Trainer status not found: ${trainerId}`);
+    this.name = 'TrainerStatusNotFoundError';
+  }
+}
+
+export class ConditionRecordNotFoundError extends Error {
+  constructor(traineeId: string) {
+    super(`Condition record not found: ${traineeId}`);
+    this.name = 'ConditionRecordNotFoundError';
+  }
+}

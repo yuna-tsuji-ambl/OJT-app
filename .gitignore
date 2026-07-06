@@ -21,6 +21,8 @@ npm-debug.log*
 
 # Test / coverage
 coverage/
+playwright-report/
+test-results/
 
 # Vite
 .vite/

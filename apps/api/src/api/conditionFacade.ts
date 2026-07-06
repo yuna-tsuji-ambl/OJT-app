@@ -2,6 +2,7 @@ import type {
   ConditionAlert,
   ConditionDraft,
   ConditionGraphData,
+  ConditionHistoryRecord,
   ConditionSubmitResult,
 } from '../domain/conditionTypes.js';
 import type { UserRole } from '../domain/types.js';
@@ -61,6 +62,30 @@ export async function getConditionAlert(
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionAlert> {
   return conditionService.getAlert(
+    traineeId,
+    toUserContext(userId, role),
+    conditionRecordStore,
+  );
+}
+
+export async function listConditionAlerts(
+  userId: string,
+  role: UserRole,
+  conditionRecordStore: ConditionRecordStore,
+): Promise<ConditionAlert[]> {
+  return conditionService.listAlerts(
+    toUserContext(userId, role),
+    conditionRecordStore,
+  );
+}
+
+export async function getLatestConditionRecord(
+  traineeId: string,
+  userId: string,
+  role: UserRole,
+  conditionRecordStore: ConditionRecordStore,
+): Promise<ConditionHistoryRecord> {
+  return conditionService.getLatestRecord(
     traineeId,
     toUserContext(userId, role),
     conditionRecordStore,

@@ -11,9 +11,11 @@
     "dev:all": "concurrently \"npm run dev:api\" \"npm run dev\"",
     "build": "npm run build -w @ojt-app/shared && npm run build -w @ojt-app/api && npm run build -w @ojt-app/web",
     "test": "npm run test -w @ojt-app/api",
+    "test:e2e": "playwright test",
     "start": "npm run start -w @ojt-app/api"
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.1",
     "concurrently": "^9.1.2"
   }
 }

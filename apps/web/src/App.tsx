@@ -1,42 +1,25 @@
-import { useEffect, useState } from 'react';
-
-interface ApiHealth {
-  status: string;
-  service: string;
-}
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthContext';
+import { Layout } from './components/Layout';
+import { DashboardPage } from './pages/DashboardPage';
+import { LoginPage } from './pages/LoginPage';
+import { TraineeDetailPage } from './pages/TraineeDetailPage';
+import { WeeklyConditionPage } from './pages/WeeklyConditionPage';
 
 export default function App() {
-  const [apiHealth, setApiHealth] = useState<ApiHealth | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`API error: ${res.status}`);
-        }
-        return res.json() as Promise<ApiHealth>;
-      })
-      .then(setApiHealth)
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        setError(message);
-      });
-  }, []);
-
   return (
-    <main className="container">
-      <h1>OJT App</h1>
-      <p>フロントエンドとバックエンドの最小構成です。</p>
-      <section className="status-card">
-        <h2>API 接続状態</h2>
-        {apiHealth && (
-          <p>
-            {apiHealth.service}: <strong>{apiHealth.status}</strong>
-          </p>
-        )}
-        {error && <p className="error">{error}</p>}
-      </section>
-    </main>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<Layout />}>
+            <Route path="/condition/weekly" element={<WeeklyConditionPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/trainees/:traineeId" element={<TraineeDetailPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
