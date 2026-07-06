@@ -102,6 +102,7 @@ describe('U-S03 クイック質問の送信', () => {
   beforeEach(() => {
     chatMessageStore = {
       append: vi.fn().mockResolvedValue(undefined),
+      listBetween: vi.fn().mockResolvedValue([]),
     };
   });
 
@@ -142,6 +143,7 @@ describe('U-S04 クイック質問の受信と簡易返信', () => {
   beforeEach(() => {
     chatMessageStore = {
       append: vi.fn().mockResolvedValue(undefined),
+      listBetween: vi.fn().mockResolvedValue([]),
     };
   });
 

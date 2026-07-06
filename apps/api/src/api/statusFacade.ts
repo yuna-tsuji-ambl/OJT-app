@@ -1,4 +1,8 @@
-import type { QuickQuestionResult, QuickReplyResult } from '../domain/chatTypes.js';
+import type {
+  ChatMessage,
+  QuickQuestionResult,
+  QuickReplyResult,
+} from '../domain/chatTypes.js';
 import type { TrainerStatusType } from '../domain/statusConstants.js';
 import type { TrainerStatusRecord } from '../domain/statusTypes.js';
 import type { UserRole } from '../domain/types.js';
@@ -62,5 +66,20 @@ export async function updateTrainerStatus(
     status,
     toUserContext(userId, role),
     trainerStatusStore,
+  );
+}
+
+export async function listChatMessages(
+  trainerId: string,
+  traineeId: string,
+  userId: string,
+  role: UserRole,
+  chatMessageStore: ChatMessageStore,
+): Promise<ChatMessage[]> {
+  return statusService.listChatMessages(
+    trainerId,
+    traineeId,
+    toUserContext(userId, role),
+    chatMessageStore,
   );
 }

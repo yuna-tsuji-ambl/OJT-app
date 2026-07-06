@@ -27,7 +27,7 @@ export function WeeklyConditionPage() {
   }
 
   return (
-    <section aria-labelledby="weekly-condition-heading">
+    <section className="page-section" aria-labelledby="weekly-condition-heading">
       <h1 id="weekly-condition-heading">週次コンディション入力</h1>
       <ConditionSlider
         label="業務量"
@@ -44,7 +44,7 @@ export function WeeklyConditionPage() {
         value={mental}
         onChange={setMental}
       />
-      <button type="button" onClick={() => void handleSubmit()}>
+      <button type="button" className="btn btn-primary" onClick={() => void handleSubmit()}>
         記録する
       </button>
       {message ? <p>{message}</p> : null}

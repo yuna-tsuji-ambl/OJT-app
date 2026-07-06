@@ -24,7 +24,7 @@ export function TraineeDetailPage() {
   }
 
   return (
-    <section aria-labelledby="trainee-detail-heading">
+    <section className="page-section" aria-labelledby="trainee-detail-heading">
       <h1 id="trainee-detail-heading">新卒 {traineeId} の詳細</h1>
       {record ? (
         <dl>

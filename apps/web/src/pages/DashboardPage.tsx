@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   fetchConditionAlerts,
   type ConditionAlert,
 } from '../api/conditionApi';
+import {
+  approveQuest,
+  fetchPendingQuests,
+  type Quest,
+} from '../api/questApi';
 import { useAuth } from '../auth/AuthContext';
+import { ConditionAlertCard } from '../components/ConditionAlertCard';
+import { PendingQuestCard } from '../components/PendingQuestCard';
 
 export function DashboardPage() {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState<ConditionAlert[]>([]);
+  const [pendingQuests, setPendingQuests] = useState<Quest[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -16,19 +23,32 @@ export function DashboardPage() {
     }
 
     void fetchConditionAlerts(user).then(setAlerts);
+    void fetchPendingQuests(user).then(setPendingQuests);
   }, [user]);
 
+  if (!user) {
+    return null;
+  }
+
+  const authUser = user;
+
+  async function handleApprove(questId: string): Promise<void> {
+    await approveQuest(questId, authUser);
+    setPendingQuests(await fetchPendingQuests(authUser));
+  }
+
   return (
-    <section aria-labelledby="dashboard-heading">
+    <section className="page-section" aria-labelledby="dashboard-heading">
       <h1 id="dashboard-heading">ダッシュボード</h1>
+      {pendingQuests.map((quest) => (
+        <PendingQuestCard
+          key={quest.id}
+          quest={quest}
+          onApprove={handleApprove}
+        />
+      ))}
       {alerts.map((alert) => (
-        <article key={alert.traineeId} aria-label={`新卒 ${alert.traineeId}`}>
-          <p>新卒 {alert.traineeId}</p>
-          {alert.hasAlert ? <p>{alert.message}</p> : null}
-          <Link to={`/trainees/${alert.traineeId}`}>
-            新卒 {alert.traineeId} の詳細
-          </Link>
-        </article>
+        <ConditionAlertCard key={alert.traineeId} alert={alert} />
       ))}
     </section>
   );

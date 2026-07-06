@@ -3,12 +3,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { InMemoryConditionRecordStore } from './repositories/inMemoryConditionRecordStore.js';
+import { createInMemoryQuestPersistence } from './repositories/createInMemoryQuestPersistence.js';
 import { createConditionRouter } from './routes/conditionRoutes.js';
+import { createQuestRouter } from './routes/questRoutes.js';
+import { createInMemoryStatusPersistence } from './repositories/createInMemoryStatusPersistence.js';
+import { createStatusRouter } from './routes/statusRoutes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
 const port = Number(process.env.PORT) || 8080;
 const conditionRecordStore = new InMemoryConditionRecordStore();
+const { questStore, sheetRepository } = createInMemoryQuestPersistence();
+const { trainerStatusStore, chatMessageStore } =
+  createInMemoryStatusPersistence();
 
 const app = express();
 app.use(express.json());
@@ -24,6 +31,8 @@ apiRouter.get('/health', (_req, res) => {
 });
 
 apiRouter.use(createConditionRouter(conditionRecordStore));
+apiRouter.use(createQuestRouter(questStore, sheetRepository));
+apiRouter.use(createStatusRouter(trainerStatusStore, chatMessageStore));
 
 app.use('/api', apiRouter);
 

@@ -12,7 +12,7 @@ export function ConditionSlider({
   const inputId = `slider-${label}`;
 
   return (
-    <div>
+    <div className="slider-row">
       <label htmlFor={inputId}>{label}</label>
       <input
         id={inputId}

@@ -1,4 +1,6 @@
 import type { AuthUser } from '../auth/types';
+import { fetchWithAuth } from './authHeaders';
+import { parseJsonResponse } from './jsonResponse';
 
 export interface ConditionDraft {
   workload: number;
@@ -22,56 +24,33 @@ export interface ConditionAlert {
   latestMental: number;
 }
 
-function authHeaders(user: AuthUser): HeadersInit {
-  return {
-    'Content-Type': 'application/json',
-    'X-User-Id': user.userId,
-    'X-User-Role': user.role,
-  };
-}
-
 export async function submitConditionRecord(
   draft: ConditionDraft,
   user: AuthUser,
 ): Promise<ConditionSubmitResult> {
-  const response = await fetch('/api/condition', {
+  const response = await fetchWithAuth('/api/condition', user, {
     method: 'POST',
-    headers: authHeaders(user),
     body: JSON.stringify(draft),
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to submit condition record');
-  }
-
-  return response.json() as Promise<ConditionSubmitResult>;
+  return parseJsonResponse(response, 'Failed to submit condition record');
 }
 
 export async function fetchConditionAlerts(
   user: AuthUser,
 ): Promise<ConditionAlert[]> {
-  const response = await fetch('/api/condition/alerts', {
-    headers: authHeaders(user),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch condition alerts');
-  }
-
-  return response.json() as Promise<ConditionAlert[]>;
+  const response = await fetchWithAuth('/api/condition/alerts', user);
+  return parseJsonResponse(response, 'Failed to fetch condition alerts');
 }
 
 export async function fetchLatestConditionRecord(
   traineeId: string,
   user: AuthUser,
 ): Promise<ConditionHistoryRecord> {
-  const response = await fetch(`/api/condition/trainees/${traineeId}/latest`, {
-    headers: authHeaders(user),
-  });
+  const response = await fetchWithAuth(
+    `/api/condition/trainees/${traineeId}/latest`,
+    user,
+  );
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch latest condition record');
-  }
-
-  return response.json() as Promise<ConditionHistoryRecord>;
+  return parseJsonResponse(response, 'Failed to fetch latest condition record');
 }

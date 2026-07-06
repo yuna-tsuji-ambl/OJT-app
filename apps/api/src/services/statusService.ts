@@ -1,5 +1,6 @@
 import { ensureTrainee, ensureTrainer } from '../domain/authorization.js';
 import { buildQuickQuestion, buildQuickReply } from '../domain/chatMessage.js';
+import { ForbiddenError } from '../domain/errors.js';
 import type {
   ChatMessage,
   ChatMessageResult,
@@ -96,6 +97,22 @@ async function sendQuickReplyForTrainer(
   return deliverChatMessage(result, chatMessageStore);
 }
 
+async function listConversationMessages(
+  trainerId: string,
+  traineeId: string,
+  context: UserContext,
+  chatMessageStore: ChatMessageStore,
+): Promise<ChatMessage[]> {
+  const isParticipant =
+    context.userId === trainerId || context.userId === traineeId;
+
+  if (!isParticipant) {
+    throw new ForbiddenError();
+  }
+
+  return chatMessageStore.listBetween(traineeId, trainerId);
+}
+
 export class StatusService {
   async updateTrainerStatus(
     status: TrainerStatusType,
@@ -143,6 +160,20 @@ export class StatusService {
   ): Promise<QuickReplyResult> {
     return sendQuickReplyForTrainer(
       replyStamp,
+      traineeId,
+      context,
+      chatMessageStore,
+    );
+  }
+
+  async listChatMessages(
+    trainerId: string,
+    traineeId: string,
+    context: UserContext,
+    chatMessageStore: ChatMessageStore,
+  ): Promise<ChatMessage[]> {
+    return listConversationMessages(
+      trainerId,
       traineeId,
       context,
       chatMessageStore,

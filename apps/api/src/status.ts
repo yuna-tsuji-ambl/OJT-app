@@ -15,6 +15,7 @@ export { StatusService } from './services/statusService.js';
 
 export {
   getTrainerStatus,
+  listChatMessages,
   sendQuickQuestion,
   sendQuickReply,
   updateTrainerStatus,
