@@ -14,6 +14,7 @@ import type { SheetRepository } from '../repositories/sheetRepository.js';
 async function handleGetQuestList(
   request: Request,
   response: Response,
+  questStore: QuestStore,
   sheetRepository: SheetRepository,
 ): Promise<void> {
   try {
@@ -22,6 +23,7 @@ async function handleGetQuestList(
       context.userId,
       context.role,
       sheetRepository,
+      questStore,
     );
     response.json(quests);
   } catch (error) {
@@ -96,7 +98,7 @@ export function createQuestRouter(
   router.get(
     '/quests',
     (request, response) =>
-      void handleGetQuestList(request, response, sheetRepository),
+      void handleGetQuestList(request, response, questStore, sheetRepository),
   );
 
   router.get(

@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   approveQuest,
+  createQuest,
   getQuestList,
   getPendingQuestList,
+  getTrainerDashboard,
+  getTrainerQuestProgressList,
   requestClearQuest,
+  type CreateQuestInput,
   type Quest,
   type QuestStore,
   type SheetRepository,
+  type TrainerDashboard,
 } from '../quest.js';
 
 /**
@@ -93,6 +98,8 @@ describe('U-Q02 クエストのクリア申請', () => {
       getById: vi.fn().mockResolvedValue({ ...unclearedQuest }),
       update: vi.fn().mockResolvedValue(undefined),
       getPendingQuests: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      listAllQuests: vi.fn().mockResolvedValue([]),
     };
   });
 
@@ -148,6 +155,8 @@ describe('U-Q03 申請一覧の表示', () => {
       getById: vi.fn(),
       update: vi.fn(),
       getPendingQuests: vi.fn().mockResolvedValue(pendingQuests),
+      create: vi.fn(),
+      listAllQuests: vi.fn().mockResolvedValue([]),
     };
   });
 
@@ -206,6 +215,8 @@ describe('U-Q04 クエストの承認', () => {
       getById: vi.fn().mockResolvedValue({ ...pendingQuest }),
       update: vi.fn().mockResolvedValue(undefined),
       getPendingQuests: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      listAllQuests: vi.fn().mockResolvedValue([]),
     };
     sheetRepository = {
       loadQuests: vi.fn().mockResolvedValue([]),
@@ -236,5 +247,173 @@ describe('U-Q04 クエストの承認', () => {
       }),
     );
     expect(result.status).toBe('クリア');
+  });
+});
+
+/**
+ * U-Q05: ダッシュボードのクエスト作成機能表示
+ * 前提条件: OJTトレーナーとしてログイン中
+ * アクション: ダッシュボード画面を開く
+ * 期待結果: 画面上部にクエスト作成機能が表示されること
+ */
+describe('U-Q05 ダッシュボードのクエスト作成機能表示', () => {
+  const trainerUserId = 'trainer-1';
+
+  it('getTrainerDashboard_トレーナーログイン中_画面上部にクエスト作成機能が含まれる', async () => {
+    const dashboard: TrainerDashboard = await getTrainerDashboard(
+      trainerUserId,
+      'trainer',
+    );
+
+    const questCreateSection = dashboard.sections.find(
+      (section) => section.type === 'questCreate',
+    );
+
+    expect(questCreateSection).toBeDefined();
+    expect(questCreateSection?.visible).toBe(true);
+    expect(questCreateSection?.position).toBe('top');
+    expect(dashboard.sections[0]).toEqual(questCreateSection);
+  });
+});
+
+/**
+ * U-Q06: クエスト作成後の進捗表示（トレーナー側）
+ * 前提条件: OJTトレーナーとしてログイン中
+ * アクション: ダッシュボード上部のクエスト作成機能で新しいクエストを追加する
+ * 期待結果: 作成したクエストがトレーナー画面に表示され、進捗状況（未着手・申請中・クリアなど）が確認できること
+ */
+describe('U-Q06 クエスト作成後の進捗表示（トレーナー側）', () => {
+  const trainerUserId = 'trainer-1';
+
+  const createInput: CreateQuestInput = {
+    majorItem: '開発基礎',
+    minorItem: '新規クエスト',
+    achievementLevel: 'Lv1',
+  };
+
+  const createdQuest: Quest = {
+    id: 'quest-new-1',
+    majorItem: '開発基礎',
+    minorItem: '新規クエスト',
+    achievementLevel: 'Lv1',
+    status: '未クリア',
+  };
+
+  type QuestStoreForCreation = QuestStore;
+
+  let questStore: QuestStoreForCreation;
+
+  beforeEach(() => {
+    questStore = {
+      getById: vi.fn(),
+      update: vi.fn(),
+      getPendingQuests: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue(createdQuest),
+      listAllQuests: vi.fn().mockResolvedValue([createdQuest]),
+    };
+  });
+
+  it('createQuest後getTrainerQuestProgressList_トレーナー_作成クエストの進捗状況が確認できる', async () => {
+    const created = await createQuest(
+      trainerUserId,
+      'trainer',
+      createInput,
+      questStore,
+    );
+
+    const progressList = await getTrainerQuestProgressList(
+      trainerUserId,
+      'trainer',
+      questStore,
+    );
+
+    expect(questStore.create).toHaveBeenCalledWith(createInput);
+    expect(created).toEqual(
+      expect.objectContaining({
+        majorItem: '開発基礎',
+        minorItem: '新規クエスト',
+        achievementLevel: 'Lv1',
+        status: '未クリア',
+      }),
+    );
+    expect(progressList).toHaveLength(1);
+    expect(progressList[0]).toEqual(
+      expect.objectContaining({
+        id: created.id,
+        minorItem: '新規クエスト',
+        status: '未クリア',
+      }),
+    );
+  });
+});
+
+/**
+ * U-Q07: 作成クエストの新卒側表示
+ * 前提条件: トレーナーがクエストを作成済み、新卒ユーザーとしてログイン中
+ * アクション: クエスト一覧画面を開く
+ * 期待結果: トレーナーが作成したクエストが新卒側のクエスト一覧に表示されること
+ */
+describe('U-Q07 作成クエストの新卒側表示', () => {
+  const traineeUserId = 'trainee-1';
+
+  const sheetQuests: Quest[] = [
+    {
+      id: 'quest-1',
+      majorItem: '開発基礎',
+      minorItem: 'TypeScript基礎',
+      achievementLevel: 'Lv1',
+    },
+  ];
+
+  const trainerCreatedQuest: Quest = {
+    id: 'quest-new-1',
+    majorItem: '開発基礎',
+    minorItem: '新規クエスト',
+    achievementLevel: 'Lv1',
+    status: '未クリア',
+  };
+
+  let sheetRepository: SheetRepository;
+  let questStore: QuestStore;
+
+  beforeEach(() => {
+    sheetRepository = {
+      loadQuests: vi.fn().mockResolvedValue(sheetQuests),
+      updateOnApproval: vi.fn().mockResolvedValue(undefined),
+    };
+    questStore = {
+      getById: vi.fn(),
+      update: vi.fn(),
+      getPendingQuests: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      listAllQuests: vi.fn().mockResolvedValue([trainerCreatedQuest]),
+    };
+  });
+
+  it('getQuestList_新卒ログイン中_トレーナー作成クエストが一覧に含まれる', async () => {
+    const quests = await getQuestList(
+      traineeUserId,
+      'trainee',
+      sheetRepository,
+      questStore,
+    );
+
+    expect(sheetRepository.loadQuests).toHaveBeenCalledWith(traineeUserId);
+    expect(questStore.listAllQuests).toHaveBeenCalledOnce();
+    expect(quests).toHaveLength(2);
+    expect(quests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          minorItem: 'TypeScript基礎',
+          achievementLevel: 'Lv1',
+        }),
+        expect.objectContaining({
+          id: 'quest-new-1',
+          minorItem: '新規クエスト',
+          achievementLevel: 'Lv1',
+          status: '未クリア',
+        }),
+      ]),
+    );
   });
 });
