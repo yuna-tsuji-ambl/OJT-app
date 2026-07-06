@@ -1,6 +1,6 @@
 ---
 description: バックエンド（Node.js）の開発規約
-globs: backend/**/*
+globs: apps/api/**/*
 alwaysApply: false
 ---
 

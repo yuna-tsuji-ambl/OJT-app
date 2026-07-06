@@ -1,0 +1,19 @@
+{
+  "name": "ojt-app",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @ojt-app/web",
+    "dev:api": "npm run dev -w @ojt-app/api",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev\"",
+    "build": "npm run build -w @ojt-app/shared && npm run build -w @ojt-app/api && npm run build -w @ojt-app/web",
+    "test": "npm run test -w @ojt-app/api",
+    "start": "npm run start -w @ojt-app/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

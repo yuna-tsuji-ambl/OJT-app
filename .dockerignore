@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+.cursor
+docs
+**/*.test.ts
+coverage
+dist
+**/dist
+.env
+.env.*
+*.log
+.DS_Store

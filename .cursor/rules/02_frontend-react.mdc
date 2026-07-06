@@ -1,6 +1,6 @@
 ---
 description: フロントエンド（React）の開発規約
-globs: frontend/**/*
+globs: apps/web/**/*
 alwaysApply: false
 ---
 
