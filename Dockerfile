@@ -2,6 +2,9 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
+# Docker ビルドでは .git がなく husky は不要
+ENV HUSKY=0
+
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
@@ -20,6 +23,8 @@ RUN npm run build -w @ojt-app/web
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
+# prepare スクリプトの husky をスキップ（devDependencies 未インストールのため）
+ENV HUSKY=0
 
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
