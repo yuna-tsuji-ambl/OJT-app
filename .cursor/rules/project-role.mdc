@@ -106,6 +106,7 @@ alwaysApply: true
 - コミットは明示的な依頼がある場合のみ作成する
 - 破壊的 Git 操作（force push、hard reset 等）は明示的な依頼なしに行わない
 - 公開 API や設定変更時は `README.md` や `docs/` の更新を検討する
+- **機能追加・仕様拡張の依頼時**は `04_github-issues-projects.mdc` に従い、GitHub Issue 作成・Project 登録・§2.5.1 更新を行う
 
 # 禁止事項（Constraints）
 
