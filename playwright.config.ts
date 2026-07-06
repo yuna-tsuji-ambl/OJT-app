@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const apiServerCommand = process.env.CI
-  ? 'npm run build -w @ojt-app/shared && npm run build -w @ojt-app/api && npm run start -w @ojt-app/api'
-  : 'npm run dev:api';
+const e2eApiPort = process.env.E2E_API_PORT ?? '8081';
+const apiProxyTarget = `http://localhost:${e2eApiPort}`;
+const apiServerCommand =
+  'npm run build -w @ojt-app/shared && npm run build -w @ojt-app/api && npm run start -w @ojt-app/api';
 
 export default defineConfig({
   testDir: './tests',
@@ -25,15 +26,21 @@ export default defineConfig({
   webServer: [
     {
       command: apiServerCommand,
-      port: 8080,
-      reuseExistingServer: !process.env.CI,
+      url: `${apiProxyTarget}/health`,
+      reuseExistingServer: false,
       timeout: 120_000,
+      env: {
+        PORT: e2eApiPort,
+      },
     },
     {
       command: 'npm run dev',
-      port: 5173,
-      reuseExistingServer: !process.env.CI,
+      url: 'http://localhost:5173',
+      reuseExistingServer: false,
       timeout: 120_000,
+      env: {
+        API_PROXY_TARGET: apiProxyTarget,
+      },
     },
   ],
 });

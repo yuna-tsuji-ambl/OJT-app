@@ -7,6 +7,7 @@ export type {
 export type { SheetRepository } from './repositories/sheetRepository.js';
 export type { QuestStore } from './repositories/questStore.js';
 export { QuestService } from './services/questService.js';
+export { TrainerQuestService } from './services/trainerQuestService.js';
 export { SEED_QUESTS } from './domain/questConstants.js';
 
 export {

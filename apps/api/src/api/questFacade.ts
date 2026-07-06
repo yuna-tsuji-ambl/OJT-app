@@ -3,8 +3,10 @@ import { toUserContext } from '../domain/userContext.js';
 import type { QuestStore } from '../repositories/questStore.js';
 import type { SheetRepository } from '../repositories/sheetRepository.js';
 import { QuestService } from '../services/questService.js';
+import { TrainerQuestService } from '../services/trainerQuestService.js';
 
 const questService = new QuestService();
+const trainerQuestService = new TrainerQuestService();
 
 export async function getQuestList(
   userId: string,
@@ -32,7 +34,7 @@ export async function getPendingQuestList(
   role: UserRole,
   questStore: QuestStore,
 ): Promise<Quest[]> {
-  return questService.listPendingQuests(
+  return trainerQuestService.listPendingQuests(
     toUserContext(userId, role),
     questStore,
   );
@@ -45,7 +47,7 @@ export async function approveQuest(
   questStore: QuestStore,
   sheetRepository: SheetRepository,
 ): Promise<Quest> {
-  return questService.approve(
+  return trainerQuestService.approve(
     questId,
     toUserContext(userId, role),
     questStore,
