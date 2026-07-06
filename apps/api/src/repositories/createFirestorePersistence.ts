@@ -1,4 +1,5 @@
 import { getFirestore } from '../firestore/client.js';
+import { toFirestoreStartupError } from '../firestore/firestoreErrors.js';
 import { seedFirestoreDefaults } from '../firestore/seed.js';
 import type { ChatMessageStore } from './chatMessageStore.js';
 import type { ConditionRecordStore } from './conditionRecordStore.js';
@@ -19,16 +20,20 @@ export interface AppPersistence {
 }
 
 export async function createFirestorePersistence(): Promise<AppPersistence> {
-  const db = getFirestore();
-  await seedFirestoreDefaults(db);
+  try {
+    const db = getFirestore();
+    await seedFirestoreDefaults(db);
 
-  const questRepository = new FirestoreQuestRepository(db);
+    const questRepository = new FirestoreQuestRepository(db);
 
-  return {
-    conditionRecordStore: new FirestoreConditionRecordStore(db),
-    questStore: questRepository,
-    sheetRepository: questRepository,
-    trainerStatusStore: new FirestoreTrainerStatusStore(db),
-    chatMessageStore: new FirestoreChatMessageStore(db),
-  };
+    return {
+      conditionRecordStore: new FirestoreConditionRecordStore(db),
+      questStore: questRepository,
+      sheetRepository: questRepository,
+      trainerStatusStore: new FirestoreTrainerStatusStore(db),
+      chatMessageStore: new FirestoreChatMessageStore(db),
+    };
+  } catch (error) {
+    throw toFirestoreStartupError(error);
+  }
 }

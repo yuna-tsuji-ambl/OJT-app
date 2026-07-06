@@ -1,6 +1,7 @@
 {
   "name": "ojt-app",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"

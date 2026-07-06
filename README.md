@@ -124,8 +124,9 @@ npm run dev:all:firestore
 | 環境変数 | 説明 |
 |----------|------|
 | `DB_PROVIDER=firestore` | Firestore リポジトリを使用（未設定時はインメモリ） |
-| `GCP_PROJECT_ID` | GCP プロジェクト ID（ローカル例: `ojt-app-dev`） |
-| `FIRESTORE_EMULATOR_HOST` | Emulator 接続先（例: `127.0.0.1:8081`） |
+| `GCP_PROJECT_ID` | GCP プロジェクト ID（例: `ojt-app`） |
+| `FIRESTORE_DATABASE_ID` | Firestore のデータベース ID（名前付き DB の場合。例: `ojt-app`）。未設定時は `(default)` |
+| `FIRESTORE_EMULATOR_HOST` | Emulator 接続先（例: `127.0.0.1:8081`）。**Cloud Run では設定しない** |
 
 Emulator UI: http://localhost:4000
 
@@ -172,6 +173,7 @@ docker run -p 8080:8080 ojt-app:local
 |------|--------|------|
 | `DB_PROVIDER` | `firestore` | Firestore を使う場合 |
 | `GCP_PROJECT_ID` | `ojt-app`（あなたのプロジェクト ID） | 推奨 |
+| `FIRESTORE_DATABASE_ID` | `ojt-app`（GCP で作った DB ID。`(default)` 以外のとき） | 名前付き DB の場合 **必須** |
 | `NODE_ENV` | `production` | 推奨 |
 
 **Cloud Run に設定してはいけない変数**:
@@ -182,6 +184,24 @@ docker run -p 8080:8080 ojt-app:local
 
 **Cloud Run のサービスアカウント**に `Cloud Datastore User` ロールを付与してください（Firestore 読み書きに必要）。
 
+**Firestore データベースの作成（初回必須）**:
+
+Google Cloud コンソールまたは Firebase コンソールの **どちらでも同じ Firestore** です（同一 GCP プロジェクト内）。Firebase 側で改めて作る必要はありません。
+
+GCP で既に作成済みの例:
+
+| 項目 | 値 |
+|------|-----|
+| データベース ID | `ojt-app` |
+| 場所 | `asia-northeast1` |
+
+この場合、Cloud Run に **`FIRESTORE_DATABASE_ID=ojt-app`** を追加してください。アプリのデフォルト接続先は `(default)` なので、ID が `ojt-app` だと `5 NOT_FOUND` になります。
+
+まだ DB がない場合のみ:
+
+1. [Google Cloud Console](https://console.cloud.google.com/firestore) または [Firebase コンソール](https://console.firebase.google.com/) でプロジェクトを開く
+2. Firestore データベースを作成（Native / Standard、リージョン `asia-northeast1` 推奨）
+
 `main` への push ごとに自動ビルド・デプロイされます。
 
 ### 起動失敗時の確認（`container failed to start and listen on the port`）
@@ -191,6 +211,7 @@ docker run -p 8080:8080 ojt-app:local
 3. `GCP_PROJECT_ID` が Firebase / GCP のプロジェクト ID と一致しているか確認する
 4. Firestore が有効化され、データベースが作成済みか確認する（Firebase コンソール）
 5. 切り分け: 一時的に `DB_PROVIDER` を外す（インメモリ）と起動するか試す
+6. ログが `5 NOT_FOUND` の場合: Firestore データベースが未作成。上記「Firestore データベースの作成」を実施
 
 ### gcloud CLI からデプロイする場合
 
