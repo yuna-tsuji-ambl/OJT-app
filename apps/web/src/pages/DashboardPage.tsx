@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  fetchConditionAlerts,
-  type ConditionAlert,
-} from '../api/conditionApi';
-import {
-  approveQuest,
-  fetchPendingQuests,
-  type Quest,
-} from '../api/questApi';
+import { fetchConditionAlerts, type ConditionAlert } from '../api/conditionApi';
+import { approveQuest, fetchPendingQuests, type Quest } from '../api/questApi';
 import { useAuth } from '../auth/AuthContext';
 import { ConditionAlertCard } from '../components/ConditionAlertCard';
 import { PendingQuestCard } from '../components/PendingQuestCard';

@@ -1,5 +1,8 @@
 import { ensureTrainee, ensureTrainer } from '../domain/authorization.js';
-import { MONITORED_TRAINEE_IDS, CONDITION_FIELD } from '../domain/conditionConstants.js';
+import {
+  MONITORED_TRAINEE_IDS,
+  CONDITION_FIELD,
+} from '../domain/conditionConstants.js';
 import { buildConditionAlert } from '../domain/conditionAlert.js';
 import {
   cloneConditionDraft,

@@ -131,20 +131,28 @@ export function createStatusRouter(
 ): Router {
   const router = Router();
 
-  router.put('/status', (request, response) =>
-    void handleUpdateTrainerStatus(request, response, trainerStatusStore),
+  router.put(
+    '/status',
+    (request, response) =>
+      void handleUpdateTrainerStatus(request, response, trainerStatusStore),
   );
 
-  router.get('/status/trainer/:trainerId', (request, response) =>
-    void handleGetTrainerStatus(request, response, trainerStatusStore),
+  router.get(
+    '/status/trainer/:trainerId',
+    (request, response) =>
+      void handleGetTrainerStatus(request, response, trainerStatusStore),
   );
 
-  router.get('/status/messages', (request, response) =>
-    void handleListMessages(request, response, chatMessageStore),
+  router.get(
+    '/status/messages',
+    (request, response) =>
+      void handleListMessages(request, response, chatMessageStore),
   );
 
-  router.post('/status/messages', (request, response) =>
-    void handlePostMessage(request, response, chatMessageStore),
+  router.post(
+    '/status/messages',
+    (request, response) =>
+      void handlePostMessage(request, response, chatMessageStore),
   );
 
   return router;

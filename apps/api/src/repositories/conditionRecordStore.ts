@@ -1,8 +1,9 @@
-import type { ConditionDraft, ConditionHistoryRecord } from '../domain/conditionTypes.js';
+import type {
+  ConditionDraft,
+  ConditionHistoryRecord,
+} from '../domain/conditionTypes.js';
 
 export interface ConditionRecordStore {
   save(userId: string, record: ConditionDraft): Promise<void>;
-  findHistoryByTraineeId(
-    traineeId: string,
-  ): Promise<ConditionHistoryRecord[]>;
+  findHistoryByTraineeId(traineeId: string): Promise<ConditionHistoryRecord[]>;
 }

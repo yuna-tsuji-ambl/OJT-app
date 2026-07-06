@@ -87,7 +87,10 @@ async function replyWithStamp(page: Page, stamp: string): Promise<void> {
   await replyResponse;
 }
 
-async function expectReplyStampOnTrainee(page: Page, stamp: string): Promise<void> {
+async function expectReplyStampOnTrainee(
+  page: Page,
+  stamp: string,
+): Promise<void> {
   await openTraineeHome(page);
   await expect(chatHistory(page).getByText(stamp)).toBeVisible();
 }

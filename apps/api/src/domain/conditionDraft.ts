@@ -2,7 +2,10 @@ import {
   CONDITION_SUBMIT_MESSAGE,
   type ConditionField,
 } from './conditionConstants.js';
-import type { ConditionDraft, ConditionSubmitResult } from './conditionTypes.js';
+import type {
+  ConditionDraft,
+  ConditionSubmitResult,
+} from './conditionTypes.js';
 
 export function cloneConditionDraft(values: ConditionDraft): ConditionDraft {
   return { ...values };

@@ -41,8 +41,5 @@ export async function seedTrainerStatusIfMissing(db: Firestore): Promise<void> {
 }
 
 export async function seedFirestoreDefaults(db: Firestore): Promise<void> {
-  await Promise.all([
-    seedQuestsIfEmpty(db),
-    seedTrainerStatusIfMissing(db),
-  ]);
+  await Promise.all([seedQuestsIfEmpty(db), seedTrainerStatusIfMissing(db)]);
 }

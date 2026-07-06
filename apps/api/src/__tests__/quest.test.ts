@@ -43,7 +43,11 @@ describe('U-Q01 クエスト一覧の表示', () => {
   });
 
   it('getQuestList_新卒ログイン中_シートのクエスト情報が一覧で返る', async () => {
-    const quests = await getQuestList(traineeUserId, 'trainee', sheetRepository);
+    const quests = await getQuestList(
+      traineeUserId,
+      'trainee',
+      sheetRepository,
+    );
 
     expect(sheetRepository.loadQuests).toHaveBeenCalledWith(traineeUserId);
     expect(quests).toHaveLength(2);

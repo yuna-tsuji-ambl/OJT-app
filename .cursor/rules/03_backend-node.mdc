@@ -6,6 +6,9 @@ alwaysApply: false
 
 # バックエンド（Node.js）規約
 
+- API・永続化の追加・変更時は `docs/detailed-design.md` §8（API）・§9（データ）と §2.5（開発ステータス）を確認する
+- レイヤー構成は詳細設計書 §3.3 に従う
+
 ## API 設計
 
 - RESTful なリソース設計を基本とする

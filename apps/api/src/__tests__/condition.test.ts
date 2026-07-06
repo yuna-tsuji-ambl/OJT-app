@@ -175,9 +175,7 @@ describe('U-C04 アラートの検知と表示', () => {
   beforeEach(() => {
     conditionRecordStore = {
       save: vi.fn().mockResolvedValue(undefined),
-      findHistoryByTraineeId: vi
-        .fn()
-        .mockResolvedValue(historyWithLowMental),
+      findHistoryByTraineeId: vi.fn().mockResolvedValue(historyWithLowMental),
     };
   });
 

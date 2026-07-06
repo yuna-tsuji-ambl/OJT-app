@@ -1,5 +1,8 @@
 import type { Firestore } from '@google-cloud/firestore';
-import type { ConditionDraft, ConditionHistoryRecord } from '../../domain/conditionTypes.js';
+import type {
+  ConditionDraft,
+  ConditionHistoryRecord,
+} from '../../domain/conditionTypes.js';
 import { FIRESTORE_COLLECTIONS } from '../../firestore/collections.js';
 import type { ConditionRecordStore } from '../conditionRecordStore.js';
 

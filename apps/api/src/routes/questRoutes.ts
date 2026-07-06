@@ -93,20 +93,28 @@ export function createQuestRouter(
 ): Router {
   const router = Router();
 
-  router.get('/quests', (request, response) =>
-    void handleGetQuestList(request, response, sheetRepository),
+  router.get(
+    '/quests',
+    (request, response) =>
+      void handleGetQuestList(request, response, sheetRepository),
   );
 
-  router.get('/quests/pending', (request, response) =>
-    void handleGetPendingQuestList(request, response, questStore),
+  router.get(
+    '/quests/pending',
+    (request, response) =>
+      void handleGetPendingQuestList(request, response, questStore),
   );
 
-  router.post('/quests/:questId/request', (request, response) =>
-    void handleRequestQuestClear(request, response, questStore),
+  router.post(
+    '/quests/:questId/request',
+    (request, response) =>
+      void handleRequestQuestClear(request, response, questStore),
   );
 
-  router.post('/quests/:questId/approve', (request, response) =>
-    void handleApproveQuest(request, response, questStore, sheetRepository),
+  router.post(
+    '/quests/:questId/approve',
+    (request, response) =>
+      void handleApproveQuest(request, response, questStore, sheetRepository),
   );
 
   return router;

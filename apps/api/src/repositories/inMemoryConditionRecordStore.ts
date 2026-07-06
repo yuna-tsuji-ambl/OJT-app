@@ -1,4 +1,7 @@
-import type { ConditionDraft, ConditionHistoryRecord } from '../domain/conditionTypes.js';
+import type {
+  ConditionDraft,
+  ConditionHistoryRecord,
+} from '../domain/conditionTypes.js';
 import type { ConditionRecordStore } from './conditionRecordStore.js';
 
 export class InMemoryConditionRecordStore implements ConditionRecordStore {

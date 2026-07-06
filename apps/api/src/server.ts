@@ -32,7 +32,8 @@ async function initializeApp(): Promise<void> {
   try {
     validateStartupEnv();
 
-    const dbProvider = process.env.DB_PROVIDER === 'firestore' ? 'firestore' : 'memory';
+    const dbProvider =
+      process.env.DB_PROVIDER === 'firestore' ? 'firestore' : 'memory';
     console.log(`Initializing persistence (DB_PROVIDER=${dbProvider})...`);
 
     const {

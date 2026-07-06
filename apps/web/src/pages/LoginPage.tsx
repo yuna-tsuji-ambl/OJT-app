@@ -15,7 +15,11 @@ export function LoginPage() {
           <label className="visually-hidden" htmlFor="language-select">
             言語
           </label>
-          <select id="language-select" className="landing-lang" defaultValue="ja">
+          <select
+            id="language-select"
+            className="landing-lang"
+            defaultValue="ja"
+          >
             <option value="ja">日本語</option>
           </select>
           <h1 id="login-heading" className="landing-login-label">

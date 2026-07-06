@@ -19,5 +19,4 @@ export const CONDITION_FIELD = {
 export type ConditionField =
   (typeof CONDITION_FIELD)[keyof typeof CONDITION_FIELD];
 
-export type MonitoredTraineeId =
-  (typeof MONITORED_TRAINEE_IDS)[number];
+export type MonitoredTraineeId = (typeof MONITORED_TRAINEE_IDS)[number];

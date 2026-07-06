@@ -10,7 +10,9 @@ import { useConversationMessages } from '../hooks/useConversationMessages';
 
 export function TraineeHomePage() {
   const { user } = useAuth();
-  const [trainerStatus, setTrainerStatus] = useState<TrainerStatusType | ''>('');
+  const [trainerStatus, setTrainerStatus] = useState<TrainerStatusType | ''>(
+    '',
+  );
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const { messages, reloadMessages } = useConversationMessages(user);
 

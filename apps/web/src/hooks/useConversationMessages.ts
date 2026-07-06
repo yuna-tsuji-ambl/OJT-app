@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchChatMessages } from '../api/statusApi';
 import type { AuthUser } from '../auth/types';
 import type { ChatMessage } from '../domain/statusTypes';
-import { DEFAULT_TRAINEE_ID, DEFAULT_TRAINER_ID } from '../domain/statusConstants';
+import {
+  DEFAULT_TRAINEE_ID,
+  DEFAULT_TRAINER_ID,
+} from '../domain/statusConstants';
 
 export function useConversationMessages(user: AuthUser | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);

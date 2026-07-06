@@ -46,7 +46,9 @@ async function requestQuestClear(page: Page, questName: string): Promise<void> {
 
 async function openTrainerDashboard(page: Page): Promise<void> {
   await page.getByRole('link', { name: 'ダッシュボード' }).click();
-  await expect(page.getByRole('heading', { name: 'ダッシュボード' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'ダッシュボード' }),
+  ).toBeVisible();
 }
 
 async function approveQuest(page: Page, questName: string): Promise<void> {
@@ -64,7 +66,10 @@ async function approveQuest(page: Page, questName: string): Promise<void> {
   await approveResponse;
 }
 
-async function expectQuestCleared(page: Page, questName: string): Promise<void> {
+async function expectQuestCleared(
+  page: Page,
+  questName: string,
+): Promise<void> {
   await expect(
     questArticle(page, questName).getByText(QUEST_CLEARED_LABEL),
   ).toBeVisible();

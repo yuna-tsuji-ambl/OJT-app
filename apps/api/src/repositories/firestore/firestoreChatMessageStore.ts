@@ -19,7 +19,10 @@ export class FirestoreChatMessageStore implements ChatMessageStore {
   async append(message: ChatMessage): Promise<void> {
     const document: ChatMessageDocument = {
       ...message,
-      conversationKey: buildConversationKey(message.senderId, message.receiverId),
+      conversationKey: buildConversationKey(
+        message.senderId,
+        message.receiverId,
+      ),
       createdAt: new Date().toISOString(),
     };
 

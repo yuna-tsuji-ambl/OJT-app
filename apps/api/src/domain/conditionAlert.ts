@@ -4,7 +4,10 @@ import {
   CONDITION_DEFAULT_VALUE,
 } from './conditionConstants.js';
 import { getLatestHistoryRecord } from './conditionHistory.js';
-import type { ConditionAlert, ConditionHistoryRecord } from './conditionTypes.js';
+import type {
+  ConditionAlert,
+  ConditionHistoryRecord,
+} from './conditionTypes.js';
 
 export function isMentalAlertThreshold(mental: number): boolean {
   return mental === CONDITION_ALERT_THRESHOLD;

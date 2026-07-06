@@ -28,7 +28,12 @@ export function buildQuickQuestion(
   content: string,
 ): QuickQuestionResult {
   return createChatMessageResult(
-    createChatMessage(senderId, receiverId, content, CHAT_MESSAGE_TYPE.QUESTION),
+    createChatMessage(
+      senderId,
+      receiverId,
+      content,
+      CHAT_MESSAGE_TYPE.QUESTION,
+    ),
   );
 }
 

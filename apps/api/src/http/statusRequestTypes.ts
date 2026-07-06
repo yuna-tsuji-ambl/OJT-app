@@ -15,9 +15,7 @@ export interface ReplyMessageBody {
   content: string;
 }
 
-export function parseStatusUpdateBody(
-  body: unknown,
-): StatusUpdateBody | null {
+export function parseStatusUpdateBody(body: unknown): StatusUpdateBody | null {
   if (
     typeof body !== 'object' ||
     body === null ||

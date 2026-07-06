@@ -6,7 +6,9 @@ import type { TrainerStatusType } from '../domain/statusConstants';
 
 export function TrainerStatusSettingsPage() {
   const { user } = useAuth();
-  const [currentStatus, setCurrentStatus] = useState<TrainerStatusType | ''>('');
+  const [currentStatus, setCurrentStatus] = useState<TrainerStatusType | ''>(
+    '',
+  );
 
   useEffect(() => {
     if (!user) {

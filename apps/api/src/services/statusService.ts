@@ -75,11 +75,7 @@ async function sendQuickQuestionForTrainee(
 ): Promise<QuickQuestionResult> {
   ensureTrainee(context);
 
-  const result = buildQuickQuestion(
-    context.userId,
-    trainerId,
-    templateMessage,
-  );
+  const result = buildQuickQuestion(context.userId, trainerId, templateMessage);
 
   return deliverChatMessage(result, chatMessageStore);
 }
@@ -119,11 +115,7 @@ export class StatusService {
     context: UserContext,
     trainerStatusStore: TrainerStatusStore,
   ): Promise<TrainerStatusRecord> {
-    return updateTrainerStatusForTrainer(
-      status,
-      context,
-      trainerStatusStore,
-    );
+    return updateTrainerStatusForTrainer(status, context, trainerStatusStore);
   }
 
   async getTrainerStatus(
@@ -131,11 +123,7 @@ export class StatusService {
     context: UserContext,
     trainerStatusStore: TrainerStatusStore,
   ): Promise<TrainerStatusRecord> {
-    return loadTrainerStatusForTrainee(
-      trainerId,
-      context,
-      trainerStatusStore,
-    );
+    return loadTrainerStatusForTrainee(trainerId, context, trainerStatusStore);
   }
 
   async sendQuickQuestion(

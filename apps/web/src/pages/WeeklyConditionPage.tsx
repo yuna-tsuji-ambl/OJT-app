@@ -27,24 +27,23 @@ export function WeeklyConditionPage() {
   }
 
   return (
-    <section className="page-section" aria-labelledby="weekly-condition-heading">
+    <section
+      className="page-section"
+      aria-labelledby="weekly-condition-heading"
+    >
       <h1 id="weekly-condition-heading">週次コンディション入力</h1>
-      <ConditionSlider
-        label="業務量"
-        value={workload}
-        onChange={setWorkload}
-      />
+      <ConditionSlider label="業務量" value={workload} onChange={setWorkload} />
       <ConditionSlider
         label="理解度"
         value={comprehension}
         onChange={setComprehension}
       />
-      <ConditionSlider
-        label="メンタル"
-        value={mental}
-        onChange={setMental}
-      />
-      <button type="button" className="btn btn-primary" onClick={() => void handleSubmit()}>
+      <ConditionSlider label="メンタル" value={mental} onChange={setMental} />
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={() => void handleSubmit()}
+      >
         記録する
       </button>
       {message ? <p>{message}</p> : null}

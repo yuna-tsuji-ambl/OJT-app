@@ -26,7 +26,10 @@ export async function fetchTrainerStatus(
   trainerId: string,
   user: AuthUser,
 ): Promise<TrainerStatusRecord> {
-  const response = await fetchWithAuth(`/api/status/trainer/${trainerId}`, user);
+  const response = await fetchWithAuth(
+    `/api/status/trainer/${trainerId}`,
+    user,
+  );
   return parseJsonResponse(response, 'Failed to fetch trainer status');
 }
 

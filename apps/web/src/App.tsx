@@ -21,9 +21,15 @@ export default function App() {
             <Route path="/home" element={<TraineeHomePage />} />
             <Route path="/quests" element={<QuestListPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/status/settings" element={<TrainerStatusSettingsPage />} />
+            <Route
+              path="/status/settings"
+              element={<TrainerStatusSettingsPage />}
+            />
             <Route path="/messages" element={<TrainerMessagesPage />} />
-            <Route path="/trainees/:traineeId" element={<TraineeDetailPage />} />
+            <Route
+              path="/trainees/:traineeId"
+              element={<TraineeDetailPage />}
+            />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
