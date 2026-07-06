@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^8.6.0",
     "@ojt-app/shared": "*",
     "express": "^4.21.2"
   },

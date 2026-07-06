@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "conditionRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "traineeId", "order": "ASCENDING" },
+        { "fieldPath": "recordedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chatMessages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "conversationKey", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

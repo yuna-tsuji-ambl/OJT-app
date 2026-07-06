@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 本番では Firebase Auth / Identity Platform と連携してルールを厳格化する。
+    // 現行は API サーバー経由のみアクセスする想定。
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

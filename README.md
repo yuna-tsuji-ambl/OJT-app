@@ -99,6 +99,36 @@ npm run dev
 
 `apps/web` の Vite は `/api` と `/health` を `localhost:8080` にプロキシします。
 
+### Firestore で開発する場合
+
+1. Firebase CLI を使う（ルートで `npm install` 済みなら `npx firebase` で可）。
+
+2. ターミナル 1 で Emulator を起動する。
+
+```bash
+npm run emulators:firestore
+```
+
+3. ターミナル 2 で API を Firestore モードで起動する。
+
+```bash
+npm run dev:api:firestore
+```
+
+またはフロント・Emulator・API をまとめて起動する。
+
+```bash
+npm run dev:all:firestore
+```
+
+| 環境変数 | 説明 |
+|----------|------|
+| `DB_PROVIDER=firestore` | Firestore リポジトリを使用（未設定時はインメモリ） |
+| `GCP_PROJECT_ID` | GCP プロジェクト ID（ローカル例: `ojt-app-dev`） |
+| `FIRESTORE_EMULATOR_HOST` | Emulator 接続先（例: `127.0.0.1:8081`） |
+
+Emulator UI: http://localhost:4000
+
 ## 共有型の使い方
 
 `packages/shared` に定義した型を、フロント・バックの両方から利用します。
@@ -162,7 +192,10 @@ npm test
 
 ## 今後の拡張予定
 
-- クエスト・コンディション・ステータスの REST API ルート実装
-- Google Sheets API 連携（`SheetRepository`）
-- 永続化（Firestore 等）
+- 課題管理（トレーナー入力・スプシ代替）
+- 日次・週次報告書
+- 目標・ガントチャート管理
+- 学び共有（デイリーログ + リンク）
 - 認証（Identity Platform / Firebase Auth 等）
+
+詳細は [docs/detailed-design.md](docs/detailed-design.md) を参照。

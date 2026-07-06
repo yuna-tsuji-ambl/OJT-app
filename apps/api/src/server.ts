@@ -2,20 +2,22 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { InMemoryConditionRecordStore } from './repositories/inMemoryConditionRecordStore.js';
-import { createInMemoryQuestPersistence } from './repositories/createInMemoryQuestPersistence.js';
+import { createPersistence } from './repositories/createPersistence.js';
 import { createConditionRouter } from './routes/conditionRoutes.js';
 import { createQuestRouter } from './routes/questRoutes.js';
-import { createInMemoryStatusPersistence } from './repositories/createInMemoryStatusPersistence.js';
 import { createStatusRouter } from './routes/statusRoutes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
 const port = Number(process.env.PORT) || 8080;
-const conditionRecordStore = new InMemoryConditionRecordStore();
-const { questStore, sheetRepository } = createInMemoryQuestPersistence();
-const { trainerStatusStore, chatMessageStore } =
-  createInMemoryStatusPersistence();
+
+const {
+  conditionRecordStore,
+  questStore,
+  sheetRepository,
+  trainerStatusStore,
+  chatMessageStore,
+} = await createPersistence();
 
 const app = express();
 app.use(express.json());
@@ -27,7 +29,11 @@ app.get('/health', (_req, res) => {
 const apiRouter = express.Router();
 
 apiRouter.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'ojt-app-api' });
+  res.json({
+    status: 'ok',
+    service: 'ojt-app-api',
+    dbProvider: process.env.DB_PROVIDER === 'firestore' ? 'firestore' : 'memory',
+  });
 });
 
 apiRouter.use(createConditionRouter(conditionRecordStore));
