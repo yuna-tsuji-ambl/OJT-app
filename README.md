@@ -166,7 +166,31 @@ docker run -p 8080:8080 ojt-app:local
 6. リージョン: `asia-northeast1`（東京）など
 7. 環境変数・シークレットを設定して作成
 
+**Cloud Run の環境変数（Firestore 利用時）**:
+
+| 変数 | 値の例 | 必須 |
+|------|--------|------|
+| `DB_PROVIDER` | `firestore` | Firestore を使う場合 |
+| `GCP_PROJECT_ID` | `ojt-app`（あなたのプロジェクト ID） | 推奨 |
+| `NODE_ENV` | `production` | 推奨 |
+
+**Cloud Run に設定してはいけない変数**:
+
+| 変数 | 理由 |
+|------|------|
+| `FIRESTORE_EMULATOR_HOST` | ローカル Emulator 用。本番で設定すると存在しない localhost に接続し、起動が失敗する |
+
+**Cloud Run のサービスアカウント**に `Cloud Datastore User` ロールを付与してください（Firestore 読み書きに必要）。
+
 `main` への push ごとに自動ビルド・デプロイされます。
+
+### 起動失敗時の確認（`container failed to start and listen on the port`）
+
+1. **Cloud Logging** でリビジョンのログを開き、`Failed to initialize application` や `FIRESTORE_EMULATOR_HOST` のエラーを確認する
+2. Cloud Run の環境変数から `FIRESTORE_EMULATOR_HOST` が入っていないか確認する
+3. `GCP_PROJECT_ID` が Firebase / GCP のプロジェクト ID と一致しているか確認する
+4. Firestore が有効化され、データベースが作成済みか確認する（Firebase コンソール）
+5. 切り分け: 一時的に `DB_PROVIDER` を外す（インメモリ）と起動するか試す
 
 ### gcloud CLI からデプロイする場合
 
