@@ -21,7 +21,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "start": "npm run start -w @ojt-app/api",
-    "prepare": "husky"
+    "prepare": "node scripts/prepare-husky.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -40,11 +40,11 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [
-      "eslint --fix",
-      "prettier --write"
+      "npx eslint --fix",
+      "npx prettier --write"
     ],
     "*.{json,md,css,yml,yaml,html}": [
-      "prettier --write"
+      "npx prettier --write"
     ]
   }
 }

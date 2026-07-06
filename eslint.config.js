@@ -50,6 +50,7 @@ export default tseslint.config(
       'apps/api/**/*.ts',
       'packages/shared/**/*.ts',
       'tests/**/*.ts',
+      'scripts/**/*.mjs',
       'eslint.config.js',
       'prettier.config.js',
       'playwright.config.ts',
