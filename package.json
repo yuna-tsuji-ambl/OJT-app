@@ -40,11 +40,11 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [
-      "eslint --fix",
-      "prettier --write"
+      "npx eslint --fix",
+      "npx prettier --write"
     ],
     "*.{json,md,css,yml,yaml,html}": [
-      "prettier --write"
+      "npx prettier --write"
     ]
   }
 }
