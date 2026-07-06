@@ -1,0 +1,72 @@
+---
+description: 機能追加依頼時の GitHub Issue・Project 登録手順
+alwaysApply: true
+---
+
+# GitHub Issues・Project 管理
+
+進捗管理の正は **GitHub Issues** と **GitHub Project**。仕様の正は引き続き `docs/detailed-design.md`。
+
+## 発動条件
+
+次の依頼を受けたとき、**実装着手前**に Issue と Project への登録を行う。
+
+- 新機能の追加・開発
+- 既存機能の仕様拡張（ギャップ解消を含む）
+- 詳細設計書に新しい設計 ID（F-xx）や Phase を追加する変更
+
+次は対象外（依頼があれば対応可）: バグ修正のみ、リファクタリングのみ、ドキュメント誤字修正。
+
+## 定数（リポジトリ設定）
+
+| 項目 | 値 |
+|------|-----|
+| リポジトリ | `yuna-tsuji-ambl/OJT-app` |
+| Project オーナー | `yuna-tsuji-ambl` |
+| Project 番号 | `1` |
+| 対応表 | `docs/detailed-design.md` §2.5.1 |
+
+## 手順
+
+1. **既存 Issue の確認** — §2.5.1 と `gh issue list --repo yuna-tsuji-ambl/OJT-app` で重複を避ける
+2. **詳細設計書の更新** — §2.5（ステータス）と該当章（§6〜§9）を先に更新し、ユーザー確認を得る（TDD ワークフローに準拠）
+3. **Issue 作成** — 以下のテンプレートで `gh issue create` を実行する
+
+```markdown
+## 概要
+（1〜2 文で何をするか）
+
+## 詳細設計
+- 設計 ID: F-xx（または Phase N）
+- 参照: `docs/detailed-design.md` §x.x
+
+## 対応方針
+（実装の大まかな方針。未確定なら「詳細設計書参照」）
+
+## 完了条件
+- [ ] 具体的な完了条件をチェックリストで列挙
+```
+
+- タイトル形式: `[F-xx] 機能名: 短い説明`（設計 ID がない場合は `[機能名] 説明`）
+- ラベル: `enhancement` を基本。設計フェーズなら `design`、負債解消なら `tech-debt` を追加
+
+4. **Project へ追加**
+
+```bash
+gh project item-add 1 --owner yuna-tsuji-ambl \
+  --url "https://github.com/yuna-tsuji-ambl/OJT-app/issues/<番号>"
+```
+
+5. **§2.5.1 対応表の更新** — 設計 ID・Issue 番号・タイトルの行を追加
+6. **作業報告** — 作成した Issue URL と Project への追加完了をユーザーに伝える
+
+## 実装・PR 時
+
+- 対応する Issue 番号を PR 本文に `Closes #N` で記載し、マージ時に自動クローズする
+- 着手時は Project の Status を `In Progress`、完了時は `Done` に更新する（`gh project item-edit` または Web）
+
+## 注意
+
+- `gh` 実行には `project` スコープが必要（`gh auth refresh -s project`）
+- Project への書き込み権限がない場合は Issue 作成と §2.5.1 更新まで行い、Project 追加はオーナーへ依頼する
+- Issue・Project の作成は Git コミットとは別。コミットはユーザーの明示依頼時のみ

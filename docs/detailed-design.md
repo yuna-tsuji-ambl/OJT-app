@@ -23,6 +23,7 @@
 | 0.2 | 2026-07-06 | 永続化 DB 選定、新機能 4 件の設計追記                | —    |
 | 0.3 | 2026-07-06 | **永続化 DB を Firestore に確定**、実装方針追記      | —    |
 | 0.4 | 2026-07-06 | 機能開発ステータス一覧の追加、各章へのステータス明示 | —    |
+| 0.5 | 2026-07-06 | GitHub Issues 対応表の追加（§2.5.1）                 | —    |
 
 ---
 
@@ -110,6 +111,28 @@
 - F-10 本番認証
 - F-11 マルチユーザー
 - F-12 Google Sheets 連携（新規実装）
+
+#### 2.5.1 GitHub Issues 対応表
+
+進捗管理は GitHub Issues を正とする。仕様の正は引き続き本書。
+
+| 設計 ID          | GitHub Issue                                                | タイトル                                               |
+| ---------------- | ----------------------------------------------------------- | ------------------------------------------------------ |
+| F-01（ギャップ） | [#4](https://github.com/yuna-tsuji-ambl/OJT-app/issues/4)   | クエスト: SheetRepository 廃止と課題データへの移行     |
+| F-02（ギャップ） | [#5](https://github.com/yuna-tsuji-ambl/OJT-app/issues/5)   | コンディション: 推移グラフのフロントエンド表示         |
+| F-02（ギャップ） | [#6](https://github.com/yuna-tsuji-ambl/OJT-app/issues/6)   | コンディション: 入力値 1〜5 のサーバー側バリデーション |
+| F-03（ギャップ） | [#7](https://github.com/yuna-tsuji-ambl/OJT-app/issues/7)   | クイック質問: メッセージのリアルタイム更新             |
+| F-06             | [#8](https://github.com/yuna-tsuji-ambl/OJT-app/issues/8)   | 課題管理（トレーナー入力・スプシ代替）                 |
+| F-07             | [#9](https://github.com/yuna-tsuji-ambl/OJT-app/issues/9)   | 日次・週次報告書                                       |
+| F-09             | [#10](https://github.com/yuna-tsuji-ambl/OJT-app/issues/10) | 学び共有（デイリーログ + リンク）                      |
+| F-08             | [#11](https://github.com/yuna-tsuji-ambl/OJT-app/issues/11) | 目標・ガントチャート管理                               |
+| F-11             | [#12](https://github.com/yuna-tsuji-ambl/OJT-app/issues/12) | 複数新卒・複数トレーナー対応                           |
+| F-10             | [#13](https://github.com/yuna-tsuji-ambl/OJT-app/issues/13) | 本番認証（Identity Platform 等）                       |
+| —                | [#14](https://github.com/yuna-tsuji-ambl/OJT-app/issues/14) | E2E テストの本格運用                                   |
+| Phase 6          | [#15](https://github.com/yuna-tsuji-ambl/OJT-app/issues/15) | BigQuery 分析連携（任意）                              |
+| F-12             | [#16](https://github.com/yuna-tsuji-ambl/OJT-app/issues/16) | SheetRepository の段階的廃止・削除                     |
+
+PR では `Closes #8` のように Issue 番号を記載して自動クローズする。
 
 ### 2.6 将来拡張（その他・計画のみ）
 
