@@ -7,7 +7,6 @@ dist/
 **/dist/
 build/
 **/build/
-backend/public/
 apps/api/public/
 
 # Environment
