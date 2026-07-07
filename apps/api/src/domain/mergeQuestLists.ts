@@ -4,5 +4,15 @@ export function mergeQuestLists(
   sheetQuests: Quest[],
   storeQuests: Quest[],
 ): Quest[] {
-  return [...sheetQuests, ...storeQuests];
+  const questsById = new Map<string, Quest>();
+
+  for (const quest of sheetQuests) {
+    questsById.set(quest.id, quest);
+  }
+
+  for (const quest of storeQuests) {
+    questsById.set(quest.id, quest);
+  }
+
+  return [...questsById.values()];
 }

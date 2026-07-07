@@ -1,5 +1,1 @@
-export interface CreateQuestInput {
-  majorItem: string;
-  minorItem: string;
-  achievementLevel: string;
-}
+export type { CreateQuestInput } from '@ojt-app/shared';

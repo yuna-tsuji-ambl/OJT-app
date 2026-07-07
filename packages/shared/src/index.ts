@@ -1,1 +1,7 @@
-export type { Quest, QuestStatus, UserContext, UserRole } from './types.js';
+export type {
+  CreateQuestInput,
+  Quest,
+  QuestStatus,
+  UserContext,
+  UserRole,
+} from './types.js';
