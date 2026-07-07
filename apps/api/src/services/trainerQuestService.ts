@@ -1,5 +1,6 @@
 import { ensureTrainer } from '../domain/authorization.js';
 import { QUEST_STATUS } from '../domain/constants.js';
+import { mapTrainerQuestProgressList } from '../domain/questListDisplay.js';
 import { requireQuest } from '../domain/questRecord.js';
 import { withQuestStatus } from '../domain/questStatus.js';
 import type { CreateQuestInput } from '../domain/questTypes.js';
@@ -22,7 +23,8 @@ export class TrainerQuestService {
     questStore: QuestStore,
   ): Promise<Quest[]> {
     ensureTrainer(context);
-    return questStore.listAllQuests();
+    const quests = await questStore.listAllQuests();
+    return mapTrainerQuestProgressList(quests);
   }
 
   async listPendingQuests(

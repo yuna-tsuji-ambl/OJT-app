@@ -5,4 +5,9 @@ export type {
   UserContext,
   UserRole,
 } from './types.js';
-export { QUEST_STATUS } from './questConstants.js';
+export {
+  QUEST_STATUS,
+  ACHIEVEMENT_LEVEL_MIN,
+  ACHIEVEMENT_LEVEL_MAX,
+  buildAchievementLevelOptionValues,
+} from './questConstants.js';

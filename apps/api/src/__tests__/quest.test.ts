@@ -17,6 +17,8 @@ import {
 import { findTrainerDashboardSection } from '../domain/trainerDashboard.js';
 import {
   CREATE_QUEST_INPUT,
+  CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3,
+  EXPECTED_ACHIEVEMENT_LEVEL_LV3,
   SHEET_QUEST_REACT,
   SHEET_QUEST_TYPESCRIPT,
   TRAINEE_USER_ID,
@@ -24,6 +26,7 @@ import {
   TRAINER_USER_ID,
   CLEARED_TRAINER_CREATED_QUEST,
   PENDING_TRAINER_CREATED_QUEST,
+  createCapturingQuestStore,
   createMockQuestStore,
   createMockSheetRepository,
   createTraineeMergedListMocks,
@@ -545,6 +548,109 @@ describe('U-Q13 承認済み作成クエストの一覧表示', () => {
       questStore,
       CLEARED_TRAINER_CREATED_QUEST,
       QUEST_STATUS.CLEARED,
+    );
+  });
+});
+
+/**
+ * U-Q14: 到達レベルのドロップダウン選択値の保存
+ * 前提条件: OJTトレーナーとしてログイン中
+ * アクション: クエスト作成時に到達レベルとして数値「3」を選択して作成する
+ * 期待結果: 作成されたクエストの到達レベルが「Lv3」として保存・取得されること
+ *
+ * 結合境界: TrainerQuestService.create → QuestStore.create
+ *           TrainerQuestService.listQuestProgress → QuestStore.listAllQuests
+ */
+describe('U-Q14 到達レベルのドロップダウン選択値の保存', () => {
+  const trainerUserId = TRAINER_USER_ID;
+
+  let questStore: QuestStore;
+
+  beforeEach(() => {
+    ({ questStore } = createCapturingQuestStore());
+  });
+
+  it('createQuest_到達レベル数値3選択_achievementLevelがLv3として保存取得される', async () => {
+    const created = await createQuest(
+      trainerUserId,
+      'trainer',
+      CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3,
+      questStore,
+    );
+
+    const progressList = await getTrainerQuestProgressList(
+      trainerUserId,
+      'trainer',
+      questStore,
+    );
+
+    expect(questStore.create).toHaveBeenCalledWith(
+      CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3,
+    );
+    expect(created.achievementLevel).toBe(EXPECTED_ACHIEVEMENT_LEVEL_LV3);
+    expect(progressList).toHaveLength(1);
+    expect(progressList[0]?.achievementLevel).toBe(
+      EXPECTED_ACHIEVEMENT_LEVEL_LV3,
+    );
+  });
+});
+
+/**
+ * U-Q15: トレーナー進捗一覧のタイトル取得
+ * 前提条件: トレーナーがクエストを作成済み、OJTトレーナーとしてログイン中
+ * アクション: getTrainerQuestProgressList を実行する
+ * 期待結果: 各クエストのタイトル（majorItem）がレスポンスに含まれること
+ *
+ * 結合境界: TrainerQuestService.listQuestProgress → QuestStore.listAllQuests
+ */
+describe('U-Q15 トレーナー進捗一覧のタイトル取得', () => {
+  const trainerUserId = TRAINER_USER_ID;
+
+  let questStore: QuestStore;
+
+  beforeEach(() => {
+    questStore = createTrainerProgressListStore([TRAINER_CREATED_QUEST]);
+  });
+
+  it('getTrainerQuestProgressList_トレーナーログイン中_各クエストのタイトルmajorItemがレスポンスに含まれる', async () => {
+    await assertCreatedQuestOnTrainerDashboard(
+      getTrainerQuestProgressList,
+      trainerUserId,
+      questStore,
+      TRAINER_CREATED_QUEST,
+      QUEST_STATUS.NOT_CLEARED,
+    );
+  });
+});
+
+/**
+ * U-Q16: 新卒一覧の表示項目取得
+ * 前提条件: トレーナーがクエストを作成済み、新卒ユーザーとしてログイン中
+ * アクション: getQuestList を実行する
+ * 期待結果: タイトル（majorItem）、コメント（minorItem）、到達レベル（「Lv〇」形式の achievementLevel）がレスポンスに含まれること
+ *
+ * 結合境界: QuestService.listQuests → SheetRepository.loadQuests / QuestStore.listAllQuests
+ */
+describe('U-Q16 新卒一覧の表示項目取得', () => {
+  const traineeUserId = TRAINEE_USER_ID;
+
+  let questStore: QuestStore;
+  let sheetRepository: SheetRepository;
+
+  beforeEach(() => {
+    ({ questStore, sheetRepository } = createTraineeMergedListMocks([
+      TRAINER_CREATED_QUEST,
+    ]));
+  });
+
+  it('getQuestList_新卒ログイン中_タイトルコメント到達レベルがレスポンスに含まれる', async () => {
+    await assertCreatedQuestOnTraineeList(
+      getQuestList,
+      traineeUserId,
+      sheetRepository,
+      questStore,
+      TRAINER_CREATED_QUEST,
+      QUEST_STATUS.NOT_CLEARED,
     );
   });
 });

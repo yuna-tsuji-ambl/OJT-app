@@ -1,6 +1,6 @@
 import type { Quest } from '@ojt-app/shared';
-import { QUEST_STATUS } from '@ojt-app/shared';
-import { formatQuestStatus } from '../domain/questDisplay';
+import { canApproveQuest } from '../domain/questDisplay';
+import { QuestArticleCard } from './QuestArticleCard';
 
 interface TrainerQuestProgressCardProps {
   quest: Quest;
@@ -11,13 +11,10 @@ export function TrainerQuestProgressCard({
   quest,
   onApprove,
 }: TrainerQuestProgressCardProps) {
-  const showApprove =
-    quest.status === QUEST_STATUS.PENDING && onApprove !== undefined;
+  const showApprove = canApproveQuest(quest) && onApprove !== undefined;
 
   return (
-    <article aria-label={quest.minorItem}>
-      <p>{quest.minorItem}</p>
-      <p>{formatQuestStatus(quest)}</p>
+    <QuestArticleCard quest={quest}>
       {showApprove ? (
         <button
           type="button"
@@ -27,6 +24,6 @@ export function TrainerQuestProgressCard({
           承認
         </button>
       ) : null}
-    </article>
+    </QuestArticleCard>
   );
 }

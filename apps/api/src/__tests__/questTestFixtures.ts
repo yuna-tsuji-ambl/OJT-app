@@ -1,5 +1,7 @@
 import { expect, vi } from 'vitest';
 import { QUEST_STATUS, type QuestStatus } from '@ojt-app/shared';
+import { isFormattedAchievementLevel } from '../domain/achievementLevel.js';
+import { createQuestFromInput } from '../domain/createQuest.js';
 import type { CreateQuestInput } from '../domain/questTypes.js';
 import type { Quest } from '../domain/types.js';
 import type { QuestStore } from '../repositories/questStore.js';
@@ -14,6 +16,14 @@ export const CREATE_QUEST_INPUT: CreateQuestInput = {
   achievementLevel: 'Lv1',
 };
 
+/** 到達レベルドロップダウンで数値「3」を選択したときの入力（U-Q14） */
+export const CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3: CreateQuestInput = {
+  majorItem: '開発基礎',
+  minorItem: '新規クエスト',
+  achievementLevel: '3',
+};
+
+export const EXPECTED_ACHIEVEMENT_LEVEL_LV3 = 'Lv3';
 export const SHEET_QUEST_TYPESCRIPT: Quest = {
   id: 'quest-1',
   majorItem: '開発基礎',
@@ -77,6 +87,30 @@ export function createTrainerProgressListStore(
   });
 }
 
+export function createCapturingQuestStore(): {
+  questStore: QuestStore;
+  getStoredQuest: () => Quest | undefined;
+} {
+  let storedQuest: Quest | undefined;
+
+  const questStore = createMockQuestStore({
+    create: vi.fn().mockImplementation((input: CreateQuestInput) => {
+      storedQuest = createQuestFromInput(input);
+      return Promise.resolve(storedQuest);
+    }),
+    listAllQuests: vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(storedQuest ? [storedQuest] : []),
+      ),
+  });
+
+  return {
+    questStore,
+    getStoredQuest: () => storedQuest,
+  };
+}
+
 export function createTraineeMergedListMocks(storeQuests: Quest[]): {
   questStore: QuestStore;
   sheetRepository: SheetRepository;
@@ -96,6 +130,21 @@ export function expectListContainsQuest(
   expect(quests).toEqual(
     expect.arrayContaining([expect.objectContaining(expected)]),
   );
+}
+
+export function expectProgressListContainsTitle(
+  quests: Quest[],
+  questId: string,
+  title: string,
+): void {
+  expect(quests.length).toBeGreaterThan(0);
+  expect(
+    quests.every(
+      (quest) =>
+        typeof quest.majorItem === 'string' && quest.majorItem.length > 0,
+    ),
+  ).toBe(true);
+  expectListContainsQuest(quests, { id: questId, majorItem: title });
 }
 
 export function expectQuestClearRequestApplied(
@@ -166,6 +215,7 @@ export async function assertCreatedQuestOnTrainerDashboard(
   );
 
   expect(questStore.listAllQuests).toHaveBeenCalledOnce();
+  expectProgressListContainsTitle(progressList, quest.id, quest.majorItem);
   expectListContainsQuest(progressList, {
     id: quest.id,
     status,
@@ -189,9 +239,25 @@ export async function assertCreatedQuestOnTraineeList(
 
   expect(sheetRepository.loadQuests).toHaveBeenCalledWith(traineeUserId);
   expect(questStore.listAllQuests).toHaveBeenCalledOnce();
+  expectTraineeListContainsDisplayFields(quests, quest);
   expectListContainsQuest(quests, {
     id: quest.id,
-    minorItem: quest.minorItem,
     status,
   });
+}
+
+export function expectTraineeListContainsDisplayFields(
+  quests: Quest[],
+  quest: Quest,
+): void {
+  expectListContainsQuest(quests, {
+    id: quest.id,
+    majorItem: quest.majorItem,
+    minorItem: quest.minorItem,
+    achievementLevel: quest.achievementLevel,
+  });
+
+  const targetQuest = quests.find((item) => item.id === quest.id);
+  expect(targetQuest).toBeDefined();
+  expect(isFormattedAchievementLevel(targetQuest!.achievementLevel)).toBe(true);
 }

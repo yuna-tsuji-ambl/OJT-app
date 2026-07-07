@@ -1,3 +1,4 @@
+import { normalizeCreateQuestInput } from './achievementLevel.js';
 import { QUEST_STATUS } from './constants.js';
 import type { CreateQuestInput } from './questTypes.js';
 import type { Quest } from './types.js';
@@ -13,5 +14,5 @@ export function buildNewQuest(id: string, input: CreateQuestInput): Quest {
 }
 
 export function createQuestFromInput(input: CreateQuestInput): Quest {
-  return buildNewQuest(crypto.randomUUID(), input);
+  return buildNewQuest(crypto.randomUUID(), normalizeCreateQuestInput(input));
 }

@@ -6,7 +6,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readNonEmptyString(
   body: Record<string, unknown>,
-  field: keyof CreateQuestInput,
+  field: 'majorItem' | 'minorItem',
 ): string | null {
   const value = body[field];
 
@@ -17,6 +17,20 @@ function readNonEmptyString(
   return value.trim();
 }
 
+function readAchievementLevel(body: Record<string, unknown>): string | null {
+  const value = body.achievementLevel;
+
+  if (typeof value === 'number' && Number.isInteger(value)) {
+    return String(value);
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    return value.trim();
+  }
+
+  return null;
+}
+
 export function parseCreateQuestBody(body: unknown): CreateQuestInput | null {
   if (!isRecord(body)) {
     return null;
@@ -24,7 +38,7 @@ export function parseCreateQuestBody(body: unknown): CreateQuestInput | null {
 
   const majorItem = readNonEmptyString(body, 'majorItem');
   const minorItem = readNonEmptyString(body, 'minorItem');
-  const achievementLevel = readNonEmptyString(body, 'achievementLevel');
+  const achievementLevel = readAchievementLevel(body);
 
   if (!majorItem || !minorItem || !achievementLevel) {
     return null;

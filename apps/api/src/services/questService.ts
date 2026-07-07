@@ -1,6 +1,7 @@
 import { QUEST_STATUS } from '../domain/constants.js';
 import { ensureTrainee } from '../domain/authorization.js';
 import { mergeQuestLists } from '../domain/mergeQuestLists.js';
+import { mapTraineeQuestList } from '../domain/questListDisplay.js';
 import { requireQuest } from '../domain/questRecord.js';
 import { withQuestStatus } from '../domain/questStatus.js';
 import type { Quest, UserContext } from '../domain/types.js';
@@ -21,7 +22,7 @@ export class QuestService {
 
     ensureTrainee(context);
     const storeQuests = await questStore.listAllQuests();
-    return mergeQuestLists(sheetQuests, storeQuests);
+    return mapTraineeQuestList(mergeQuestLists(sheetQuests, storeQuests));
   }
 
   async requestClear(

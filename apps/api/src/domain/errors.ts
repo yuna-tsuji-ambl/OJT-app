@@ -25,3 +25,24 @@ export class ConditionRecordNotFoundError extends Error {
     this.name = 'ConditionRecordNotFoundError';
   }
 }
+
+export class QuestTitleRequiredError extends Error {
+  constructor(questId: string) {
+    super(`Quest title is required: ${questId}`);
+    this.name = 'QuestTitleRequiredError';
+  }
+}
+
+export class QuestCommentRequiredError extends Error {
+  constructor(questId: string) {
+    super(`Quest comment is required: ${questId}`);
+    this.name = 'QuestCommentRequiredError';
+  }
+}
+
+export class QuestAchievementLevelFormatError extends Error {
+  constructor(questId: string) {
+    super(`Quest achievement level must be in Lv format: ${questId}`);
+    this.name = 'QuestAchievementLevelFormatError';
+  }
+}
