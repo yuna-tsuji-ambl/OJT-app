@@ -10,7 +10,10 @@ import { createConditionRouter } from '../routes/conditionRoutes.js';
 import { createQuestRouter } from '../routes/questRoutes.js';
 import { createStatusRouter } from '../routes/statusRoutes.js';
 
-export async function createApiApp(publicDir: string): Promise<Express> {
+export async function createApiApp(
+  app: Express,
+  publicDir: string,
+): Promise<void> {
   validateStartupEnv();
 
   const dbProvider = resolveDbProvider();
@@ -24,12 +27,7 @@ export async function createApiApp(publicDir: string): Promise<Express> {
     chatMessageStore,
   } = await createPersistence();
 
-  const app = express();
   app.use(express.json());
-
-  app.get('/health', (_request, response) => {
-    response.json({ status: 'ok' });
-  });
 
   const apiRouter = express.Router();
 
@@ -55,5 +53,4 @@ export async function createApiApp(publicDir: string): Promise<Express> {
   }
 
   console.log('Application initialized successfully');
-  return app;
 }

@@ -1,9 +1,6 @@
 import type { Quest } from '@ojt-app/shared';
-import {
-  canRequestQuestClear,
-  isQuestCleared,
-  QUEST_CLEARED_LABEL,
-} from '../domain/questDisplay';
+import { canRequestQuestClear } from '../domain/questDisplay';
+import { QuestArticleCard } from './QuestArticleCard';
 
 interface QuestCardProps {
   quest: Quest;
@@ -12,11 +9,7 @@ interface QuestCardProps {
 
 export function QuestCard({ quest, onRequest }: QuestCardProps) {
   return (
-    <article aria-label={quest.minorItem}>
-      <p>{quest.majorItem}</p>
-      <p>{quest.minorItem}</p>
-      <p>{quest.achievementLevel}</p>
-      {isQuestCleared(quest) ? <p>{QUEST_CLEARED_LABEL}</p> : null}
+    <QuestArticleCard quest={quest}>
       {onRequest && canRequestQuestClear(quest) ? (
         <button
           type="button"
@@ -26,6 +19,6 @@ export function QuestCard({ quest, onRequest }: QuestCardProps) {
           申請
         </button>
       ) : null}
-    </article>
+    </QuestArticleCard>
   );
 }

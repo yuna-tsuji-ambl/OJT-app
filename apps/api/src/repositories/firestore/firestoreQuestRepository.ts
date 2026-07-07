@@ -1,6 +1,8 @@
 import type { Firestore } from '@google-cloud/firestore';
+import { createQuestFromInput } from '../../domain/createQuest.js';
 import { QUEST_STATUS } from '../../domain/constants.js';
 import type { Quest } from '../../domain/types.js';
+import type { CreateQuestInput } from '../../domain/questTypes.js';
 import { FIRESTORE_COLLECTIONS } from '../../firestore/collections.js';
 import type { QuestStore } from '../questStore.js';
 import type { SheetRepository } from '../sheetRepository.js';
@@ -31,6 +33,17 @@ export class FirestoreQuestRepository implements QuestStore, SheetRepository {
       .where('status', '==', QUEST_STATUS.PENDING)
       .get();
 
+    return snapshot.docs.map((document) => document.data() as Quest);
+  }
+
+  async create(input: CreateQuestInput): Promise<Quest> {
+    const quest = createQuestFromInput(input);
+    await this.update(quest);
+    return quest;
+  }
+
+  async listAllQuests(): Promise<Quest[]> {
+    const snapshot = await this.questsCollection().get();
     return snapshot.docs.map((document) => document.data() as Quest);
   }
 

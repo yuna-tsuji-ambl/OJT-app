@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "npm run build && node --watch dist/server.js",
+    "pretest": "npm run build --workspace=@ojt-app/shared",
     "test": "vitest run"
   },
   "dependencies": {

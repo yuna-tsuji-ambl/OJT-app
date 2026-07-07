@@ -1,4 +1,5 @@
 import type { Quest } from '@ojt-app/shared';
+import { QuestArticleCard } from './QuestArticleCard';
 
 interface PendingQuestCardProps {
   quest: Quest;
@@ -7,8 +8,7 @@ interface PendingQuestCardProps {
 
 export function PendingQuestCard({ quest, onApprove }: PendingQuestCardProps) {
   return (
-    <article aria-label={quest.minorItem}>
-      <p>{quest.minorItem}</p>
+    <QuestArticleCard quest={quest}>
       <button
         type="button"
         className="btn btn-primary"
@@ -16,6 +16,6 @@ export function PendingQuestCard({ quest, onApprove }: PendingQuestCardProps) {
       >
         承認
       </button>
-    </article>
+    </QuestArticleCard>
   );
 }
