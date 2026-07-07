@@ -1,19 +1,17 @@
-import { CONDITION_DRAFT_FIELDS } from './conditionConstants.js';
+import { buildConditionLineChartData } from './conditionLineChart.js';
 import type {
   ConditionDraft,
   ConditionGraphData,
   ConditionGraphTableRow,
   ConditionHistoryRecord,
+  ConditionLineChartData,
 } from './conditionTypes.js';
 
-function buildGraphSeriesFromRows(
-  rows: ConditionGraphTableRow[],
+function buildDraftSeriesFromLineChart(
+  lineChart: ConditionLineChartData,
 ): Pick<ConditionGraphData, keyof ConditionDraft> {
   return Object.fromEntries(
-    CONDITION_DRAFT_FIELDS.map((field) => [
-      field,
-      rows.map((row) => row[field]),
-    ]),
+    lineChart.series.map((series) => [series.key, series.values]),
   ) as Pick<ConditionGraphData, keyof ConditionDraft>;
 }
 
@@ -27,10 +25,12 @@ export function buildConditionGraphData(
   records: ConditionHistoryRecord[],
 ): ConditionGraphData {
   const rows = buildConditionGraphTableRows(records);
+  const lineChart = buildConditionLineChartData(records);
 
   return {
-    labels: rows.map((row) => row.recordedAt),
-    ...buildGraphSeriesFromRows(rows),
+    labels: lineChart.xAxisLabels,
+    ...buildDraftSeriesFromLineChart(lineChart),
     rows,
+    lineChart,
   };
 }

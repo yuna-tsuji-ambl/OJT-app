@@ -1,43 +1,26 @@
 import type { AuthUser } from '../auth/types';
+import type {
+  ConditionDraft,
+  ConditionAlert,
+  ConditionGraphData,
+  ConditionHistoryRecord,
+  ConditionPageAlert,
+  ConditionSubmitResult,
+} from './conditionTypes';
 import { fetchWithAuth } from './authHeaders';
 import { parseJsonResponse } from './jsonResponse';
 
-export interface ConditionDraft {
-  workload: number;
-  comprehension: number;
-  mental: number;
-}
-
-export interface ConditionSubmitResult {
-  message: string;
-  record: ConditionDraft;
-}
-
-export interface ConditionHistoryRecord extends ConditionDraft {
-  recordedAt: string;
-}
-
-export interface ConditionAlert {
-  traineeId: string;
-  hasAlert: boolean;
-  message: string;
-  latestMental: number;
-}
-
-export interface ConditionPageAlert {
-  hasAlert: boolean;
-  message: string;
-}
-
-export type ConditionGraphTableRow = ConditionHistoryRecord;
-
-export interface ConditionGraphData {
-  labels: string[];
-  workload: number[];
-  comprehension: number[];
-  mental: number[];
-  rows: ConditionGraphTableRow[];
-}
+export type {
+  ConditionAlert,
+  ConditionDraft,
+  ConditionGraphData,
+  ConditionGraphTableRow,
+  ConditionHistoryRecord,
+  ConditionLineChartData,
+  ConditionLineChartSeries,
+  ConditionPageAlert,
+  ConditionSubmitResult,
+} from './conditionTypes';
 
 export async function submitConditionRecord(
   draft: ConditionDraft,

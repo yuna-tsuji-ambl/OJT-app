@@ -13,7 +13,18 @@ export interface ConditionHistoryRecord extends ConditionDraft {
   recordedAt: string;
 }
 
-/** 推移表の1行。履歴レコードと同一構造 */
+export interface ConditionAlert {
+  traineeId: string;
+  hasAlert: boolean;
+  message: string;
+  latestMental: number;
+}
+
+export interface ConditionPageAlert {
+  hasAlert: boolean;
+  message: string;
+}
+
 export type ConditionGraphTableRow = ConditionHistoryRecord;
 
 export interface ConditionLineChartSeries {
@@ -37,20 +48,3 @@ export interface ConditionGraphData {
   rows: ConditionGraphTableRow[];
   lineChart: ConditionLineChartData;
 }
-
-export interface ConditionAlertMessage {
-  hasAlert: boolean;
-  message: string;
-}
-
-export interface LatestConditionAlertState {
-  hasAlert: boolean;
-  latest: ConditionHistoryRecord | null;
-}
-
-export interface ConditionAlert extends ConditionAlertMessage {
-  traineeId: string;
-  latestMental: number;
-}
-
-export type ConditionPageAlert = ConditionAlertMessage;

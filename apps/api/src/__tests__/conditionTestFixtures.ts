@@ -46,6 +46,17 @@ export const U_C03_EXPECTED_TABLE_ROWS = U_C03_HISTORY_RECORDS.map(
   }),
 );
 
+export const U_C03_EXPECTED_LINE_CHART = {
+  xAxisLabels: ['2026-03-01', '2026-03-08', '2026-03-15'],
+  yAxisMin: 1,
+  yAxisMax: 5,
+  series: [
+    { key: 'workload', label: '業務量', values: [3, 4, 4] },
+    { key: 'comprehension', label: '理解度', values: [3, 3, 2] },
+    { key: 'mental', label: 'メンタル', values: [3, 2, 1] },
+  ],
+} as const;
+
 export function createInMemoryConditionStore(): InMemoryConditionRecordStore {
   return new InMemoryConditionRecordStore();
 }

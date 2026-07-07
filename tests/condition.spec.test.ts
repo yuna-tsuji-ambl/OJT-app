@@ -306,6 +306,83 @@ async function countConditionTransitionTableRows(page: Page): Promise<number> {
   return conditionTransitionTableRows(page).count();
 }
 
+function trainerConditionTransitionGraphRegion(page: Page) {
+  return page.getByRole('region', { name: 'コンディション推移グラフ' });
+}
+
+function trainerConditionLineChartImage(page: Page) {
+  return trainerConditionTransitionGraphRegion(page).getByRole('img', {
+    name: 'コンディション推移折れ線グラフ',
+  });
+}
+
+type ConditionLineChartSeriesLabel = '業務量' | '理解度' | 'メンタル';
+
+async function expectConditionLineChartStructure(page: Page): Promise<void> {
+  const graphRegion = trainerConditionTransitionGraphRegion(page);
+
+  await expect(graphRegion).toBeVisible();
+  await expect(trainerConditionLineChartImage(page)).toBeVisible();
+  await expect(graphRegion.getByText('1〜5')).toBeVisible();
+  await expect(
+    graphRegion.getByRole('list', { name: '記録日時' }),
+  ).toBeVisible();
+  await expect(
+    graphRegion.getByRole('list', { name: '折れ線グラフ系列' }),
+  ).toBeVisible();
+
+  const seriesList = graphRegion.getByRole('list', {
+    name: '折れ線グラフ系列',
+  });
+  await expect(
+    seriesList.getByRole('listitem', { name: '業務量' }),
+  ).toBeVisible();
+  await expect(
+    seriesList.getByRole('listitem', { name: '理解度' }),
+  ).toBeVisible();
+  await expect(
+    seriesList.getByRole('listitem', { name: 'メンタル' }),
+  ).toBeVisible();
+}
+
+async function expectConditionLineChartBelowCurrentCondition(
+  page: Page,
+): Promise<void> {
+  const currentRegion = trainerCurrentConditionRegion(page);
+  const graphRegion = trainerConditionTransitionGraphRegion(page);
+
+  await expect(currentRegion).toBeVisible();
+  await expect(graphRegion).toBeVisible();
+
+  const [currentBox, graphBox] = await Promise.all([
+    currentRegion.boundingBox(),
+    graphRegion.boundingBox(),
+  ]);
+
+  expect(currentBox).not.toBeNull();
+  expect(graphBox).not.toBeNull();
+  expect(graphBox!.y).toBeGreaterThan(currentBox!.y);
+}
+
+async function expectConditionLineChartSeriesValues(
+  page: Page,
+  seriesLabel: ConditionLineChartSeriesLabel,
+  values: number[],
+): Promise<void> {
+  const seriesItem = trainerConditionTransitionGraphRegion(page)
+    .getByRole('list', { name: '折れ線グラフ系列' })
+    .getByRole('listitem', { name: seriesLabel });
+
+  await expect(seriesItem).toContainText(values.join(', '));
+}
+
+async function countConditionLineChartXAxisLabels(page: Page): Promise<number> {
+  return trainerConditionTransitionGraphRegion(page)
+    .getByRole('list', { name: '記録日時' })
+    .getByRole('listitem')
+    .count();
+}
+
 function trainerCurrentConditionRegion(page: Page) {
   return page.getByRole('region', { name: '現在のコンディション' });
 }
@@ -474,6 +551,85 @@ test.describe('E-C04 コンディション推移グラフの更新', () => {
       tableRowCountAfterFirstView + 1,
     );
     await expectConditionTransitionTableLatestRow(page, E_C04_SECOND_INPUT);
+  });
+});
+
+/**
+ * E-C04: コンディション推移折れ線グラフの更新
+ * 観点: CUJ / 連携 / 操作性
+ *
+ * 手順:
+ * 1. 新卒でログインし、コンディションを入力して送信する
+ * 2. トレーナーでログインし、コンディション画面を開く
+ * 3. 新卒で再度コンディションを変更して送信する
+ * 4. トレーナーでコンディション画面を再表示する
+ *
+ * 期待結果（表示）:
+ * - 現在のコンディション表示の下に折れ線グラフが配置されていること
+ * - 横軸に記録日時、3 系列（業務量・理解度・メンタル）が表示されていること
+ * - 再表示時に折れ線グラフが最新入力を反映して更新されていること
+ *
+ * 期待結果（データ）:
+ * - GET /api/condition/trainees/:traineeId/graph の lineChart が最新履歴を返し、画面に反映される
+ */
+test.describe('E-C04 コンディション推移折れ線グラフの更新', () => {
+  test('新卒が2回送信_トレーナー再表示で折れ線グラフが最新入力に更新される', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openWeeklyConditionInput(page);
+    await setConditionValues(page, E_C04_FIRST_INPUT);
+    await submitWeeklyCondition(page);
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerConditionPageWithGraph(page);
+
+    await expectTrainerCurrentConditionValues(page, E_C04_FIRST_INPUT);
+    await expectConditionLineChartStructure(page);
+    await expectConditionLineChartBelowCurrentCondition(page);
+    await expectConditionLineChartSeriesValues(page, '業務量', [
+      E_C04_FIRST_INPUT.workload,
+    ]);
+    await expectConditionLineChartSeriesValues(page, '理解度', [
+      E_C04_FIRST_INPUT.comprehension,
+    ]);
+    await expectConditionLineChartSeriesValues(page, 'メンタル', [
+      E_C04_FIRST_INPUT.mental,
+    ]);
+    const xAxisLabelCountAfterFirstView =
+      await countConditionLineChartXAxisLabels(page);
+
+    await logout(page);
+    await loginAsTrainee(page);
+    await openWeeklyConditionInput(page);
+    await setConditionValues(page, E_C04_SECOND_INPUT);
+    await submitWeeklyCondition(page);
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await reopenTrainerConditionPageWithGraph(page);
+
+    await expectTrainerCurrentConditionValues(page, E_C04_SECOND_INPUT);
+    await expectConditionLineChartStructure(page);
+    await expectConditionLineChartBelowCurrentCondition(page);
+    await expect(
+      trainerConditionTransitionGraphRegion(page)
+        .getByRole('list', { name: '記録日時' })
+        .getByRole('listitem'),
+    ).toHaveCount(xAxisLabelCountAfterFirstView + 1);
+    await expectConditionLineChartSeriesValues(page, '業務量', [
+      E_C04_FIRST_INPUT.workload,
+      E_C04_SECOND_INPUT.workload,
+    ]);
+    await expectConditionLineChartSeriesValues(page, '理解度', [
+      E_C04_FIRST_INPUT.comprehension,
+      E_C04_SECOND_INPUT.comprehension,
+    ]);
+    await expectConditionLineChartSeriesValues(page, 'メンタル', [
+      E_C04_FIRST_INPUT.mental,
+      E_C04_SECOND_INPUT.mental,
+    ]);
   });
 });
 

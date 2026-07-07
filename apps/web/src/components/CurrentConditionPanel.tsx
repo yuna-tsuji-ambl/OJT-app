@@ -1,4 +1,5 @@
-import type { ConditionDraft } from '../api/conditionApi';
+import type { ConditionDraft } from '../api/conditionTypes';
+import { CONDITION_CURRENT_REGION_LABEL } from '../domain/conditionUiConstants';
 
 interface CurrentConditionPanelProps {
   record: ConditionDraft;
@@ -6,7 +7,7 @@ interface CurrentConditionPanelProps {
 
 export function CurrentConditionPanel({ record }: CurrentConditionPanelProps) {
   return (
-    <section aria-label="現在のコンディション">
+    <section aria-label={CONDITION_CURRENT_REGION_LABEL}>
       <dl>
         <dt>業務量</dt>
         <dd>{record.workload}</dd>

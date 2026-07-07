@@ -12,12 +12,8 @@ import type {
   ConditionDraft,
   ConditionHistoryRecord,
   ConditionPageAlert,
+  LatestConditionAlertState,
 } from './conditionTypes.js';
-
-interface LatestConditionAlertState {
-  hasAlert: boolean;
-  latest: ConditionHistoryRecord | null;
-}
 
 export function isConditionAlertValue(value: number): boolean {
   return value === CONDITION_ALERT_THRESHOLD;

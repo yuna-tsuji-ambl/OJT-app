@@ -2,10 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   buildConditionAlert,
   buildConditionPageAlert,
+  buildConditionLineChartData,
   createConditionDraft,
   buildConditionGraphTableRows,
   CONDITION_ALERT_MESSAGE,
   CONDITION_PAGE_ALERT_MESSAGE,
+  CONDITION_VALUE_MAX,
+  CONDITION_VALUE_MIN,
   getConditionAlert,
   getConditionGraphData,
   getConditionPageAlert,
@@ -18,6 +21,7 @@ import {
   type ConditionDraft,
   type ConditionGraphData,
   type ConditionHistoryRecord,
+  type ConditionLineChartData,
   type ConditionPageAlert,
   type ConditionRecordStore,
 } from '../condition.js';
@@ -31,6 +35,7 @@ import {
   postCondition,
   TRAINEE_USER_ID,
   TRAINER_USER_ID,
+  U_C03_EXPECTED_LINE_CHART,
   U_C03_EXPECTED_TABLE_ROWS,
   U_C03_HISTORY_RECORDS,
   U_C06_INPUT_DRAFT,
@@ -286,6 +291,178 @@ describe('U-C03 コンディション推移の表表示', () => {
     expect(body.rows).toHaveLength(2);
     expect(body.rows[0]).toMatchObject(firstDraft);
     expect(body.rows[1]).toMatchObject(secondDraft);
+  });
+});
+
+/**
+ * U-C03: コンディション推移の折れ線グラフ表示
+ * 前提条件: OJTトレーナーとしてログイン中
+ * アクション: 対象新卒のコンディション画面を開く
+ * 期待結果: 過去の入力データに基づき、記録日時を横軸・業務量・理解度・メンタルを 3 系列とする折れ線グラフが正しく表示されること
+ *
+ * 結合境界:
+ * - 単体: buildConditionLineChartData（履歴 → 折れ線グラフ用データ）
+ * - 結合: getConditionGraphData → ConditionRecordStore
+ * - API: GET /api/condition/trainees/:traineeId/graph
+ */
+describe('U-C03 コンディション推移の折れ線グラフ表示', () => {
+  const trainerUserId = TRAINER_USER_ID;
+  const traineeUserId = TRAINEE_USER_ID;
+
+  function expectLineChartValueScale(lineChart: ConditionLineChartData): void {
+    expect(lineChart.yAxisMin).toBe(CONDITION_VALUE_MIN);
+    expect(lineChart.yAxisMax).toBe(CONDITION_VALUE_MAX);
+
+    const pointCount = lineChart.xAxisLabels.length;
+    expect(lineChart.series).toHaveLength(3);
+
+    for (const series of lineChart.series) {
+      expect(series.values).toHaveLength(pointCount);
+      for (const value of series.values) {
+        expect(value).toBeGreaterThanOrEqual(CONDITION_VALUE_MIN);
+        expect(value).toBeLessThanOrEqual(CONDITION_VALUE_MAX);
+      }
+    }
+  }
+
+  it('buildConditionLineChartData_過去3件の履歴_横軸と3系列の折れ線グラフデータを返す', () => {
+    const lineChart = buildConditionLineChartData(U_C03_HISTORY_RECORDS);
+
+    expect(lineChart).toEqual(U_C03_EXPECTED_LINE_CHART);
+    expectLineChartValueScale(lineChart);
+  });
+
+  it('buildConditionLineChartData_履歴なし_空の折れ線グラフデータを返す', () => {
+    const lineChart = buildConditionLineChartData([]);
+
+    expect(lineChart).toEqual({
+      xAxisLabels: [],
+      yAxisMin: CONDITION_VALUE_MIN,
+      yAxisMax: CONDITION_VALUE_MAX,
+      series: [
+        { key: 'workload', label: '業務量', values: [] },
+        { key: 'comprehension', label: '理解度', values: [] },
+        { key: 'mental', label: 'メンタル', values: [] },
+      ],
+    });
+  });
+
+  it('getConditionGraphData_トレーナーが対象新卒の履歴取得_折れ線グラフデータが返る', async () => {
+    const conditionRecordStore: ConditionRecordStore = {
+      save: vi.fn().mockResolvedValue(undefined),
+      findHistoryByTraineeId: vi.fn().mockResolvedValue(U_C03_HISTORY_RECORDS),
+    };
+
+    const graphData = await getConditionGraphData(
+      traineeUserId,
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expect(conditionRecordStore.findHistoryByTraineeId).toHaveBeenCalledWith(
+      traineeUserId,
+    );
+    expect(graphData.lineChart).toEqual(U_C03_EXPECTED_LINE_CHART);
+    expectLineChartValueScale(graphData.lineChart);
+  });
+
+  it('getConditionGraphData_InMemoryストア_折れ線グラフ系列が履歴順で返る', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+    const firstDraft: ConditionDraft = {
+      workload: 1,
+      comprehension: 2,
+      mental: 3,
+    };
+    const secondDraft: ConditionDraft = {
+      workload: 4,
+      comprehension: 3,
+      mental: 2,
+    };
+
+    await submitConditionRecord(
+      firstDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+    await submitConditionRecord(
+      secondDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const graphData = await getConditionGraphData(
+      traineeUserId,
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expect(graphData.lineChart.xAxisLabels).toHaveLength(2);
+    expect(graphData.lineChart.series[0].values).toEqual([
+      firstDraft.workload,
+      secondDraft.workload,
+    ]);
+    expect(graphData.lineChart.series[1].values).toEqual([
+      firstDraft.comprehension,
+      secondDraft.comprehension,
+    ]);
+    expect(graphData.lineChart.series[2].values).toEqual([
+      firstDraft.mental,
+      secondDraft.mental,
+    ]);
+    expectLineChartValueScale(graphData.lineChart);
+  });
+
+  it('getConditionGraph_トレーナーGET_折れ線グラフデータが200で返る', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+    const firstDraft: ConditionDraft = {
+      workload: 1,
+      comprehension: 2,
+      mental: 3,
+    };
+    const secondDraft: ConditionDraft = {
+      workload: 4,
+      comprehension: 3,
+      mental: 2,
+    };
+
+    await submitConditionRecord(
+      firstDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+    await submitConditionRecord(
+      secondDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const response = await getConditionGraph(
+      traineeUserId,
+      conditionRecordStore,
+    );
+
+    expect(response.statusCode).toBe(200);
+    const body = response.body as ConditionGraphData;
+    expect(body.lineChart.xAxisLabels).toHaveLength(2);
+    expect(body.lineChart.series[0].values).toEqual([
+      firstDraft.workload,
+      secondDraft.workload,
+    ]);
+    expect(body.lineChart.series[1].values).toEqual([
+      firstDraft.comprehension,
+      secondDraft.comprehension,
+    ]);
+    expect(body.lineChart.series[2].values).toEqual([
+      firstDraft.mental,
+      secondDraft.mental,
+    ]);
+    expectLineChartValueScale(body.lineChart);
   });
 });
 

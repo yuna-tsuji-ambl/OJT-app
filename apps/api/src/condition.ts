@@ -6,6 +6,8 @@ export type {
   ConditionGraphData,
   ConditionGraphTableRow,
   ConditionHistoryRecord,
+  ConditionLineChartData,
+  ConditionLineChartSeries,
   ConditionPageAlert,
   ConditionRecordStore,
   ConditionSubmitResult,
@@ -28,6 +30,7 @@ export {
 export {
   buildConditionAlert,
   buildConditionGraphTableRows,
+  buildConditionLineChartData,
   buildConditionPageAlert,
   hasConditionAlertDraft,
   isConditionAlertValue,

@@ -5,6 +5,8 @@ export type {
   ConditionGraphData,
   ConditionGraphTableRow,
   ConditionHistoryRecord,
+  ConditionLineChartData,
+  ConditionLineChartSeries,
   ConditionPageAlert,
   ConditionSubmitResult,
 } from '../domain/conditionTypes.js';

@@ -27,6 +27,12 @@ export const CONDITION_DRAFT_FIELDS = [
   CONDITION_FIELD.MENTAL,
 ] as const satisfies readonly (keyof ConditionDraft)[];
 
+export const CONDITION_FIELD_LABELS = {
+  [CONDITION_FIELD.WORKLOAD]: '業務量',
+  [CONDITION_FIELD.COMPREHENSION]: '理解度',
+  [CONDITION_FIELD.MENTAL]: 'メンタル',
+} as const satisfies Record<keyof ConditionDraft, string>;
+
 export type ConditionField =
   (typeof CONDITION_FIELD)[keyof typeof CONDITION_FIELD];
 
