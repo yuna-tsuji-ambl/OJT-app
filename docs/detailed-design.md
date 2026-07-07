@@ -505,10 +505,13 @@ type QuestStatus = '未クリア' | '申請中' | 'クリア';
 1. ロール検証（trainer）
 2. 指定新卒の最新履歴を返却（なければ 404）
 
-**グラフデータ（サービス層のみ、API 未公開）**:
+**グラフデータ（トレーナー）**:
 
-- `ConditionService.getGraphData` / `buildConditionGraphData` で 3 項目の時系列データを生成
-- フロントエンドでのグラフ描画は **未実装**
+1. ロール検証（trainer）
+2. 指定新卒の履歴から `buildConditionGraphData` で 3 項目の時系列データを返却
+
+- `GET /api/condition/trainees/:traineeId/graph` で公開済み
+- トレーナーコンディション画面で推移テーブルを表示
 
 #### 7.2.5 ドメインモデル
 

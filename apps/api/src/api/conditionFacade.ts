@@ -5,29 +5,29 @@ import type {
   ConditionHistoryRecord,
   ConditionSubmitResult,
 } from '../domain/conditionTypes.js';
-import type { UserContext, UserRole } from '../domain/types.js';
-import { toUserContext } from '../domain/userContext.js';
+import type { UserRole } from '../domain/types.js';
 import type { ConditionRecordStore } from '../repositories/conditionRecordStore.js';
 import { ConditionService } from '../services/conditionService.js';
+import {
+  withConditionContext,
+  withConditionStore,
+  withTrainerTraineeStore,
+} from './conditionStoreAccess.js';
 
 const conditionService = new ConditionService();
 
-type ConditionStoreHandler<T> = (
-  context: UserContext,
-  conditionRecordStore: ConditionRecordStore,
-) => Promise<T>;
-
-async function withConditionStore<T>(
-  userId: string,
-  role: UserRole,
-  conditionRecordStore: ConditionRecordStore,
-  handler: ConditionStoreHandler<T>,
-): Promise<T> {
-  return handler(toUserContext(userId, role), conditionRecordStore);
-}
+const boundConditionService = {
+  createDraft: conditionService.createDraft.bind(conditionService),
+  updateMentalValue: conditionService.updateMentalValue.bind(conditionService),
+  submitRecord: conditionService.submitRecord.bind(conditionService),
+  getGraphData: conditionService.getGraphData.bind(conditionService),
+  getAlert: conditionService.getAlert.bind(conditionService),
+  listAlerts: conditionService.listAlerts.bind(conditionService),
+  getLatestRecord: conditionService.getLatestRecord.bind(conditionService),
+};
 
 export function createConditionDraft(values: ConditionDraft): ConditionDraft {
-  return conditionService.createDraft(values);
+  return boundConditionService.createDraft(values);
 }
 
 export function updateMentalValue(
@@ -36,10 +36,8 @@ export function updateMentalValue(
   userId: string,
   role: UserRole,
 ): ConditionDraft {
-  return conditionService.updateMentalValue(
-    draft,
-    mental,
-    toUserContext(userId, role),
+  return withConditionContext(userId, role, (context) =>
+    boundConditionService.updateMentalValue(draft, mental, context),
   );
 }
 
@@ -53,7 +51,8 @@ export async function submitConditionRecord(
     userId,
     role,
     conditionRecordStore,
-    (context, store) => conditionService.submitRecord(draft, context, store),
+    (context, store) =>
+      boundConditionService.submitRecord(draft, context, store),
   );
 }
 
@@ -63,12 +62,12 @@ export async function getConditionGraphData(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionGraphData> {
-  return withConditionStore(
+  return withTrainerTraineeStore(
+    traineeId,
     userId,
     role,
     conditionRecordStore,
-    (context, store) =>
-      conditionService.getGraphData(traineeId, context, store),
+    boundConditionService.getGraphData,
   );
 }
 
@@ -78,11 +77,12 @@ export async function getConditionAlert(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionAlert> {
-  return withConditionStore(
+  return withTrainerTraineeStore(
+    traineeId,
     userId,
     role,
     conditionRecordStore,
-    (context, store) => conditionService.getAlert(traineeId, context, store),
+    boundConditionService.getAlert,
   );
 }
 
@@ -95,7 +95,7 @@ export async function listConditionAlerts(
     userId,
     role,
     conditionRecordStore,
-    (context, store) => conditionService.listAlerts(context, store),
+    boundConditionService.listAlerts,
   );
 }
 
@@ -105,11 +105,11 @@ export async function getLatestConditionRecord(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionHistoryRecord> {
-  return withConditionStore(
+  return withTrainerTraineeStore(
+    traineeId,
     userId,
     role,
     conditionRecordStore,
-    (context, store) =>
-      conditionService.getLatestRecord(traineeId, context, store),
+    boundConditionService.getLatestRecord,
   );
 }

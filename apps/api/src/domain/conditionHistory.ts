@@ -1,5 +1,24 @@
 import { ConditionRecordNotFoundError } from './errors.js';
-import type { ConditionHistoryRecord } from './conditionTypes.js';
+import type {
+  ConditionDraft,
+  ConditionHistoryRecord,
+} from './conditionTypes.js';
+
+export type TraineeHistoryTransform<T> = (
+  traineeId: string,
+  records: ConditionHistoryRecord[],
+) => T;
+
+export function formatConditionRecordedAt(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export function createConditionHistoryRecord(
+  draft: ConditionDraft,
+  recordedAt: string = formatConditionRecordedAt(),
+): ConditionHistoryRecord {
+  return { ...draft, recordedAt };
+}
 
 export function getLatestHistoryRecord(
   records: ConditionHistoryRecord[],

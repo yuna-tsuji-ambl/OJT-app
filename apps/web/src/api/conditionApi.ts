@@ -24,6 +24,13 @@ export interface ConditionAlert {
   latestMental: number;
 }
 
+export interface ConditionGraphData {
+  labels: string[];
+  workload: number[];
+  comprehension: number[];
+  mental: number[];
+}
+
 export async function submitConditionRecord(
   draft: ConditionDraft,
   user: AuthUser,
@@ -53,4 +60,16 @@ export async function fetchLatestConditionRecord(
   );
 
   return parseJsonResponse(response, 'Failed to fetch latest condition record');
+}
+
+export async function fetchConditionGraphData(
+  traineeId: string,
+  user: AuthUser,
+): Promise<ConditionGraphData> {
+  const response = await fetchWithAuth(
+    `/api/condition/trainees/${traineeId}/graph`,
+    user,
+  );
+
+  return parseJsonResponse(response, 'Failed to fetch condition graph data');
 }

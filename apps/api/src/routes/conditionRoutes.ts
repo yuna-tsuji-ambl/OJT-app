@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  getConditionGraphData,
   getLatestConditionRecord,
   listConditionAlerts,
   submitConditionRecord,
@@ -38,6 +39,19 @@ export function createConditionRouter(store: ConditionRecordStore): Router {
     (request, response) =>
       void runConditionRoute(request, response, (context) =>
         getLatestConditionRecord(
+          readRouteParam(request.params.traineeId),
+          context.userId,
+          context.role,
+          store,
+        ),
+      ),
+  );
+
+  router.get(
+    '/condition/trainees/:traineeId/graph',
+    (request, response) =>
+      void runConditionRoute(request, response, (context) =>
+        getConditionGraphData(
           readRouteParam(request.params.traineeId),
           context.userId,
           context.role,

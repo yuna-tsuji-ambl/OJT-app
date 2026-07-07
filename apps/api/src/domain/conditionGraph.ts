@@ -1,15 +1,19 @@
-import { CONDITION_FIELD } from './conditionConstants.js';
-import type { ConditionField } from './conditionConstants.js';
+import { CONDITION_DRAFT_FIELDS } from './conditionConstants.js';
 import type {
+  ConditionDraft,
   ConditionGraphData,
   ConditionHistoryRecord,
 } from './conditionTypes.js';
 
-function extractGraphSeries(
+function buildGraphSeries(
   records: ConditionHistoryRecord[],
-  field: ConditionField,
-): number[] {
-  return records.map((record) => record[field]);
+): Pick<ConditionGraphData, keyof ConditionDraft> {
+  return Object.fromEntries(
+    CONDITION_DRAFT_FIELDS.map((field) => [
+      field,
+      records.map((record) => record[field]),
+    ]),
+  ) as Pick<ConditionGraphData, keyof ConditionDraft>;
 }
 
 export function buildConditionGraphData(
@@ -17,8 +21,6 @@ export function buildConditionGraphData(
 ): ConditionGraphData {
   return {
     labels: records.map((record) => record.recordedAt),
-    workload: extractGraphSeries(records, CONDITION_FIELD.WORKLOAD),
-    comprehension: extractGraphSeries(records, CONDITION_FIELD.COMPREHENSION),
-    mental: extractGraphSeries(records, CONDITION_FIELD.MENTAL),
+    ...buildGraphSeries(records),
   };
 }

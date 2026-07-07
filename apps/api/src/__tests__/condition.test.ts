@@ -3,15 +3,25 @@ import {
   createConditionDraft,
   getConditionAlert,
   getConditionGraphData,
+  getLatestConditionRecord,
   submitConditionRecord,
   updateMentalValue,
+  validateConditionDraft,
   type ConditionAlert,
   type ConditionDraft,
   type ConditionGraphData,
   type ConditionHistoryRecord,
   type ConditionRecordStore,
 } from '../condition.js';
-
+import {
+  CONDITION_INVALID_VALUE_ERROR_NAME,
+  createInMemoryConditionStore,
+  expectConditionDraftValues,
+  postCondition,
+  TRAINEE_USER_ID,
+  TRAINER_USER_ID,
+  U_C06_INPUT_DRAFT,
+} from './conditionTestFixtures.js';
 /**
  * U-C01: スライダーの入力とステート更新
  * 前提条件: 新卒ユーザーとしてログイン中
@@ -194,5 +204,175 @@ describe('U-C04 アラートの検知と表示', () => {
     expect(alert.hasAlert).toBe(true);
     expect(alert.latestMental).toBe(1);
     expect(alert.message).toBe('要フォロー');
+  });
+});
+
+/**
+ * U-C05: コンディション入力値のドメイン層バリデーション
+ * 前提条件: 新卒ユーザーとしてログイン中
+ * アクション: 業務量・理解度・メンタルのいずれかに 1〜5 以外の値を含めて POST /api/condition を実行する
+ * 期待結果: ドメイン層のバリデーションで拒否され、API が 400 を返すこと
+ */
+describe('U-C05 コンディション入力値のドメイン層バリデーション', () => {
+  const traineeUserId = 'trainee-1';
+
+  const validDraft: ConditionDraft = {
+    workload: 3,
+    comprehension: 3,
+    mental: 3,
+  };
+
+  let conditionRecordStore: ConditionRecordStore;
+
+  beforeEach(() => {
+    conditionRecordStore = {
+      save: vi.fn().mockResolvedValue(undefined),
+      findHistoryByTraineeId: vi.fn().mockResolvedValue([]),
+    };
+  });
+
+  it.each([
+    {
+      label: '業務量0',
+      draft: { workload: 0, comprehension: 3, mental: 3 },
+    },
+    {
+      label: '業務量6',
+      draft: { workload: 6, comprehension: 3, mental: 3 },
+    },
+    {
+      label: '理解度0',
+      draft: { workload: 3, comprehension: 0, mental: 3 },
+    },
+    {
+      label: '理解度6',
+      draft: { workload: 3, comprehension: 6, mental: 3 },
+    },
+    {
+      label: 'メンタル0',
+      draft: { workload: 3, comprehension: 3, mental: 0 },
+    },
+    {
+      label: 'メンタル6',
+      draft: { workload: 3, comprehension: 3, mental: 6 },
+    },
+  ] as const)(
+    'validateConditionDraft_$label_ドメイン層で拒否される',
+    ({ draft }) => {
+      expect(() => validateConditionDraft(draft)).toThrow(
+        expect.objectContaining({ name: CONDITION_INVALID_VALUE_ERROR_NAME }),
+      );
+    },
+  );
+
+  it('submitConditionRecord_業務量0_保存されずドメイン層エラーが投げられる', async () => {
+    const invalidDraft: ConditionDraft = {
+      workload: 0,
+      comprehension: 3,
+      mental: 3,
+    };
+
+    await expect(
+      submitConditionRecord(
+        invalidDraft,
+        traineeUserId,
+        'trainee',
+        conditionRecordStore,
+      ),
+    ).rejects.toMatchObject({ name: CONDITION_INVALID_VALUE_ERROR_NAME });
+
+    expect(conditionRecordStore.save).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: '業務量0', body: { workload: 0, comprehension: 3, mental: 3 } },
+    { label: '業務量6', body: { workload: 6, comprehension: 3, mental: 3 } },
+    {
+      label: '業務量が文字列',
+      body: { workload: '3', comprehension: 3, mental: 3 },
+    },
+    {
+      label: '理解度が文字列',
+      body: { workload: 3, comprehension: '3', mental: 3 },
+    },
+    {
+      label: 'メンタルが文字列',
+      body: { workload: 3, comprehension: 3, mental: '3' },
+    },
+  ] as const)('postCondition_$label_APIが400を返す', ({ body }) => {
+    const response = postCondition(body, conditionRecordStore);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toEqual({ error: 'Invalid condition input' });
+    expect(conditionRecordStore.save).not.toHaveBeenCalled();
+  });
+
+  it('validateConditionDraft_全項目が1から5_エラーを投げない', () => {
+    expect(() => validateConditionDraft(validDraft)).not.toThrow();
+  });
+});
+
+/**
+ * U-C06: 新卒入力ステートの保存
+ * 前提条件: 新卒ユーザーとしてログイン中
+ * アクション: 業務量・理解度・メンタルを入力して送信する
+ * 期待結果: 送信した値が保存され、再取得時（最新記録取得 API 等）に同じ業務量・理解度・メンタルが取得できること
+ *
+ * 結合境界: submitConditionRecord → ConditionRecordStore → getLatestConditionRecord
+ */
+describe('U-C06 新卒入力ステートの保存', () => {
+  let conditionRecordStore: ReturnType<typeof createInMemoryConditionStore>;
+
+  beforeEach(() => {
+    conditionRecordStore = createInMemoryConditionStore();
+  });
+
+  it('submitConditionRecord後getLatestConditionRecord_送信した業務量理解度メンタルが再取得できる', async () => {
+    await submitConditionRecord(
+      U_C06_INPUT_DRAFT,
+      TRAINEE_USER_ID,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const latestRecord = await getLatestConditionRecord(
+      TRAINEE_USER_ID,
+      TRAINER_USER_ID,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expectConditionDraftValues(latestRecord, U_C06_INPUT_DRAFT);
+  });
+
+  it('submitConditionRecordを2回実行_getLatestConditionRecordは最新送信値を返す', async () => {
+    const firstDraft: ConditionDraft = {
+      workload: 1,
+      comprehension: 2,
+      mental: 3,
+    };
+    const secondDraft: ConditionDraft = U_C06_INPUT_DRAFT;
+
+    await submitConditionRecord(
+      firstDraft,
+      TRAINEE_USER_ID,
+      'trainee',
+      conditionRecordStore,
+    );
+    await submitConditionRecord(
+      secondDraft,
+      TRAINEE_USER_ID,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const latestRecord = await getLatestConditionRecord(
+      TRAINEE_USER_ID,
+      TRAINER_USER_ID,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expectConditionDraftValues(latestRecord, secondDraft);
   });
 });

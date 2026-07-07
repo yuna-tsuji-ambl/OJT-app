@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import {
+  ConditionInvalidValueError,
   ConditionRecordNotFoundError,
   ForbiddenError,
   QuestNotFoundError,
@@ -27,6 +28,11 @@ export function sendConditionErrorResponse(
   response: Response,
   error: unknown,
 ): void {
+  if (error instanceof ConditionInvalidValueError) {
+    response.status(400).json({ error: 'Invalid condition input' });
+    return;
+  }
+
   if (error instanceof ConditionRecordNotFoundError) {
     response.status(404).json({ error: 'Not found' });
     return;

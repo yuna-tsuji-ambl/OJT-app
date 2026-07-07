@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { QuestListPage } from './pages/QuestListPage';
 import { TraineeHomePage } from './pages/TraineeHomePage';
+import { TrainerConditionPage } from './pages/TrainerConditionPage';
 import { TrainerMessagesPage } from './pages/TrainerMessagesPage';
 import { TrainerStatusSettingsPage } from './pages/TrainerStatusSettingsPage';
 import { TraineeDetailPage } from './pages/TraineeDetailPage';
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/home" element={<TraineeHomePage />} />
             <Route path="/quests" element={<QuestListPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/condition" element={<TrainerConditionPage />} />
             <Route
               path="/status/settings"
               element={<TrainerStatusSettingsPage />}
