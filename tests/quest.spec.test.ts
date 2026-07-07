@@ -256,11 +256,15 @@ test.describe('E-Q01 クエスト申請から承認までのEnd-to-End', () => {
   }) => {
     await loginAsTrainee(page);
     await openQuestList(page);
+    await expect(questArticle(page, QUEST_A_NAME)).toBeVisible();
     await requestQuestClear(page, QUEST_A_NAME);
 
     await logout(page);
     await loginAsTrainer(page);
     await openTrainerDashboard(page);
+    await expect(
+      questArticle(page, QUEST_A_NAME).getByRole('button', { name: '承認' }),
+    ).toBeVisible();
     await approveQuest(page, QUEST_A_NAME);
 
     await logout(page);
