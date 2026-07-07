@@ -4,7 +4,10 @@ import {
   CONDITION_FIELD,
   type ConditionField,
 } from '../domain/conditionConstants.js';
-import { buildConditionAlert } from '../domain/conditionAlert.js';
+import {
+  buildConditionAlert,
+  buildConditionPageAlert,
+} from '../domain/conditionAlert.js';
 import {
   cloneConditionDraft,
   createSubmitResult,
@@ -21,6 +24,7 @@ import type {
   ConditionDraft,
   ConditionGraphData,
   ConditionHistoryRecord,
+  ConditionPageAlert,
   ConditionSubmitResult,
 } from '../domain/conditionTypes.js';
 import type { UserContext } from '../domain/types.js';
@@ -94,7 +98,7 @@ export class ConditionService {
 
     return Promise.all(
       MONITORED_TRAINEE_IDS.map((traineeId) =>
-        this.buildAlertForTrainee(traineeId, conditionRecordStore),
+        this.getAlert(traineeId, context, conditionRecordStore),
       ),
     );
   }
@@ -112,16 +116,17 @@ export class ConditionService {
     );
   }
 
-  private async buildAlertForTrainee(
+  async getPageAlert(
     traineeId: string,
+    context: UserContext,
     conditionRecordStore: ConditionRecordStore,
-  ): Promise<ConditionAlert> {
-    const records = await this.loadTraineeHistory(
+  ): Promise<ConditionPageAlert> {
+    return this.withTraineeHistoryForTrainer(
       traineeId,
+      context,
       conditionRecordStore,
+      (_traineeId, records) => buildConditionPageAlert(records),
     );
-
-    return buildConditionAlert(traineeId, records);
   }
 
   private async withTraineeHistoryForTrainer<T>(

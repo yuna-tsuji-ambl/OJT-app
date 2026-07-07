@@ -24,11 +24,19 @@ export interface ConditionAlert {
   latestMental: number;
 }
 
+export interface ConditionPageAlert {
+  hasAlert: boolean;
+  message: string;
+}
+
+export type ConditionGraphTableRow = ConditionHistoryRecord;
+
 export interface ConditionGraphData {
   labels: string[];
   workload: number[];
   comprehension: number[];
   mental: number[];
+  rows: ConditionGraphTableRow[];
 }
 
 export async function submitConditionRecord(
@@ -72,4 +80,16 @@ export async function fetchConditionGraphData(
   );
 
   return parseJsonResponse(response, 'Failed to fetch condition graph data');
+}
+
+export async function fetchConditionPageAlert(
+  traineeId: string,
+  user: AuthUser,
+): Promise<ConditionPageAlert> {
+  const response = await fetchWithAuth(
+    `/api/condition/trainees/${traineeId}/page-alert`,
+    user,
+  );
+
+  return parseJsonResponse(response, 'Failed to fetch condition page alert');
 }

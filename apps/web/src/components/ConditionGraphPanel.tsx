@@ -5,13 +5,6 @@ interface ConditionGraphPanelProps {
 }
 
 export function ConditionGraphPanel({ graphData }: ConditionGraphPanelProps) {
-  const rows = graphData.labels.map((label, index) => ({
-    label,
-    workload: graphData.workload[index],
-    comprehension: graphData.comprehension[index],
-    mental: graphData.mental[index],
-  }));
-
   return (
     <section aria-label="コンディション推移グラフ">
       <table>
@@ -24,9 +17,9 @@ export function ConditionGraphPanel({ graphData }: ConditionGraphPanelProps) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.label}-${index}`}>
-              <td>{row.label}</td>
+          {graphData.rows.map((row, index) => (
+            <tr key={`${row.recordedAt}-${index}`}>
+              <td>{row.recordedAt}</td>
               <td>{row.workload}</td>
               <td>{row.comprehension}</td>
               <td>{row.mental}</td>

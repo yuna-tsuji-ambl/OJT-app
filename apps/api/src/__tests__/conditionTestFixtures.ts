@@ -1,8 +1,10 @@
-import type { Request, Response } from 'express';
-import type { ConditionDraft } from '../domain/conditionTypes.js';
+import type {
+  ConditionDraft,
+  ConditionHistoryRecord,
+} from '../domain/conditionTypes.js';
 import { InMemoryConditionRecordStore } from '../repositories/inMemoryConditionRecordStore.js';
 import type { ConditionRecordStore } from '../repositories/conditionRecordStore.js';
-import { createConditionRouter } from '../routes/conditionRoutes.js';
+import { invokeConditionRoute } from './conditionRouteTestHelpers.js';
 
 export const TRAINEE_USER_ID = 'trainee-1';
 export const TRAINER_USER_ID = 'trainer-1';
@@ -13,6 +15,36 @@ export const U_C06_INPUT_DRAFT: ConditionDraft = {
   comprehension: 4,
   mental: 5,
 };
+
+export const U_C03_HISTORY_RECORDS: ConditionHistoryRecord[] = [
+  {
+    recordedAt: '2026-03-01',
+    workload: 3,
+    comprehension: 3,
+    mental: 3,
+  },
+  {
+    recordedAt: '2026-03-08',
+    workload: 4,
+    comprehension: 3,
+    mental: 2,
+  },
+  {
+    recordedAt: '2026-03-15',
+    workload: 4,
+    comprehension: 2,
+    mental: 1,
+  },
+];
+
+export const U_C03_EXPECTED_TABLE_ROWS = U_C03_HISTORY_RECORDS.map(
+  ({ recordedAt, workload, comprehension, mental }) => ({
+    recordedAt,
+    workload,
+    comprehension,
+    mental,
+  }),
+);
 
 export function createInMemoryConditionStore(): InMemoryConditionRecordStore {
   return new InMemoryConditionRecordStore();
@@ -27,49 +59,62 @@ export function expectConditionDraftValues(
   expect(actual.mental).toBe(expected.mental);
 }
 
-export function postCondition(
+const TRAINEE_HEADERS = {
+  'x-user-id': TRAINEE_USER_ID,
+  'x-user-role': 'trainee',
+} as const;
+
+const TRAINER_HEADERS = {
+  'x-user-id': TRAINER_USER_ID,
+  'x-user-role': 'trainer',
+} as const;
+
+export async function postCondition(
   body: unknown,
   conditionRecordStore: ConditionRecordStore,
-  headers: Record<string, string> = {
-    'x-user-id': 'trainee-1',
-    'x-user-role': 'trainee',
-  },
-): { statusCode: number; body: unknown } {
-  const router = createConditionRouter(conditionRecordStore);
-  const routeLayer = router.stack.find(
-    (layer) =>
-      layer.route?.path === '/condition' && layer.route.methods.post === true,
-  );
-  const handler = routeLayer?.route?.stack[0]?.handle;
-
-  if (!handler) {
-    throw new Error('POST /condition handler not found');
-  }
-
-  const request = {
+  headers: Record<string, string> = TRAINEE_HEADERS,
+): Promise<{ statusCode: number; body: unknown }> {
+  return invokeConditionRoute(conditionRecordStore, {
+    method: 'post',
+    path: '/condition',
     body,
-    header(name: string) {
-      const normalizedName = name.toLowerCase();
-      return headers[normalizedName] ?? headers[name] ?? undefined;
-    },
-    params: {},
-  } as Request;
+    headers,
+  });
+}
 
-  let statusCode = 200;
-  let responseBody: unknown;
+export async function getConditionGraph(
+  traineeId: string,
+  conditionRecordStore: ConditionRecordStore,
+  headers: Record<string, string> = TRAINER_HEADERS,
+): Promise<{ statusCode: number; body: unknown }> {
+  return invokeConditionRoute(conditionRecordStore, {
+    method: 'get',
+    path: '/condition/trainees/:traineeId/graph',
+    params: { traineeId },
+    headers,
+  });
+}
 
-  const response = {
-    status(code: number) {
-      statusCode = code;
-      return this;
-    },
-    json(payload: unknown) {
-      responseBody = payload;
-      return this;
-    },
-  } as Response;
+export async function getConditionAlerts(
+  conditionRecordStore: ConditionRecordStore,
+  headers: Record<string, string> = TRAINER_HEADERS,
+): Promise<{ statusCode: number; body: unknown }> {
+  return invokeConditionRoute(conditionRecordStore, {
+    method: 'get',
+    path: '/condition/alerts',
+    headers,
+  });
+}
 
-  handler(request, response, () => undefined);
-
-  return { statusCode, body: responseBody };
+export async function getConditionPageAlert(
+  traineeId: string,
+  conditionRecordStore: ConditionRecordStore,
+  headers: Record<string, string> = TRAINER_HEADERS,
+): Promise<{ statusCode: number; body: unknown }> {
+  return invokeConditionRoute(conditionRecordStore, {
+    method: 'get',
+    path: '/condition/trainees/:traineeId/page-alert',
+    params: { traineeId },
+    headers,
+  });
 }

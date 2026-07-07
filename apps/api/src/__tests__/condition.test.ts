@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  buildConditionAlert,
+  buildConditionPageAlert,
   createConditionDraft,
+  buildConditionGraphTableRows,
+  CONDITION_ALERT_MESSAGE,
+  CONDITION_PAGE_ALERT_MESSAGE,
   getConditionAlert,
   getConditionGraphData,
+  getConditionPageAlert,
   getLatestConditionRecord,
+  listConditionAlerts,
   submitConditionRecord,
   updateMentalValue,
   validateConditionDraft,
@@ -11,15 +18,21 @@ import {
   type ConditionDraft,
   type ConditionGraphData,
   type ConditionHistoryRecord,
+  type ConditionPageAlert,
   type ConditionRecordStore,
 } from '../condition.js';
 import {
   CONDITION_INVALID_VALUE_ERROR_NAME,
   createInMemoryConditionStore,
   expectConditionDraftValues,
+  getConditionAlerts,
+  getConditionGraph,
+  getConditionPageAlert as getConditionPageAlertRoute,
   postCondition,
   TRAINEE_USER_ID,
   TRAINER_USER_ID,
+  U_C03_EXPECTED_TABLE_ROWS,
+  U_C03_HISTORY_RECORDS,
   U_C06_INPUT_DRAFT,
 } from './conditionTestFixtures.js';
 /**
@@ -156,6 +169,127 @@ describe('U-C03 コンディションのグラフ表示', () => {
 });
 
 /**
+ * U-C03: コンディション推移の表表示
+ * 前提条件: OJTトレーナーとしてログイン中
+ * アクション: 対象新卒のコンディション画面を開く
+ * 期待結果: 過去の入力データに基づき、記録日時・業務量・理解度・メンタルを行とする推移表が正しく表示されること
+ *
+ * 結合境界:
+ * - 単体: buildConditionGraphTableRows（履歴 → 表行）
+ * - 結合: getConditionGraphData → ConditionRecordStore
+ * - API: GET /api/condition/trainees/:traineeId/graph
+ */
+describe('U-C03 コンディション推移の表表示', () => {
+  const trainerUserId = TRAINER_USER_ID;
+  const traineeUserId = TRAINEE_USER_ID;
+
+  it('buildConditionGraphTableRows_過去3件の履歴_記録日時と3項目を行として返す', () => {
+    const rows = buildConditionGraphTableRows(U_C03_HISTORY_RECORDS);
+
+    expect(rows).toEqual(U_C03_EXPECTED_TABLE_ROWS);
+  });
+
+  it('getConditionGraphData_トレーナーが対象新卒の履歴取得_推移表rowsが返る', async () => {
+    const conditionRecordStore: ConditionRecordStore = {
+      save: vi.fn().mockResolvedValue(undefined),
+      findHistoryByTraineeId: vi.fn().mockResolvedValue(U_C03_HISTORY_RECORDS),
+    };
+
+    const graphData = await getConditionGraphData(
+      traineeUserId,
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expect(conditionRecordStore.findHistoryByTraineeId).toHaveBeenCalledWith(
+      traineeUserId,
+    );
+    expect(graphData.rows).toEqual(U_C03_EXPECTED_TABLE_ROWS);
+  });
+
+  it('getConditionGraphData_InMemoryストア_推移表rowsが履歴順で返る', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+    const firstDraft: ConditionDraft = {
+      workload: 1,
+      comprehension: 2,
+      mental: 3,
+    };
+    const secondDraft: ConditionDraft = {
+      workload: 4,
+      comprehension: 3,
+      mental: 2,
+    };
+
+    await submitConditionRecord(
+      firstDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+    await submitConditionRecord(
+      secondDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const graphData = await getConditionGraphData(
+      traineeUserId,
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expect(graphData.rows).toHaveLength(2);
+    expect(graphData.rows[0]).toMatchObject(firstDraft);
+    expect(graphData.rows[1]).toMatchObject(secondDraft);
+    for (const row of graphData.rows) {
+      expect(row.recordedAt).toEqual(expect.any(String));
+      expect(row.recordedAt.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('getConditionGraph_トレーナーGET_推移表rowsが200で返る', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+    const firstDraft: ConditionDraft = {
+      workload: 1,
+      comprehension: 2,
+      mental: 3,
+    };
+    const secondDraft: ConditionDraft = {
+      workload: 4,
+      comprehension: 3,
+      mental: 2,
+    };
+
+    await submitConditionRecord(
+      firstDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+    await submitConditionRecord(
+      secondDraft,
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const response = await getConditionGraph(
+      traineeUserId,
+      conditionRecordStore,
+    );
+
+    expect(response.statusCode).toBe(200);
+    const body = response.body as { rows: ConditionHistoryRecord[] };
+    expect(body.rows).toHaveLength(2);
+    expect(body.rows[0]).toMatchObject(firstDraft);
+    expect(body.rows[1]).toMatchObject(secondDraft);
+  });
+});
+
+/**
  * U-C04: アラートの検知と表示
  * 前提条件: OJTトレーナーとしてログイン中
  * アクション: 新卒の直近の「メンタル」値が「1」の状態でダッシュボードを開く
@@ -204,6 +338,284 @@ describe('U-C04 アラートの検知と表示', () => {
     expect(alert.hasAlert).toBe(true);
     expect(alert.latestMental).toBe(1);
     expect(alert.message).toBe('要フォロー');
+  });
+});
+
+/**
+ * U-C04: アラートの検知と表示（ダッシュボード）
+ * 前提条件: OJTトレーナーとしてログイン中
+ * アクション: 新卒の直近の「業務量・理解度・メンタル」値の少なくとも１つが「1」の状態でダッシュボードを開く
+ * 期待結果: 対象新卒のパネルに目立つ「SOSアラート（例: 要フォロー）」が表示されること
+ *
+ * 結合境界:
+ * - 単体: buildConditionAlert（直近記録のいずれかが 1 → アラート）
+ * - 結合: getConditionAlert / listConditionAlerts → ConditionRecordStore
+ * - API: GET /api/condition/alerts
+ */
+describe('U-C04 アラートの検知と表示（ダッシュボード）', () => {
+  const trainerUserId = TRAINER_USER_ID;
+  const traineeUserId = TRAINEE_USER_ID;
+
+  it.each([
+    {
+      label: '業務量1',
+      latest: { workload: 1, comprehension: 3, mental: 3 },
+    },
+    {
+      label: '理解度1',
+      latest: { workload: 3, comprehension: 1, mental: 3 },
+    },
+    {
+      label: 'メンタル1',
+      latest: { workload: 3, comprehension: 3, mental: 1 },
+    },
+  ] as const)(
+    'buildConditionAlert_$label_hasAlertがtrueで要フォローが返る',
+    ({ latest }) => {
+      const records: ConditionHistoryRecord[] = [
+        {
+          recordedAt: '2026-03-01',
+          workload: 3,
+          comprehension: 3,
+          mental: 3,
+        },
+        {
+          recordedAt: '2026-03-15',
+          ...latest,
+        },
+      ];
+
+      const alert = buildConditionAlert(traineeUserId, records);
+
+      expect(alert.traineeId).toBe(traineeUserId);
+      expect(alert.hasAlert).toBe(true);
+      expect(alert.message).toBe(CONDITION_ALERT_MESSAGE);
+    },
+  );
+
+  it('buildConditionAlert_直近3項目すべて1以外_hasAlertがfalse', () => {
+    const records: ConditionHistoryRecord[] = [
+      {
+        recordedAt: '2026-03-15',
+        workload: 2,
+        comprehension: 3,
+        mental: 4,
+      },
+    ];
+
+    const alert = buildConditionAlert(traineeUserId, records);
+
+    expect(alert.hasAlert).toBe(false);
+    expect(alert.message).toBe('');
+  });
+
+  it('getConditionAlert_直近業務量1_SOSアラートが返る', async () => {
+    const historyWithLowWorkload: ConditionHistoryRecord[] = [
+      {
+        recordedAt: '2026-03-15',
+        workload: 1,
+        comprehension: 4,
+        mental: 5,
+      },
+    ];
+    const conditionRecordStore: ConditionRecordStore = {
+      save: vi.fn().mockResolvedValue(undefined),
+      findHistoryByTraineeId: vi.fn().mockResolvedValue(historyWithLowWorkload),
+    };
+
+    const alert = await getConditionAlert(
+      traineeUserId,
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expect(alert.hasAlert).toBe(true);
+    expect(alert.message).toBe(CONDITION_ALERT_MESSAGE);
+  });
+
+  it('listConditionAlerts_直近理解度1_監視対象新卒にSOSアラートが含まれる', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+
+    await submitConditionRecord(
+      { workload: 4, comprehension: 1, mental: 3 },
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const alerts = await listConditionAlerts(
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    const traineeAlert = alerts.find(
+      (alert) => alert.traineeId === traineeUserId,
+    );
+
+    expect(traineeAlert?.hasAlert).toBe(true);
+    expect(traineeAlert?.message).toBe(CONDITION_ALERT_MESSAGE);
+  });
+
+  it('getConditionAlerts_直近メンタル1_200で要フォローアラートが返る', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+
+    await submitConditionRecord(
+      { workload: 3, comprehension: 3, mental: 1 },
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const response = await getConditionAlerts(conditionRecordStore);
+
+    expect(response.statusCode).toBe(200);
+    const alerts = response.body as ConditionAlert[];
+    const traineeAlert = alerts.find(
+      (alert) => alert.traineeId === traineeUserId,
+    );
+
+    expect(traineeAlert?.hasAlert).toBe(true);
+    expect(traineeAlert?.message).toBe(CONDITION_ALERT_MESSAGE);
+  });
+});
+
+/**
+ * U-C07: コンディション画面でのメンタル不安定アラート
+ * 前提条件: OJTトレーナーとしてログイン中
+ * アクション: 対象新卒の直近の「業務量・理解度・メンタル」値の少なくとも１つが「1」の状態でコンディション画面を開く
+ * 期待結果: 画面上にアラート「新卒が不安定です。」が表示されること
+ *
+ * 結合境界:
+ * - 単体: buildConditionPageAlert（直近記録のいずれかが 1 → コンディション画面アラート）
+ * - 結合: getConditionPageAlert → ConditionRecordStore
+ * - API: GET /api/condition/trainees/:traineeId/page-alert
+ */
+describe('U-C07 コンディション画面でのメンタル不安定アラート', () => {
+  const trainerUserId = TRAINER_USER_ID;
+  const traineeUserId = TRAINEE_USER_ID;
+
+  it.each([
+    {
+      label: '業務量1',
+      latest: { workload: 1, comprehension: 3, mental: 3 },
+    },
+    {
+      label: '理解度1',
+      latest: { workload: 3, comprehension: 1, mental: 3 },
+    },
+    {
+      label: 'メンタル1',
+      latest: { workload: 3, comprehension: 3, mental: 1 },
+    },
+  ] as const)(
+    'buildConditionPageAlert_$label_不安定アラートが返る',
+    ({ latest }) => {
+      const records: ConditionHistoryRecord[] = [
+        {
+          recordedAt: '2026-03-01',
+          workload: 3,
+          comprehension: 3,
+          mental: 3,
+        },
+        {
+          recordedAt: '2026-03-15',
+          ...latest,
+        },
+      ];
+
+      const pageAlert: ConditionPageAlert = buildConditionPageAlert(records);
+
+      expect(pageAlert.hasAlert).toBe(true);
+      expect(pageAlert.message).toBe(CONDITION_PAGE_ALERT_MESSAGE);
+    },
+  );
+
+  it('buildConditionPageAlert_直近3項目すべて1以外_アラートなし', () => {
+    const records: ConditionHistoryRecord[] = [
+      {
+        recordedAt: '2026-03-15',
+        workload: 2,
+        comprehension: 3,
+        mental: 4,
+      },
+    ];
+
+    const pageAlert = buildConditionPageAlert(records);
+
+    expect(pageAlert.hasAlert).toBe(false);
+    expect(pageAlert.message).toBe('');
+  });
+
+  it('getConditionPageAlert_直近メンタル1_不安定アラートが返る', async () => {
+    const historyWithLowMental: ConditionHistoryRecord[] = [
+      {
+        recordedAt: '2026-03-15',
+        workload: 4,
+        comprehension: 2,
+        mental: 1,
+      },
+    ];
+    const conditionRecordStore: ConditionRecordStore = {
+      save: vi.fn().mockResolvedValue(undefined),
+      findHistoryByTraineeId: vi.fn().mockResolvedValue(historyWithLowMental),
+    };
+
+    const pageAlert = await getConditionPageAlert(
+      traineeUserId,
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expect(conditionRecordStore.findHistoryByTraineeId).toHaveBeenCalledWith(
+      traineeUserId,
+    );
+    expect(pageAlert.hasAlert).toBe(true);
+    expect(pageAlert.message).toBe(CONDITION_PAGE_ALERT_MESSAGE);
+  });
+
+  it('getConditionPageAlert_InMemoryストア_直近業務量1_不安定アラートが返る', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+
+    await submitConditionRecord(
+      { workload: 1, comprehension: 4, mental: 5 },
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const pageAlert = await getConditionPageAlert(
+      traineeUserId,
+      trainerUserId,
+      'trainer',
+      conditionRecordStore,
+    );
+
+    expect(pageAlert.hasAlert).toBe(true);
+    expect(pageAlert.message).toBe(CONDITION_PAGE_ALERT_MESSAGE);
+  });
+
+  it('getConditionPageAlert_トレーナーGET_200で不安定アラートが返る', async () => {
+    const conditionRecordStore = createInMemoryConditionStore();
+
+    await submitConditionRecord(
+      { workload: 3, comprehension: 1, mental: 3 },
+      traineeUserId,
+      'trainee',
+      conditionRecordStore,
+    );
+
+    const response = await getConditionPageAlertRoute(
+      traineeUserId,
+      conditionRecordStore,
+    );
+
+    expect(response.statusCode).toBe(200);
+    const pageAlert = response.body as ConditionPageAlert;
+    expect(pageAlert.hasAlert).toBe(true);
+    expect(pageAlert.message).toBe(CONDITION_PAGE_ALERT_MESSAGE);
   });
 });
 
@@ -299,8 +711,8 @@ describe('U-C05 コンディション入力値のドメイン層バリデーシ�
       label: 'メンタルが文字列',
       body: { workload: 3, comprehension: 3, mental: '3' },
     },
-  ] as const)('postCondition_$label_APIが400を返す', ({ body }) => {
-    const response = postCondition(body, conditionRecordStore);
+  ] as const)('postCondition_$label_APIが400を返す', async ({ body }) => {
+    const response = await postCondition(body, conditionRecordStore);
 
     expect(response.statusCode).toBe(400);
     expect(response.body).toEqual({ error: 'Invalid condition input' });

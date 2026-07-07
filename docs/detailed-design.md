@@ -483,8 +483,16 @@ type QuestStatus = '未クリア' | '申請中' | 'クリア';
 
 #### 7.2.3 アラート判定
 
-- **条件**: 直近記録の `mental === 1`（`CONDITION_ALERT_THRESHOLD`）
+**ダッシュボード（SOSアラート）**
+
+- **条件**: 直近記録の業務量・理解度・メンタルのいずれかが `1`（`CONDITION_ALERT_THRESHOLD`）
 - **メッセージ**: 「要フォロー」（`CONDITION_ALERT_MESSAGE`）
+
+**コンディション画面**
+
+- **条件**: ダッシュボードと同様（直近記録のいずれかが `1`）
+- **メッセージ**: 「新卒が不安定です。」（`CONDITION_PAGE_ALERT_MESSAGE`）
+
 - **監視対象新卒**: `MONITORED_TRAINEE_IDS = ['trainee-1']`（固定）
 
 #### 7.2.4 処理フロー
@@ -513,6 +521,13 @@ type QuestStatus = '未クリア' | '申請中' | 'クリア';
 - `GET /api/condition/trainees/:traineeId/graph` で公開済み
 - トレーナーコンディション画面で推移テーブルを表示
 
+**コンディション画面アラート（トレーナー）**:
+
+1. ロール検証（trainer）
+2. 指定新卒の履歴から `buildConditionPageAlert` で画面用アラートを返却
+
+- `GET /api/condition/trainees/:traineeId/page-alert` で公開済み
+
 #### 7.2.5 ドメインモデル
 
 ```typescript
@@ -526,10 +541,13 @@ interface ConditionHistoryRecord extends ConditionDraft {
   recordedAt: string; // ISO 8601
 }
 
-interface ConditionAlert {
-  traineeId: string;
+interface ConditionPageAlert {
   hasAlert: boolean;
   message: string;
+}
+
+interface ConditionAlert extends ConditionPageAlert {
+  traineeId: string;
   latestMental: number;
 }
 
@@ -538,7 +556,11 @@ interface ConditionGraphData {
   workload: number[];
   comprehension: number[];
   mental: number[];
+  rows: ConditionHistoryRecord[];
 }
+
+/** 推移表の1行。履歴レコードと同一構造 */
+type ConditionGraphTableRow = ConditionHistoryRecord;
 ```
 
 #### 7.2.6 テスト仕様
@@ -881,11 +903,13 @@ interface LearningPost {
 
 ### 8.4 コンディション API
 
-| メソッド | パス                                        | ロール  | 説明         | 成功                         |
-| -------- | ------------------------------------------- | ------- | ------------ | ---------------------------- |
-| POST     | `/api/condition`                            | trainee | 記録送信     | 200 `ConditionSubmitResult`  |
-| GET      | `/api/condition/alerts`                     | trainer | アラート一覧 | 200 `ConditionAlert[]`       |
-| GET      | `/api/condition/trainees/:traineeId/latest` | trainer | 最新記録     | 200 `ConditionHistoryRecord` |
+| メソッド | パス                                            | ロール  | 説明         | 成功                         |
+| -------- | ----------------------------------------------- | ------- | ------------ | ---------------------------- |
+| POST     | `/api/condition`                                | trainee | 記録送信     | 200 `ConditionSubmitResult`  |
+| GET      | `/api/condition/alerts`                         | trainer | アラート一覧 | 200 `ConditionAlert[]`       |
+| GET      | `/api/condition/trainees/:traineeId/latest`     | trainer | 最新記録     | 200 `ConditionHistoryRecord` |
+| GET      | `/api/condition/trainees/:traineeId/graph`      | trainer | 推移グラフ   | 200 `ConditionGraphData`     |
+| GET      | `/api/condition/trainees/:traineeId/page-alert` | trainer | 画面アラート | 200 `ConditionPageAlert`     |
 
 **POST `/api/condition` リクエストボディ**:
 

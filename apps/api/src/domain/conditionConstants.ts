@@ -11,6 +11,8 @@ export const CONDITION_ALERT_THRESHOLD = 1;
 
 export const CONDITION_ALERT_MESSAGE = '要フォロー';
 
+export const CONDITION_PAGE_ALERT_MESSAGE = '新卒が不安定です。';
+
 export const MONITORED_TRAINEE_IDS = ['trainee-1'] as const;
 
 export const CONDITION_FIELD = {

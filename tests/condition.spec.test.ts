@@ -5,6 +5,7 @@ test.describe.configure({ mode: 'serial' });
 
 const CONDITION_SUBMIT_MESSAGE = '記録しました';
 const CONDITION_ALERT_MESSAGE = '要フォロー';
+const CONDITION_PAGE_ALERT_MESSAGE = '新卒が不安定です。';
 const TRAINEE_ID = 'trainee-1';
 const E_C01_MENTAL_VALUE = 1;
 const E_C03_CONDITION_INPUT = {
@@ -155,6 +156,40 @@ async function logout(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible();
 }
 
+async function openTrainerConditionPageWithPageAlert(
+  page: Page,
+  traineeId: string = TRAINEE_ID,
+): Promise<void> {
+  const latestResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/condition/trainees/${traineeId}/latest`) &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+  );
+  const pageAlertResponse = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes(`/api/condition/trainees/${traineeId}/page-alert`) &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+  );
+
+  await trainerHeaderNav(page)
+    .getByRole('link', { name: 'コンディション' })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'コンディション' }),
+  ).toBeVisible();
+  await Promise.all([latestResponse, pageAlertResponse]);
+}
+
+async function expectConditionPageUnstableAlert(page: Page): Promise<void> {
+  const alert = page.getByRole('alert', { name: 'コンディションアラート' });
+  await expect(alert).toBeVisible();
+  await expect(alert).toContainText(CONDITION_PAGE_ALERT_MESSAGE);
+}
+
 async function openTrainerConditionPage(page: Page): Promise<void> {
   const latestResponse = page.waitForResponse(
     (response) =>
@@ -210,46 +245,65 @@ async function reopenTrainerConditionPageWithGraph(
   await openTrainerConditionPageWithGraph(page, traineeId);
 }
 
-function trainerConditionGraphRegion(page: Page) {
+function trainerConditionTransitionTableRegion(page: Page) {
   return page.getByRole('region', { name: 'コンディション推移グラフ' });
 }
 
-function conditionGraphDataRows(page: Page) {
-  return trainerConditionGraphRegion(page).locator('tbody tr');
+function conditionTransitionTableRows(page: Page) {
+  return trainerConditionTransitionTableRegion(page).locator('tbody tr');
 }
 
-async function expectConditionGraphBelowCurrentCondition(
+async function expectConditionTransitionTableStructure(
+  page: Page,
+): Promise<void> {
+  const tableRegion = trainerConditionTransitionTableRegion(page);
+  await expect(tableRegion.locator('table')).toBeVisible();
+  await expect(
+    tableRegion.getByRole('columnheader', { name: '記録日時' }),
+  ).toBeVisible();
+  await expect(
+    tableRegion.getByRole('columnheader', { name: '業務量' }),
+  ).toBeVisible();
+  await expect(
+    tableRegion.getByRole('columnheader', { name: '理解度' }),
+  ).toBeVisible();
+  await expect(
+    tableRegion.getByRole('columnheader', { name: 'メンタル' }),
+  ).toBeVisible();
+}
+
+async function expectConditionTransitionTableBelowCurrentCondition(
   page: Page,
 ): Promise<void> {
   const currentRegion = trainerCurrentConditionRegion(page);
-  const graphRegion = trainerConditionGraphRegion(page);
+  const tableRegion = trainerConditionTransitionTableRegion(page);
 
   await expect(currentRegion).toBeVisible();
-  await expect(graphRegion).toBeVisible();
+  await expect(tableRegion).toBeVisible();
 
-  const [currentBox, graphBox] = await Promise.all([
+  const [currentBox, tableBox] = await Promise.all([
     currentRegion.boundingBox(),
-    graphRegion.boundingBox(),
+    tableRegion.boundingBox(),
   ]);
 
   expect(currentBox).not.toBeNull();
-  expect(graphBox).not.toBeNull();
-  expect(graphBox!.y).toBeGreaterThan(currentBox!.y);
+  expect(tableBox).not.toBeNull();
+  expect(tableBox!.y).toBeGreaterThan(currentBox!.y);
 }
 
-async function expectConditionGraphLatestRow(
+async function expectConditionTransitionTableLatestRow(
   page: Page,
   values: ConditionValues,
 ): Promise<void> {
-  const latestRow = conditionGraphDataRows(page).last();
+  const latestRow = conditionTransitionTableRows(page).last();
 
   await expect(latestRow).toContainText(String(values.workload));
   await expect(latestRow).toContainText(String(values.comprehension));
   await expect(latestRow).toContainText(String(values.mental));
 }
 
-async function countConditionGraphDataRows(page: Page): Promise<number> {
-  return conditionGraphDataRows(page).count();
+async function countConditionTransitionTableRows(page: Page): Promise<number> {
+  return conditionTransitionTableRows(page).count();
 }
 
 function trainerCurrentConditionRegion(page: Page) {
@@ -377,14 +431,14 @@ test.describe('E-C03 トレーナーによる新卒ステート確認', () => {
  * 4. トレーナーでコンディション画面を再表示する
  *
  * 期待結果（表示）:
- * - 現在のコンディション表示の下に推移グラフが配置されていること
- * - 再表示時にグラフが最新入力を反映して更新されていること
+ * - 現在のコンディション表示の下に推移表が配置されていること
+ * - 再表示時に推移表が最新入力を反映して更新されていること
  *
  * 期待結果（データ）:
- * - GET /api/condition/trainees/:traineeId/graph が最新履歴を返し、画面に反映される
+ * - GET /api/condition/trainees/:traineeId/graph の rows が最新履歴を返し、画面に反映される
  */
 test.describe('E-C04 コンディション推移グラフの更新', () => {
-  test('新卒が2回送信_トレーナー再表示で推移グラフが最新入力に更新される', async ({
+  test('新卒が2回送信_トレーナー再表示で推移表が最新入力に更新される', async ({
     page,
   }) => {
     await loginAsTrainee(page);
@@ -397,9 +451,11 @@ test.describe('E-C04 コンディション推移グラフの更新', () => {
     await openTrainerConditionPageWithGraph(page);
 
     await expectTrainerCurrentConditionValues(page, E_C04_FIRST_INPUT);
-    await expectConditionGraphBelowCurrentCondition(page);
-    await expectConditionGraphLatestRow(page, E_C04_FIRST_INPUT);
-    const graphRowCountAfterFirstView = await countConditionGraphDataRows(page);
+    await expectConditionTransitionTableStructure(page);
+    await expectConditionTransitionTableBelowCurrentCondition(page);
+    await expectConditionTransitionTableLatestRow(page, E_C04_FIRST_INPUT);
+    const tableRowCountAfterFirstView =
+      await countConditionTransitionTableRows(page);
 
     await logout(page);
     await loginAsTrainee(page);
@@ -412,10 +468,43 @@ test.describe('E-C04 コンディション推移グラフの更新', () => {
     await reopenTrainerConditionPageWithGraph(page);
 
     await expectTrainerCurrentConditionValues(page, E_C04_SECOND_INPUT);
-    await expectConditionGraphBelowCurrentCondition(page);
-    await expect(conditionGraphDataRows(page)).toHaveCount(
-      graphRowCountAfterFirstView + 1,
+    await expectConditionTransitionTableStructure(page);
+    await expectConditionTransitionTableBelowCurrentCondition(page);
+    await expect(conditionTransitionTableRows(page)).toHaveCount(
+      tableRowCountAfterFirstView + 1,
     );
-    await expectConditionGraphLatestRow(page, E_C04_SECOND_INPUT);
+    await expectConditionTransitionTableLatestRow(page, E_C04_SECOND_INPUT);
+  });
+});
+
+/**
+ * E-C05: コンディション画面での不安定アラート
+ * 観点: CUJ / 連携 / 操作性
+ *
+ * 手順:
+ * 1. 新卒でログインし、メンタルを「1」に設定してコンディションを送信する
+ * 2. ログアウトし、トレーナーでログインする
+ * 3. ヘッダーからコンディション画面を開く
+ *
+ * 期待結果（表示）:
+ * - コンディション画面上にアラート「新卒が不安定です。」が表示されていること
+ *
+ * 期待結果（データ）:
+ * - POST /api/condition が成功し、GET /api/condition/trainees/:traineeId/page-alert が
+ *   hasAlert: true とメッセージを返し、画面に反映される
+ */
+test.describe('E-C05 コンディション画面での不安定アラート', () => {
+  test('新卒メンタル1送信後_トレーナーがコンディション画面を開く_不安定アラートが表示される', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openWeeklyConditionInput(page);
+    await setMentalValue(page, E_C01_MENTAL_VALUE);
+    await submitWeeklyCondition(page);
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerConditionPageWithPageAlert(page);
+    await expectConditionPageUnstableAlert(page);
   });
 });
