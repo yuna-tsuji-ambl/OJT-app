@@ -3,9 +3,11 @@ import { test, expect, type Page } from '@playwright/test';
 const QUEST_A_NAME = 'クエストA';
 const QUEST_CLEARED_LABEL = 'クリア（承認済み）';
 const NEW_QUEST_NAME = '新規クエスト';
+const E_Q03_QUEST_NAME = 'E-Q03新規クエスト';
 const QUEST_MAJOR_ITEM = '開発基礎';
 const QUEST_ACHIEVEMENT_LEVEL = 'Lv1';
 const QUEST_NOT_CLEARED_STATUS = '未クリア';
+const QUEST_PENDING_STATUS = '申請中';
 
 async function loginAsTrainee(page: Page): Promise<void> {
   await page.goto('/login');
@@ -30,7 +32,7 @@ async function openQuestList(page: Page): Promise<void> {
 }
 
 function questArticle(page: Page, questName: string) {
-  return page.getByRole('article', { name: questName });
+  return page.getByRole('article', { name: questName, exact: true });
 }
 
 async function requestQuestClear(page: Page, questName: string): Promise<void> {
@@ -83,7 +85,10 @@ function questCreateRegion(page: Page) {
   return page.getByRole('region', { name: 'クエスト作成' });
 }
 
-async function createQuestOnDashboard(page: Page): Promise<void> {
+async function createQuestOnDashboard(
+  page: Page,
+  minorItem: string = NEW_QUEST_NAME,
+): Promise<void> {
   const createResponse = page.waitForResponse(
     (response) =>
       /\/api\/quests\/?$/.test(new URL(response.url()).pathname) &&
@@ -93,11 +98,29 @@ async function createQuestOnDashboard(page: Page): Promise<void> {
 
   const createRegion = questCreateRegion(page);
   await createRegion.getByLabel('大項目').fill(QUEST_MAJOR_ITEM);
-  await createRegion.getByLabel('小項目').fill(NEW_QUEST_NAME);
+  await createRegion.getByLabel('小項目').fill(minorItem);
   await createRegion.getByLabel('到達レベル').fill(QUEST_ACHIEVEMENT_LEVEL);
   await createRegion.getByRole('button', { name: '作成' }).click();
 
   await createResponse;
+}
+
+async function expectTraineeQuestStatus(
+  page: Page,
+  questName: string,
+  status: string,
+): Promise<void> {
+  await expect(questArticle(page, questName)).toBeVisible();
+  await expect(questArticle(page, questName).getByText(status)).toBeVisible();
+}
+
+async function expectTrainerPendingQuestWithApprove(
+  page: Page,
+  questName: string,
+): Promise<void> {
+  const quest = questArticle(page, questName);
+  await expect(quest).toBeVisible();
+  await expect(quest.getByRole('button', { name: '承認' })).toBeVisible();
 }
 
 async function expectTrainerQuestProgress(
@@ -185,6 +208,79 @@ test.describe('E-Q02 クエスト作成から新卒側反映までのEnd-to-End'
     );
     await expect(questArticle(page, NEW_QUEST_NAME)).toContainText(
       QUEST_ACHIEVEMENT_LEVEL,
+    );
+  });
+});
+
+/**
+ * E-Q03: 作成クエストの申請から承認までのEnd-to-End
+ * 観点: CUJ / 連携 / 操作性
+ *
+ * 手順:
+ * 1. トレーナーでログインし、ダッシュボードを開く
+ * 2. 画面上部のクエスト作成機能で新しいクエストを追加する
+ * 3. ログアウトし、新卒でログインし、クエスト一覧画面を開く
+ * 4. 作成したクエストの「申請」ボタンをクリック
+ * 5. ログアウトし、トレーナーでログインし、ダッシュボードを開く
+ * 6. 申請中の作成クエストが表示されていることを確認し、「承認」ボタンをクリック
+ * 7. ログアウトし、新卒でログインし、クエスト一覧画面を開く
+ *
+ * 期待結果（表示）:
+ * - 申請後・承認後ともに、作成クエストがトレーナー・新卒の双方の一覧に表示されていること
+ * - 承認後は新卒のクエスト一覧で「クリア（承認済み）」が表示されていること
+ *
+ * 期待結果（データ）:
+ * - 作成・申請・承認の各 API が成功し、再ログイン後も状態が双方の一覧に反映される
+ */
+test.describe('E-Q03 作成クエストの申請から承認までのEnd-to-End', () => {
+  test('トレーナー作成から申請承認_双方一覧に反映され新卒でクリア表示される', async ({
+    page,
+  }) => {
+    await loginAsTrainer(page);
+    await openTrainerDashboard(page);
+    await expect(questCreateRegion(page)).toBeVisible();
+    await createQuestOnDashboard(page, E_Q03_QUEST_NAME);
+    await expectTrainerQuestProgress(
+      page,
+      E_Q03_QUEST_NAME,
+      QUEST_NOT_CLEARED_STATUS,
+    );
+
+    await logout(page);
+    await loginAsTrainee(page);
+    await openQuestList(page);
+    await expect(questArticle(page, E_Q03_QUEST_NAME)).toBeVisible();
+    await requestQuestClear(page, E_Q03_QUEST_NAME);
+    await expectTraineeQuestStatus(
+      page,
+      E_Q03_QUEST_NAME,
+      QUEST_PENDING_STATUS,
+    );
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerDashboard(page);
+    await expectTrainerPendingQuestWithApprove(page, E_Q03_QUEST_NAME);
+    await expectTrainerQuestProgress(
+      page,
+      E_Q03_QUEST_NAME,
+      QUEST_PENDING_STATUS,
+    );
+    await approveQuest(page, E_Q03_QUEST_NAME);
+
+    await logout(page);
+    await loginAsTrainee(page);
+    await openQuestList(page);
+    await expect(questArticle(page, E_Q03_QUEST_NAME)).toBeVisible();
+    await expectQuestCleared(page, E_Q03_QUEST_NAME);
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerDashboard(page);
+    await expectTrainerQuestProgress(
+      page,
+      E_Q03_QUEST_NAME,
+      QUEST_CLEARED_LABEL,
     );
   });
 });

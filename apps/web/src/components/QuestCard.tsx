@@ -1,8 +1,7 @@
 import type { Quest } from '@ojt-app/shared';
 import {
   canRequestQuestClear,
-  isQuestCleared,
-  QUEST_CLEARED_LABEL,
+  formatQuestStatus,
 } from '../domain/questDisplay';
 
 interface QuestCardProps {
@@ -16,7 +15,7 @@ export function QuestCard({ quest, onRequest }: QuestCardProps) {
       <p>{quest.majorItem}</p>
       <p>{quest.minorItem}</p>
       <p>{quest.achievementLevel}</p>
-      {isQuestCleared(quest) ? <p>{QUEST_CLEARED_LABEL}</p> : null}
+      <p>{formatQuestStatus(quest)}</p>
       {onRequest && canRequestQuestClear(quest) ? (
         <button
           type="button"

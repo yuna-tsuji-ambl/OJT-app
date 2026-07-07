@@ -134,6 +134,17 @@ button {
   color: var(--text-secondary);
 }
 
+.page-section .dashboard-region {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.page-section .dashboard-region h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

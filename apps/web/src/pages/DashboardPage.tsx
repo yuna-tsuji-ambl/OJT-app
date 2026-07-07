@@ -20,6 +20,7 @@ export function DashboardPage() {
   }
 
   const authUser = user;
+  const progressQuestIds = new Set(progressQuests.map((quest) => quest.id));
 
   return (
     <section className="page-section" aria-labelledby="dashboard-heading">
@@ -28,15 +29,21 @@ export function DashboardPage() {
         onCreate={(input) => createQuestAndReload(input, authUser)}
       />
       {progressQuests.map((quest) => (
-        <TrainerQuestProgressCard key={quest.id} quest={quest} />
-      ))}
-      {pendingQuests.map((quest) => (
-        <PendingQuestCard
+        <TrainerQuestProgressCard
           key={quest.id}
           quest={quest}
           onApprove={(questId) => approveQuestAndReload(questId, authUser)}
         />
       ))}
+      {pendingQuests
+        .filter((quest) => !progressQuestIds.has(quest.id))
+        .map((quest) => (
+          <PendingQuestCard
+            key={quest.id}
+            quest={quest}
+            onApprove={(questId) => approveQuestAndReload(questId, authUser)}
+          />
+        ))}
       {alerts.map((alert) => (
         <ConditionAlertCard key={alert.traineeId} alert={alert} />
       ))}

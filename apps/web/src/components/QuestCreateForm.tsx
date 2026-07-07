@@ -24,7 +24,11 @@ export function QuestCreateForm({ onCreate }: QuestCreateFormProps) {
   }
 
   return (
-    <section className="page-section" role="region" aria-label="クエスト作成">
+    <section
+      role="region"
+      aria-label="クエスト作成"
+      className="dashboard-region"
+    >
       <h2>クエスト作成</h2>
       <form onSubmit={(event) => void handleSubmit(event)}>
         <label htmlFor="quest-major-item">大項目</label>

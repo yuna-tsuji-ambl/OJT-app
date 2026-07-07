@@ -18,7 +18,6 @@ export {
   MONITORED_TRAINEE_IDS,
 } from './domain/conditionConstants.js';
 export type { ConditionRecordStore } from './repositories/conditionRecordStore.js';
-export { ConditionService } from './services/conditionService.js';
 
 export {
   createConditionDraft,

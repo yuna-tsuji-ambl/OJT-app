@@ -1,5 +1,9 @@
 import type { CreateQuestInput } from '../domain/questTypes.js';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function readNonEmptyString(
   body: Record<string, unknown>,
   field: keyof CreateQuestInput,
@@ -14,14 +18,13 @@ function readNonEmptyString(
 }
 
 export function parseCreateQuestBody(body: unknown): CreateQuestInput | null {
-  if (typeof body !== 'object' || body === null) {
+  if (!isRecord(body)) {
     return null;
   }
 
-  const record = body as Record<string, unknown>;
-  const majorItem = readNonEmptyString(record, 'majorItem');
-  const minorItem = readNonEmptyString(record, 'minorItem');
-  const achievementLevel = readNonEmptyString(record, 'achievementLevel');
+  const majorItem = readNonEmptyString(body, 'majorItem');
+  const minorItem = readNonEmptyString(body, 'minorItem');
+  const achievementLevel = readNonEmptyString(body, 'achievementLevel');
 
   if (!majorItem || !minorItem || !achievementLevel) {
     return null;

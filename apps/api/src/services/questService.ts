@@ -2,6 +2,7 @@ import { QUEST_STATUS } from '../domain/constants.js';
 import { ensureTrainee } from '../domain/authorization.js';
 import { mergeQuestLists } from '../domain/mergeQuestLists.js';
 import { requireQuest } from '../domain/questRecord.js';
+import { withQuestStatus } from '../domain/questStatus.js';
 import type { Quest, UserContext } from '../domain/types.js';
 import type { QuestStore } from '../repositories/questStore.js';
 import type { SheetRepository } from '../repositories/sheetRepository.js';
@@ -31,7 +32,7 @@ export class QuestService {
     ensureTrainee(context);
 
     const quest = requireQuest(questId, await questStore.getById(questId));
-    const updated: Quest = { ...quest, status: QUEST_STATUS.PENDING };
+    const updated = withQuestStatus(quest, QUEST_STATUS.PENDING);
     await questStore.update(updated);
     return updated;
   }

@@ -1,12 +1,7 @@
 import type { Quest } from '@ojt-app/shared';
+import { QUEST_STATUS } from '@ojt-app/shared';
 
 export const QUEST_CLEARED_LABEL = 'クリア（承認済み）' as const;
-
-const QUEST_STATUS = {
-  NOT_CLEARED: '未クリア',
-  PENDING: '申請中',
-  CLEARED: 'クリア',
-} as const;
 
 export function formatQuestStatus(quest: Quest): string {
   if (quest.status === QUEST_STATUS.CLEARED) {

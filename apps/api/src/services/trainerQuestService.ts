@@ -1,6 +1,7 @@
 import { ensureTrainer } from '../domain/authorization.js';
 import { QUEST_STATUS } from '../domain/constants.js';
 import { requireQuest } from '../domain/questRecord.js';
+import { withQuestStatus } from '../domain/questStatus.js';
 import type { CreateQuestInput } from '../domain/questTypes.js';
 import type { Quest, UserContext } from '../domain/types.js';
 import type { QuestStore } from '../repositories/questStore.js';
@@ -41,7 +42,7 @@ export class TrainerQuestService {
     ensureTrainer(context);
 
     const quest = requireQuest(questId, await questStore.getById(questId));
-    const updated: Quest = { ...quest, status: QUEST_STATUS.CLEARED };
+    const updated = withQuestStatus(quest, QUEST_STATUS.CLEARED);
     await questStore.update(updated);
     await sheetRepository.updateOnApproval(updated);
     return updated;
