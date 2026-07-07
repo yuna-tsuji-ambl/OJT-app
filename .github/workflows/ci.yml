@@ -53,6 +53,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared package
+        run: npm run build -w @ojt-app/shared
+
       - name: Run unit and integration tests
         run: npm test
 
