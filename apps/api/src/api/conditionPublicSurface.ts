@@ -6,9 +6,14 @@ export type {
   ConditionGraphTableRow,
   ConditionHistoryRecord,
   ConditionLineChartData,
+  ConditionLineChartDisplaySize,
+  ConditionLineChartHorizontalScroll,
   ConditionLineChartSeries,
   ConditionPageAlert,
   ConditionSubmitResult,
+  ConditionTransitionTableColumn,
+  ConditionTransitionTableColumnKey,
+  ConditionTransitionTableData,
 } from '../domain/conditionTypes.js';
 export type {
   ConditionField,

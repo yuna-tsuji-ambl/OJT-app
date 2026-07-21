@@ -23,6 +23,47 @@ const E_C04_SECOND_INPUT = {
   comprehension: 3,
   mental: 2,
 } as const;
+const E_C06_FIRST_INPUT = {
+  workload: 3,
+  comprehension: 3,
+  mental: 3,
+} as const;
+const E_C06_SECOND_INPUT = {
+  workload: 3,
+  comprehension: 3,
+  mental: 1,
+} as const;
+const E_C07_FIRST_INPUT = {
+  workload: 4,
+  comprehension: 3,
+  mental: 3,
+} as const;
+const E_C07_SECOND_INPUT = {
+  workload: 4,
+  comprehension: 3,
+  mental: 1,
+} as const;
+const E_C12_FIRST_INPUT = E_C07_FIRST_INPUT;
+const E_C12_SECOND_INPUT = E_C07_SECOND_INPUT;
+const E_C12_X_AXIS_LABEL_BASELINE_TOLERANCE_PX = 1;
+const E_C13_FIRST_INPUT = E_C07_FIRST_INPUT;
+const E_C13_SECOND_INPUT = E_C07_SECOND_INPUT;
+const E_C13_EXPECTED_CELL_BORDER_SIDES = {
+  top: true,
+  right: true,
+  bottom: true,
+  left: true,
+} as const;
+const E_C07_TRANSITION_TABLE_COLUMN_LABELS = [
+  '記録日時',
+  '業務量',
+  '理解度',
+  'メンタル',
+] as const;
+const E_C06_Y_AXIS_TICK_VALUES = ['1', '2', '3', '4', '5'] as const;
+const CONDITION_LINE_CHART_Y_AXIS_TICKS_LABEL = '縦軸目盛';
+const CONDITION_LINE_CHART_X_AXIS_TICKS_LABEL = '横軸目盛';
+const CONDITION_LINE_CHART_GRID_LABEL = '折れ線グラフグリッド';
 
 type ConditionSliderLabel = '業務量' | '理解度' | 'メンタル';
 
@@ -30,6 +71,32 @@ type ConditionValues = {
   workload: number;
   comprehension: number;
   mental: number;
+};
+
+type ConditionTransitionTableRow = ConditionValues & {
+  recordedAt: string;
+};
+
+type ConditionTransitionTableCellBorderSidesApiData = {
+  top: boolean;
+  right: boolean;
+  bottom: boolean;
+  left: boolean;
+};
+
+type ConditionTransitionTableCellBorderLayoutApiData = {
+  variant: 'grid';
+  headerCellBorder: ConditionTransitionTableCellBorderSidesApiData;
+  dataCellBorder: ConditionTransitionTableCellBorderSidesApiData;
+  columnCount: number;
+  headerCellCount: number;
+  dataCellCount: number;
+};
+
+type ConditionGraphTransitionTableApiData = {
+  columns: Array<{ key: string; label: string }>;
+  rows: ConditionTransitionTableRow[];
+  cellBorderLayout: ConditionTransitionTableCellBorderLayoutApiData;
 };
 
 async function loginAsTrainee(page: Page): Promise<void> {
@@ -306,6 +373,158 @@ async function countConditionTransitionTableRows(page: Page): Promise<number> {
   return conditionTransitionTableRows(page).count();
 }
 
+async function expectConditionTransitionTableBelowLineChart(
+  page: Page,
+): Promise<void> {
+  const lineChart = trainerConditionLineChartImage(page);
+  const table = trainerConditionTransitionTableRegion(page).locator('table');
+
+  await expect(lineChart).toBeVisible();
+  await expect(table).toBeVisible();
+
+  const [chartBox, tableBox] = await Promise.all([
+    lineChart.boundingBox(),
+    table.boundingBox(),
+  ]);
+
+  expect(chartBox).not.toBeNull();
+  expect(tableBox).not.toBeNull();
+  expect(tableBox!.y).toBeGreaterThan(chartBox!.y);
+}
+
+async function expectConditionTransitionTableRowsMatchApi(
+  page: Page,
+  transitionTable: ConditionGraphTransitionTableApiData,
+): Promise<void> {
+  const rows = conditionTransitionTableRows(page);
+  await expect(rows).toHaveCount(transitionTable.rows.length);
+
+  for (let index = 0; index < transitionTable.rows.length; index += 1) {
+    const expected = transitionTable.rows[index];
+    const cells = rows.nth(index).locator('td');
+
+    await expect(cells.nth(0)).toHaveText(expected.recordedAt);
+    await expect(cells.nth(1)).toHaveText(String(expected.workload));
+    await expect(cells.nth(2)).toHaveText(String(expected.comprehension));
+    await expect(cells.nth(3)).toHaveText(String(expected.mental));
+  }
+}
+
+async function expectConditionTransitionTableColumnsFromApi(
+  page: Page,
+  transitionTable: ConditionGraphTransitionTableApiData,
+): Promise<void> {
+  const tableRegion = trainerConditionTransitionTableRegion(page);
+
+  for (const column of transitionTable.columns) {
+    await expect(
+      tableRegion.getByRole('columnheader', { name: column.label }),
+    ).toBeVisible();
+  }
+}
+
+function trainerConditionTransitionTable(page: Page) {
+  return trainerConditionTransitionTableRegion(page).locator(
+    'table.condition-transition-table--grid',
+  );
+}
+
+function conditionTransitionTableHeaderCells(page: Page) {
+  return trainerConditionTransitionTable(page).getByRole('columnheader');
+}
+
+function conditionTransitionTableDataCells(page: Page) {
+  return trainerConditionTransitionTable(page).getByRole('cell');
+}
+
+async function expectConditionTransitionTableCellHasGridBorder(
+  cell: ReturnType<Page['locator']>,
+): Promise<void> {
+  const borders = await cell.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+
+    return {
+      top: Number.parseFloat(style.borderTopWidth),
+      right: Number.parseFloat(style.borderRightWidth),
+      bottom: Number.parseFloat(style.borderBottomWidth),
+      left: Number.parseFloat(style.borderLeftWidth),
+    };
+  });
+
+  expect(borders.top).toBeGreaterThan(0);
+  expect(borders.right).toBeGreaterThan(0);
+  expect(borders.bottom).toBeGreaterThan(0);
+  expect(borders.left).toBeGreaterThan(0);
+}
+
+function expectConditionTransitionTableCellBorderLayoutContract(
+  transitionTable: ConditionGraphTransitionTableApiData,
+): void {
+  const { cellBorderLayout, columns, rows } = transitionTable;
+
+  expect(cellBorderLayout.variant).toBe('grid');
+  expect(cellBorderLayout.columnCount).toBe(columns.length);
+  expect(cellBorderLayout.headerCellCount).toBe(columns.length);
+  expect(cellBorderLayout.dataCellCount).toBe(columns.length * rows.length);
+  expect(cellBorderLayout.headerCellBorder).toEqual(
+    E_C13_EXPECTED_CELL_BORDER_SIDES,
+  );
+  expect(cellBorderLayout.dataCellBorder).toEqual(
+    E_C13_EXPECTED_CELL_BORDER_SIDES,
+  );
+}
+
+async function expectConditionTransitionTableBorderedGridVisible(
+  page: Page,
+  transitionTable: ConditionGraphTransitionTableApiData,
+): Promise<void> {
+  const table = trainerConditionTransitionTable(page);
+  await expect(table).toBeVisible();
+
+  const headerCells = conditionTransitionTableHeaderCells(page);
+  const dataCells = conditionTransitionTableDataCells(page);
+
+  await expect(headerCells).toHaveCount(
+    transitionTable.cellBorderLayout.headerCellCount,
+  );
+  await expect(dataCells).toHaveCount(
+    transitionTable.cellBorderLayout.dataCellCount,
+  );
+
+  for (
+    let index = 0;
+    index < transitionTable.cellBorderLayout.headerCellCount;
+    index += 1
+  ) {
+    await expectConditionTransitionTableCellHasGridBorder(
+      headerCells.nth(index),
+    );
+  }
+
+  for (
+    let index = 0;
+    index < transitionTable.cellBorderLayout.dataCellCount;
+    index += 1
+  ) {
+    await expectConditionTransitionTableCellHasGridBorder(dataCells.nth(index));
+  }
+}
+
+async function expectConditionTransitionTableBorderedGrid(
+  page: Page,
+  transitionTable: ConditionGraphTransitionTableApiData,
+): Promise<void> {
+  expectConditionTransitionTableCellBorderLayoutContract(transitionTable);
+  await expectConditionTransitionTableStructure(page);
+  await expectConditionTransitionTableBelowLineChart(page);
+  await expectConditionTransitionTableColumnsFromApi(page, transitionTable);
+  await expectConditionTransitionTableBorderedGridVisible(
+    page,
+    transitionTable,
+  );
+  await expectConditionTransitionTableRowsMatchApi(page, transitionTable);
+}
+
 function trainerConditionTransitionGraphRegion(page: Page) {
   return page.getByRole('region', { name: 'コンディション推移グラフ' });
 }
@@ -316,33 +535,18 @@ function trainerConditionLineChartImage(page: Page) {
   });
 }
 
-type ConditionLineChartSeriesLabel = '業務量' | '理解度' | 'メンタル';
-
 async function expectConditionLineChartStructure(page: Page): Promise<void> {
   const graphRegion = trainerConditionTransitionGraphRegion(page);
 
   await expect(graphRegion).toBeVisible();
   await expect(trainerConditionLineChartImage(page)).toBeVisible();
-  await expect(graphRegion.getByText('1〜5')).toBeVisible();
+  await expectConditionLineChartYAxisTicks(page);
+  await expect(trainerConditionLineChartXAxisTicks(page)).toBeVisible();
+  await expectConditionLineChartGridVisible(page);
+  await expectConditionLineChartSupplementalTextHidden(page);
   await expect(
-    graphRegion.getByRole('list', { name: '記録日時' }),
-  ).toBeVisible();
-  await expect(
-    graphRegion.getByRole('list', { name: '折れ線グラフ系列' }),
-  ).toBeVisible();
-
-  const seriesList = graphRegion.getByRole('list', {
-    name: '折れ線グラフ系列',
-  });
-  await expect(
-    seriesList.getByRole('listitem', { name: '業務量' }),
-  ).toBeVisible();
-  await expect(
-    seriesList.getByRole('listitem', { name: '理解度' }),
-  ).toBeVisible();
-  await expect(
-    seriesList.getByRole('listitem', { name: 'メンタル' }),
-  ).toBeVisible();
+    trainerConditionLineChartImage(page).locator('polyline'),
+  ).toHaveCount(3);
 }
 
 async function expectConditionLineChartBelowCurrentCondition(
@@ -364,23 +568,275 @@ async function expectConditionLineChartBelowCurrentCondition(
   expect(graphBox!.y).toBeGreaterThan(currentBox!.y);
 }
 
-async function expectConditionLineChartSeriesValues(
-  page: Page,
-  seriesLabel: ConditionLineChartSeriesLabel,
-  values: number[],
-): Promise<void> {
-  const seriesItem = trainerConditionTransitionGraphRegion(page)
-    .getByRole('list', { name: '折れ線グラフ系列' })
-    .getByRole('listitem', { name: seriesLabel });
-
-  await expect(seriesItem).toContainText(values.join(', '));
-}
-
 async function countConditionLineChartXAxisLabels(page: Page): Promise<number> {
-  return trainerConditionTransitionGraphRegion(page)
-    .getByRole('list', { name: '記録日時' })
+  return trainerConditionLineChartXAxisTicks(page)
     .getByRole('listitem')
     .count();
+}
+
+type ConditionGraphLineChartApiData = {
+  xAxisLabels: string[];
+  yAxisTicks: Array<{ value: number; showGridLine: boolean }>;
+  xAxisTicks: Array<{
+    label: string;
+    showGridLine: boolean;
+    x: number;
+    y: number;
+  }>;
+  xAxisAlignment: ConditionLineChartXAxisAlignmentApiData;
+  supplementalDisplay: {
+    showYAxisRangeText: boolean;
+    showDateList: boolean;
+    showSeriesValueLists: boolean;
+  };
+};
+
+type ConditionLineChartXAxisAlignmentApiData = {
+  labelAnchor: 'center';
+  labelBaseline: 'bottom';
+  baselineY: number;
+  positions: Array<{
+    recordIndex: number;
+    label: string;
+    x: number;
+    y: number;
+  }>;
+};
+
+async function openTrainerConditionPageWithGraphData(
+  page: Page,
+  traineeId: string = TRAINEE_ID,
+): Promise<ConditionGraphLineChartApiData> {
+  const latestResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/condition/trainees/${traineeId}/latest`) &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+  );
+  const graphResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/condition/trainees/${traineeId}/graph`) &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+  );
+
+  await trainerHeaderNav(page)
+    .getByRole('link', { name: 'コンディション' })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'コンディション' }),
+  ).toBeVisible();
+  await Promise.all([latestResponse, graphResponse]);
+
+  const body = (await (await graphResponse).json()) as {
+    lineChart: ConditionGraphLineChartApiData;
+  };
+
+  return body.lineChart;
+}
+
+async function openTrainerConditionPageWithGraphAndTransitionTable(
+  page: Page,
+  traineeId: string = TRAINEE_ID,
+): Promise<{
+  lineChart: ConditionGraphLineChartApiData;
+  transitionTable: ConditionGraphTransitionTableApiData;
+}> {
+  const latestResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/condition/trainees/${traineeId}/latest`) &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+  );
+  const graphResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/condition/trainees/${traineeId}/graph`) &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+  );
+
+  await trainerHeaderNav(page)
+    .getByRole('link', { name: 'コンディション' })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'コンディション' }),
+  ).toBeVisible();
+  await Promise.all([latestResponse, graphResponse]);
+
+  const body = (await (await graphResponse).json()) as {
+    lineChart: ConditionGraphLineChartApiData;
+    transitionTable: ConditionGraphTransitionTableApiData;
+  };
+
+  return {
+    lineChart: body.lineChart,
+    transitionTable: body.transitionTable,
+  };
+}
+
+function trainerConditionLineChartYAxisTicks(page: Page) {
+  return trainerConditionTransitionGraphRegion(page).getByRole('list', {
+    name: CONDITION_LINE_CHART_Y_AXIS_TICKS_LABEL,
+  });
+}
+
+function trainerConditionLineChartXAxisTicks(page: Page) {
+  return trainerConditionTransitionGraphRegion(page).getByRole('list', {
+    name: CONDITION_LINE_CHART_X_AXIS_TICKS_LABEL,
+  });
+}
+
+function trainerConditionLineChartXAxisTickItems(page: Page) {
+  return trainerConditionLineChartXAxisTicks(page).getByRole('listitem');
+}
+
+async function collectXAxisTickBottomEdges(page: Page): Promise<number[]> {
+  const tickItems = trainerConditionLineChartXAxisTickItems(page);
+  const tickCount = await tickItems.count();
+  const bottomEdges: number[] = [];
+
+  for (let index = 0; index < tickCount; index += 1) {
+    const box = await tickItems.nth(index).boundingBox();
+    expect(box).not.toBeNull();
+    bottomEdges.push(box!.y + box!.height);
+  }
+
+  return bottomEdges;
+}
+
+async function expectConditionLineChartXAxisLabelsAlignedOnBaseline(
+  page: Page,
+): Promise<void> {
+  const bottomEdges = await collectXAxisTickBottomEdges(page);
+
+  expect(bottomEdges.length).toBeGreaterThanOrEqual(2);
+
+  const referenceBottom = bottomEdges[0]!;
+
+  for (const bottomEdge of bottomEdges) {
+    expect(Math.abs(bottomEdge - referenceBottom)).toBeLessThanOrEqual(
+      E_C12_X_AXIS_LABEL_BASELINE_TOLERANCE_PX,
+    );
+  }
+}
+
+function expectConditionLineChartXAxisVerticalAlignmentContract(
+  lineChart: ConditionGraphLineChartApiData,
+): void {
+  expect(lineChart.xAxisAlignment.labelBaseline).toBe('bottom');
+  expect(lineChart.xAxisAlignment.positions.length).toBeGreaterThanOrEqual(2);
+  expect(lineChart.xAxisTicks).toHaveLength(
+    lineChart.xAxisAlignment.positions.length,
+  );
+
+  const { baselineY } = lineChart.xAxisAlignment;
+
+  expect(
+    lineChart.xAxisAlignment.positions.every(
+      (position) => position.y === baselineY,
+    ),
+  ).toBe(true);
+  expect(lineChart.xAxisTicks.every((tick) => tick.y === baselineY)).toBe(true);
+
+  lineChart.xAxisAlignment.positions.forEach((position, index) => {
+    expect(lineChart.xAxisTicks[index]).toMatchObject({
+      label: position.label,
+      showGridLine: true,
+      x: position.x,
+      y: position.y,
+    });
+  });
+}
+
+async function expectConditionLineChartXAxisLabelVerticalAlignment(
+  page: Page,
+  lineChart: ConditionGraphLineChartApiData,
+): Promise<void> {
+  expectConditionLineChartXAxisVerticalAlignmentContract(lineChart);
+  await expectConditionLineChartXAxisTicks(page, lineChart.xAxisLabels);
+  await expectConditionLineChartXAxisLabelsAlignedOnBaseline(page);
+}
+
+async function expectConditionLineChartYAxisTicks(page: Page): Promise<void> {
+  const yAxisTicks = trainerConditionLineChartYAxisTicks(page);
+  await expect(yAxisTicks).toBeVisible();
+
+  for (const tick of E_C06_Y_AXIS_TICK_VALUES) {
+    await expect(
+      yAxisTicks.getByRole('listitem', { name: tick }),
+    ).toBeVisible();
+  }
+}
+
+async function expectConditionLineChartXAxisTicks(
+  page: Page,
+  expectedLabels: string[],
+): Promise<void> {
+  const xAxisTicks = trainerConditionLineChartXAxisTicks(page);
+  await expect(xAxisTicks).toBeVisible();
+  const items = xAxisTicks.getByRole('listitem');
+  await expect(items).toHaveCount(expectedLabels.length);
+
+  await expect(items).toHaveText(expectedLabels);
+}
+
+async function expectConditionLineChartGridVisible(page: Page): Promise<void> {
+  await expect(
+    trainerConditionTransitionGraphRegion(page).getByRole('group', {
+      name: CONDITION_LINE_CHART_GRID_LABEL,
+    }),
+  ).toBeVisible();
+}
+
+async function expectConditionLineChartAxisAndGrid(
+  page: Page,
+  lineChart: ConditionGraphLineChartApiData,
+): Promise<void> {
+  const graphRegion = trainerConditionTransitionGraphRegion(page);
+
+  await expect(graphRegion).toBeVisible();
+  await expect(trainerConditionLineChartImage(page)).toBeVisible();
+  await expectConditionLineChartYAxisTicks(page);
+  await expectConditionLineChartXAxisTicks(page, lineChart.xAxisLabels);
+  await expectConditionLineChartGridVisible(page);
+
+  expect(lineChart.yAxisTicks.map((tick) => tick.value)).toEqual([
+    1, 2, 3, 4, 5,
+  ]);
+  expect(lineChart.yAxisTicks.every((tick) => tick.showGridLine)).toBe(true);
+  expect(
+    lineChart.xAxisTicks.map(({ label, showGridLine }) => ({
+      label,
+      showGridLine,
+    })),
+  ).toEqual(
+    lineChart.xAxisLabels.map((label) => ({
+      label,
+      showGridLine: true,
+    })),
+  );
+  lineChart.xAxisAlignment.positions.forEach((position, index) => {
+    expect(lineChart.xAxisTicks[index]).toMatchObject({
+      label: position.label,
+      showGridLine: true,
+      x: position.x,
+      y: position.y,
+    });
+  });
+}
+
+async function expectConditionLineChartSupplementalTextHidden(
+  page: Page,
+): Promise<void> {
+  const graphRegion = trainerConditionTransitionGraphRegion(page);
+
+  await expect(graphRegion.getByText('1〜5')).toHaveCount(0);
+  await expect(graphRegion.getByRole('list', { name: '記録日時' })).toHaveCount(
+    0,
+  );
+  await expect(
+    graphRegion.getByRole('list', { name: '折れ線グラフ系列' }),
+  ).toHaveCount(0);
 }
 
 function trainerCurrentConditionRegion(page: Page) {
@@ -588,15 +1044,6 @@ test.describe('E-C04 コンディション推移折れ線グラフの更新', ()
     await expectTrainerCurrentConditionValues(page, E_C04_FIRST_INPUT);
     await expectConditionLineChartStructure(page);
     await expectConditionLineChartBelowCurrentCondition(page);
-    await expectConditionLineChartSeriesValues(page, '業務量', [
-      E_C04_FIRST_INPUT.workload,
-    ]);
-    await expectConditionLineChartSeriesValues(page, '理解度', [
-      E_C04_FIRST_INPUT.comprehension,
-    ]);
-    await expectConditionLineChartSeriesValues(page, 'メンタル', [
-      E_C04_FIRST_INPUT.mental,
-    ]);
     const xAxisLabelCountAfterFirstView =
       await countConditionLineChartXAxisLabels(page);
 
@@ -614,22 +1061,8 @@ test.describe('E-C04 コンディション推移折れ線グラフの更新', ()
     await expectConditionLineChartStructure(page);
     await expectConditionLineChartBelowCurrentCondition(page);
     await expect(
-      trainerConditionTransitionGraphRegion(page)
-        .getByRole('list', { name: '記録日時' })
-        .getByRole('listitem'),
+      trainerConditionLineChartXAxisTicks(page).getByRole('listitem'),
     ).toHaveCount(xAxisLabelCountAfterFirstView + 1);
-    await expectConditionLineChartSeriesValues(page, '業務量', [
-      E_C04_FIRST_INPUT.workload,
-      E_C04_SECOND_INPUT.workload,
-    ]);
-    await expectConditionLineChartSeriesValues(page, '理解度', [
-      E_C04_FIRST_INPUT.comprehension,
-      E_C04_SECOND_INPUT.comprehension,
-    ]);
-    await expectConditionLineChartSeriesValues(page, 'メンタル', [
-      E_C04_FIRST_INPUT.mental,
-      E_C04_SECOND_INPUT.mental,
-    ]);
   });
 });
 
@@ -662,5 +1095,205 @@ test.describe('E-C05 コンディション画面での不安定アラート', ()
     await loginAsTrainer(page);
     await openTrainerConditionPageWithPageAlert(page);
     await expectConditionPageUnstableAlert(page);
+  });
+});
+
+/**
+ * E-C06: 折れ線グラフの軸・目盛表示
+ * 観点: 操作性 / 連携 / CUJ
+ *
+ * 手順:
+ * 1. 新卒でログインし、コンディションを 2 回以上（異なる日付または再入力）送信する
+ * 2. トレーナーでログインし、コンディション画面を開く
+ * 3. 折れ線グラフ領域を確認する
+ *
+ * 期待結果（表示）:
+ * - 縦軸に 1・2・3・4・5、横軸に各記録の日付が表示される
+ * - 目盛に対応する縦横の補助線（グリッド）が表示される
+ * - 折れ線グラフの下に 1〜5、日付の箇条書き、系列ごとの数値リストが表示されない
+ *
+ * 期待結果（データ）:
+ * - GET /api/condition/trainees/:traineeId/graph の lineChart.yAxisTicks / xAxisTicks /
+ *   supplementalDisplay が画面の軸・目盛・非表示契約と一致する
+ */
+test.describe('E-C06 折れ線グラフの軸・目盛表示', () => {
+  test('新卒が2回送信_トレーナーが折れ線グラフの軸目盛とグリッドを確認できる', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openWeeklyConditionInput(page);
+    await setConditionValues(page, E_C06_FIRST_INPUT);
+    await submitWeeklyCondition(page);
+    await setConditionValues(page, E_C06_SECOND_INPUT);
+    await submitWeeklyCondition(page);
+
+    await logout(page);
+    await loginAsTrainer(page);
+
+    const lineChart = await openTrainerConditionPageWithGraphData(page);
+
+    expect(lineChart.xAxisLabels.length).toBeGreaterThanOrEqual(2);
+    expect(lineChart.supplementalDisplay).toEqual({
+      showYAxisRangeText: false,
+      showDateList: false,
+      showSeriesValueLists: false,
+    });
+
+    await expectTrainerCurrentConditionValues(page, E_C06_SECOND_INPUT);
+    await expectConditionLineChartBelowCurrentCondition(page);
+    await expectConditionLineChartAxisAndGrid(page, lineChart);
+    await expectConditionLineChartSupplementalTextHidden(page);
+  });
+});
+
+/**
+ * E-C07: コンディション推移表の表示
+ * 観点: CUJ / 連携 / 操作性
+ *
+ * 手順:
+ * 1. 新卒でログインし、コンディションを 2 回以上送信する
+ *    （例: 1 回目 業務量=4・理解度=3・メンタル=3、2 回目 業務量=4・理解度=3・メンタル=1）
+ * 2. トレーナーでログインし、コンディション画面を開く
+ * 3. 折れ線グラフ下の表を確認する
+ *
+ * 期待結果（表示）:
+ * - 記録日時・業務量・理解度・メンタルを列とする表が表示されていること
+ * - 折れ線グラフの直下に表が配置されていること
+ * - 各行の値が送信した履歴と一致すること
+ * - 同一日付の再入力は別行として表示されること
+ *
+ * 期待結果（データ）:
+ * - GET /api/condition/trainees/:traineeId/graph の transitionTable が
+ *   列定義・行データを返し、画面の表と一致する
+ */
+test.describe('E-C07 コンディション推移表の表示', () => {
+  test('新卒が同一日内に2回送信_トレーナーが推移表の列と履歴行を確認できる', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openWeeklyConditionInput(page);
+    await setConditionValues(page, E_C07_FIRST_INPUT);
+    await submitWeeklyCondition(page);
+    await setConditionValues(page, E_C07_SECOND_INPUT);
+    await submitWeeklyCondition(page);
+
+    await logout(page);
+    await loginAsTrainer(page);
+
+    const { transitionTable } =
+      await openTrainerConditionPageWithGraphAndTransitionTable(page);
+
+    expect(transitionTable.columns.map((column) => column.label)).toEqual([
+      ...E_C07_TRANSITION_TABLE_COLUMN_LABELS,
+    ]);
+
+    const submittedRows = transitionTable.rows.slice(-2);
+    expect(submittedRows).toHaveLength(2);
+    expect(submittedRows[0]).toMatchObject(E_C07_FIRST_INPUT);
+    expect(submittedRows[1]).toMatchObject(E_C07_SECOND_INPUT);
+    expect(submittedRows[0].recordedAt).toBe(submittedRows[1].recordedAt);
+
+    await expectTrainerCurrentConditionValues(page, E_C07_SECOND_INPUT);
+    await expectConditionTransitionTableStructure(page);
+    await expectConditionTransitionTableBelowLineChart(page);
+    await expectConditionTransitionTableColumnsFromApi(page, transitionTable);
+    await expectConditionTransitionTableRowsMatchApi(page, transitionTable);
+    await expect(conditionTransitionTableRows(page)).toHaveCount(
+      transitionTable.rows.length,
+    );
+  });
+});
+
+/**
+ * E-C12: 折れ線グラフの横軸ラベルの縦位置揃え
+ * 観点: 操作性 / 連携 / CUJ
+ *
+ * 手順:
+ * 1. 新卒でログインし、コンディションを 2 回以上（同一日付の再入力を含む）送信する
+ * 2. トレーナーでログインし、コンディション画面を開く
+ * 3. 横軸の日付ラベルが横軸基準線上に揃っているか確認する
+ *
+ * 期待結果（表示）:
+ * - すべての横軸日付ラベルが、プロット領域下端の横軸基準線の高さに揃って表示されていること
+ * - ラベルが基準線から上下にずれて見えないこと
+ *
+ * 期待結果（データ）:
+ * - GET /api/condition/trainees/:traineeId/graph の lineChart.xAxisAlignment が
+ *   labelBaseline: bottom と同一 baselineY を返すこと
+ * - lineChart.xAxisTicks の y 座標が xAxisAlignment と一致すること
+ */
+test.describe('E-C12 折れ線グラフの横軸ラベルの縦位置揃え', () => {
+  test('新卒が同一日内に2回送信_トレーナーが横軸日付ラベルの縦位置揃えを確認できる', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openWeeklyConditionInput(page);
+    await setConditionValues(page, E_C12_FIRST_INPUT);
+    await submitWeeklyCondition(page);
+    await setConditionValues(page, E_C12_SECOND_INPUT);
+    await submitWeeklyCondition(page);
+
+    await logout(page);
+    await loginAsTrainer(page);
+
+    const lineChart = await openTrainerConditionPageWithGraphData(page);
+
+    const submittedLabels = lineChart.xAxisLabels.slice(-2);
+    expect(submittedLabels).toHaveLength(2);
+    expect(submittedLabels[0]).toBe(submittedLabels[1]);
+
+    await expectTrainerCurrentConditionValues(page, E_C12_SECOND_INPUT);
+    await expectConditionLineChartStructure(page);
+    await expectConditionLineChartBelowCurrentCondition(page);
+    await expectConditionLineChartXAxisLabelVerticalAlignment(page, lineChart);
+  });
+});
+
+/**
+ * E-C13: コンディション推移表の罫線付きグリッド表示
+ * 観点: 操作性 / 連携 / CUJ
+ *
+ * 手順:
+ * 1. 新卒でログインし、コンディションを 2 回以上送信する
+ * 2. トレーナーでログインし、コンディション画面を開く
+ * 3. 折れ線グラフ下の推移表の罫線を確認する
+ *
+ * 期待結果（表示）:
+ * - 記録日時・業務量・理解度・メンタルの各セルが罫線で区切られていること
+ * - セルごとに値が識別できること
+ * - 各行の値が送信した履歴と一致すること
+ *
+ * 期待結果（データ）:
+ * - GET /api/condition/trainees/:traineeId/graph の transitionTable.cellBorderLayout が
+ *   grid 契約（列見出し・データセルそれぞれに上下左右の境界線）を返すこと
+ */
+test.describe('E-C13 コンディション推移表の罫線付きグリッド表示', () => {
+  test('新卒が同一日内に2回送信_トレーナーが推移表の罫線付きグリッドを確認できる', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openWeeklyConditionInput(page);
+    await setConditionValues(page, E_C13_FIRST_INPUT);
+    await submitWeeklyCondition(page);
+    await setConditionValues(page, E_C13_SECOND_INPUT);
+    await submitWeeklyCondition(page);
+
+    await logout(page);
+    await loginAsTrainer(page);
+
+    const { transitionTable } =
+      await openTrainerConditionPageWithGraphAndTransitionTable(page);
+
+    const submittedRows = transitionTable.rows.slice(-2);
+    expect(submittedRows).toHaveLength(2);
+    expect(submittedRows[0]).toMatchObject(E_C13_FIRST_INPUT);
+    expect(submittedRows[1]).toMatchObject(E_C13_SECOND_INPUT);
+    expect(submittedRows[0].recordedAt).toBe(submittedRows[1].recordedAt);
+
+    await expectTrainerCurrentConditionValues(page, E_C13_SECOND_INPUT);
+    await expectConditionTransitionTableBorderedGrid(page, transitionTable);
+    await expect(conditionTransitionTableRows(page)).toHaveCount(
+      transitionTable.rows.length,
+    );
   });
 });

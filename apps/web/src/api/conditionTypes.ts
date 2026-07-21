@@ -1,3 +1,26 @@
+import type {
+  ConditionLineChartData,
+  ConditionTransitionTableData,
+} from '@ojt-app/shared';
+
+export type {
+  ConditionLineChartData,
+  ConditionLineChartDisplaySize,
+  ConditionLineChartHorizontalScroll,
+  ConditionLineChartSeries,
+  ConditionLineChartSeriesKey,
+  ConditionLineChartSupplementalDisplay,
+  ConditionLineChartXAxisAlignment,
+  ConditionLineChartXAxisTick,
+  ConditionLineChartYAxisTick,
+  ConditionTransitionTableCellBorderLayout,
+  ConditionTransitionTableCellBorderSides,
+  ConditionTransitionTableColumn,
+  ConditionTransitionTableColumnKey,
+  ConditionTransitionTableData,
+  ConditionTransitionTableRow,
+} from '@ojt-app/shared';
+
 export interface ConditionDraft {
   workload: number;
   comprehension: number;
@@ -27,19 +50,6 @@ export interface ConditionPageAlert {
 
 export type ConditionGraphTableRow = ConditionHistoryRecord;
 
-export interface ConditionLineChartSeries {
-  key: keyof ConditionDraft;
-  label: string;
-  values: number[];
-}
-
-export interface ConditionLineChartData {
-  xAxisLabels: string[];
-  yAxisMin: number;
-  yAxisMax: number;
-  series: ConditionLineChartSeries[];
-}
-
 export interface ConditionGraphData {
   labels: string[];
   workload: number[];
@@ -47,4 +57,5 @@ export interface ConditionGraphData {
   mental: number[];
   rows: ConditionGraphTableRow[];
   lineChart: ConditionLineChartData;
+  transitionTable: ConditionTransitionTableData;
 }

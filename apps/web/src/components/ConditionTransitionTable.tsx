@@ -1,32 +1,32 @@
-import type { ConditionGraphTableRow } from '../api/conditionApi';
+import type { ConditionTransitionTableData } from '../api/conditionApi';
+import { buildConditionTransitionTablePresentation } from '../domain/conditionTransitionTablePresentation';
+import { ConditionTransitionTableBody } from './ConditionTransitionTableBody';
+import { ConditionTransitionTableHeader } from './ConditionTransitionTableHeader';
 
 interface ConditionTransitionTableProps {
-  rows: ConditionGraphTableRow[];
+  transitionTable: ConditionTransitionTableData;
 }
 
 export function ConditionTransitionTable({
-  rows,
+  transitionTable,
 }: ConditionTransitionTableProps) {
+  const { matrixLayout, cellBorderLayout, columns, rows } = transitionTable;
+  const { className, headerCellBorderStyle, dataCellBorderStyle } =
+    buildConditionTransitionTablePresentation(cellBorderLayout);
+
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>記録日時</th>
-          <th>業務量</th>
-          <th>理解度</th>
-          <th>メンタル</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, index) => (
-          <tr key={`${row.recordedAt}-${index}`}>
-            <td>{row.recordedAt}</td>
-            <td>{row.workload}</td>
-            <td>{row.comprehension}</td>
-            <td>{row.mental}</td>
-          </tr>
-        ))}
-      </tbody>
+    <table role={matrixLayout.tableRole} className={className}>
+      <ConditionTransitionTableHeader
+        columns={columns}
+        matrixLayout={matrixLayout}
+        cellBorderStyle={headerCellBorderStyle}
+      />
+      <ConditionTransitionTableBody
+        columns={columns}
+        rows={rows}
+        matrixLayout={matrixLayout}
+        cellBorderStyle={dataCellBorderStyle}
+      />
     </table>
   );
 }

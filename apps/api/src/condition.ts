@@ -7,10 +7,15 @@ export type {
   ConditionGraphTableRow,
   ConditionHistoryRecord,
   ConditionLineChartData,
+  ConditionLineChartDisplaySize,
+  ConditionLineChartHorizontalScroll,
   ConditionLineChartSeries,
   ConditionPageAlert,
   ConditionRecordStore,
   ConditionSubmitResult,
+  ConditionTransitionTableColumn,
+  ConditionTransitionTableColumnKey,
+  ConditionTransitionTableData,
   MonitoredTraineeId,
 } from './api/conditionPublicSurface.js';
 
@@ -32,6 +37,7 @@ export {
   buildConditionGraphTableRows,
   buildConditionLineChartData,
   buildConditionPageAlert,
+  buildConditionTransitionTable,
   hasConditionAlertDraft,
   isConditionAlertValue,
   isValidConditionValue,

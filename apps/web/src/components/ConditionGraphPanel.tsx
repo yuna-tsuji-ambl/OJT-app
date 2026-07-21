@@ -11,7 +11,7 @@ export function ConditionGraphPanel({ graphData }: ConditionGraphPanelProps) {
   return (
     <section aria-label={CONDITION_GRAPH_REGION_LABEL}>
       <ConditionLineChart lineChart={graphData.lineChart} />
-      <ConditionTransitionTable rows={graphData.rows} />
+      <ConditionTransitionTable transitionTable={graphData.transitionTable} />
     </section>
   );
 }

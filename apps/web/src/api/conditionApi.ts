@@ -17,9 +17,20 @@ export type {
   ConditionGraphTableRow,
   ConditionHistoryRecord,
   ConditionLineChartData,
+  ConditionLineChartDisplaySize,
+  ConditionLineChartHorizontalScroll,
   ConditionLineChartSeries,
+  ConditionLineChartSeriesKey,
+  ConditionLineChartXAxisAlignment,
+  ConditionLineChartXAxisTick,
+  ConditionLineChartYAxisTick,
   ConditionPageAlert,
   ConditionSubmitResult,
+  ConditionTransitionTableCellBorderLayout,
+  ConditionTransitionTableCellBorderSides,
+  ConditionTransitionTableColumn,
+  ConditionTransitionTableColumnKey,
+  ConditionTransitionTableData,
 } from './conditionTypes';
 
 export async function submitConditionRecord(

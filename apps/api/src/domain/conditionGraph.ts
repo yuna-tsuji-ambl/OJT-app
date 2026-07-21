@@ -1,8 +1,9 @@
 import { buildConditionLineChartData } from './conditionLineChart.js';
+import { buildConditionGraphTableRows } from './conditionGraphTableRows.js';
+import { buildConditionTransitionTable } from './conditionTransitionTable.js';
 import type {
   ConditionDraft,
   ConditionGraphData,
-  ConditionGraphTableRow,
   ConditionHistoryRecord,
   ConditionLineChartData,
 } from './conditionTypes.js';
@@ -13,12 +14,6 @@ function buildDraftSeriesFromLineChart(
   return Object.fromEntries(
     lineChart.series.map((series) => [series.key, series.values]),
   ) as Pick<ConditionGraphData, keyof ConditionDraft>;
-}
-
-export function buildConditionGraphTableRows(
-  records: ConditionHistoryRecord[],
-): ConditionGraphTableRow[] {
-  return records.map((record) => ({ ...record }));
 }
 
 export function buildConditionGraphData(
@@ -32,5 +27,6 @@ export function buildConditionGraphData(
     ...buildDraftSeriesFromLineChart(lineChart),
     rows,
     lineChart,
+    transitionTable: buildConditionTransitionTable(rows),
   };
 }
