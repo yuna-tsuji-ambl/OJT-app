@@ -46,3 +46,19 @@ export class QuestAchievementLevelFormatError extends Error {
     this.name = 'QuestAchievementLevelFormatError';
   }
 }
+
+export class AssignmentNotFoundError extends Error {
+  constructor(assignmentId: string) {
+    super(`Assignment not found: ${assignmentId}`);
+    this.name = 'AssignmentNotFoundError';
+  }
+}
+
+export class InvalidAssignmentStatusError extends Error {
+  constructor(assignmentId: string, currentStatus: string, nextStatus: string) {
+    super(
+      `Invalid assignment status transition for ${assignmentId}: ${currentStatus} -> ${nextStatus}`,
+    );
+    this.name = 'InvalidAssignmentStatusError';
+  }
+}

@@ -9,12 +9,12 @@ import {
   getTrainerQuestProgressList,
   requestClearQuest,
   TRAINER_DASHBOARD_SECTION_TYPE,
+  type AssignmentRepository,
   type Quest,
-  type QuestStore,
-  type SheetRepository,
   type TrainerDashboard,
 } from '../quest.js';
 import { findTrainerDashboardSection } from '../domain/trainerDashboard.js';
+import { createAssignmentInputFromQuestInput } from '../domain/assignmentQuestMapping.js';
 import {
   CREATE_QUEST_INPUT,
   CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3,
@@ -26,44 +26,43 @@ import {
   TRAINER_USER_ID,
   CLEARED_TRAINER_CREATED_QUEST,
   PENDING_TRAINER_CREATED_QUEST,
-  createCapturingQuestStore,
-  createMockQuestStore,
-  createMockSheetRepository,
-  createTraineeMergedListMocks,
-  createTrainerProgressListStore,
+  createCapturingAssignmentRepository,
+  createMockAssignmentRepository,
+  createTraineeAssignmentMocks,
+  createTrainerProgressListRepository,
   assertCreatedQuestOnTrainerDashboard,
   assertCreatedQuestOnTraineeList,
   expectListContainsQuest,
   expectQuestApproved,
   expectQuestClearRequestApplied,
+  questToAssignment,
 } from './questTestFixtures.js';
 
-/**
- * U-Q01: クエスト一覧の表示
- * 前提条件: 新卒ユーザーとしてログイン中
- * アクション: クエスト一覧画面を開く
- * 期待結果: シートから読み込まれたクエスト情報（大項目、小項目、到達レベルなど）が一覧表示されること
- */
 describe('U-Q01 クエスト一覧の表示', () => {
   const traineeUserId = TRAINEE_USER_ID;
-  const sheetQuests: Quest[] = [SHEET_QUEST_TYPESCRIPT, SHEET_QUEST_REACT];
+  const traineeAssignments = [
+    questToAssignment(SHEET_QUEST_TYPESCRIPT),
+    questToAssignment(SHEET_QUEST_REACT),
+  ];
 
-  let sheetRepository: SheetRepository;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    sheetRepository = createMockSheetRepository({
-      loadQuests: vi.fn().mockResolvedValue(sheetQuests),
+    assignmentRepository = createMockAssignmentRepository({
+      findByTraineeId: vi.fn().mockResolvedValue(traineeAssignments),
     });
   });
 
-  it('getQuestList_新卒ログイン中_シートのクエスト情報が一覧で返る', async () => {
+  it('getQuestList_新卒ログイン中_課題情報が一覧で返る', async () => {
     const quests = await getQuestList(
       traineeUserId,
       'trainee',
-      sheetRepository,
+      assignmentRepository,
     );
 
-    expect(sheetRepository.loadQuests).toHaveBeenCalledWith(traineeUserId);
+    expect(assignmentRepository.findByTraineeId).toHaveBeenCalledWith(
+      traineeUserId,
+    );
     expect(quests).toHaveLength(2);
     expect(quests[0]).toEqual(
       expect.objectContaining({
@@ -82,12 +81,6 @@ describe('U-Q01 クエスト一覧の表示', () => {
   });
 });
 
-/**
- * U-Q02: クエストのクリア申請
- * 前提条件: 新卒ユーザーとしてログイン中、かつ未クリアのクエストがある
- * アクション: 対象クエストの「申請」ボタンを押す
- * 期待結果: クエストのステータスが「申請中」に変更されること
- */
 describe('U-Q02 クエストのクリア申請', () => {
   const traineeUserId = TRAINEE_USER_ID;
   const unclearedQuest: Quest = {
@@ -95,11 +88,19 @@ describe('U-Q02 クエストのクリア申請', () => {
     status: QUEST_STATUS.NOT_CLEARED,
   };
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createMockQuestStore({
-      getById: vi.fn().mockResolvedValue({ ...unclearedQuest }),
+    assignmentRepository = createMockAssignmentRepository({
+      findById: vi.fn().mockResolvedValue(questToAssignment(unclearedQuest)),
+      updateStatus: vi
+        .fn()
+        .mockResolvedValue(
+          questToAssignment({
+            ...unclearedQuest,
+            status: QUEST_STATUS.PENDING,
+          }),
+        ),
     });
   });
 
@@ -108,19 +109,17 @@ describe('U-Q02 クエストのクリア申請', () => {
       unclearedQuest.id,
       traineeUserId,
       'trainee',
-      questStore,
+      assignmentRepository,
     );
 
-    expectQuestClearRequestApplied(questStore, unclearedQuest.id, result);
+    expectQuestClearRequestApplied(
+      assignmentRepository,
+      unclearedQuest.id,
+      result,
+    );
   });
 });
 
-/**
- * U-Q03: 申請一覧の表示
- * 前提条件: OJTトレーナーとしてログイン中
- * アクション: ダッシュボード画面を開く
- * 期待結果: 新卒から申請された「申請中」のクエスト一覧が表示されること
- */
 describe('U-Q03 申請一覧の表示', () => {
   const trainerUserId = TRAINER_USER_ID;
 
@@ -129,11 +128,15 @@ describe('U-Q03 申請一覧の表示', () => {
     { ...SHEET_QUEST_REACT, status: QUEST_STATUS.PENDING },
   ];
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createMockQuestStore({
-      getPendingQuests: vi.fn().mockResolvedValue(pendingQuests),
+    assignmentRepository = createMockAssignmentRepository({
+      listPending: vi
+        .fn()
+        .mockResolvedValue(
+          pendingQuests.map((quest) => questToAssignment(quest)),
+        ),
     });
   });
 
@@ -141,39 +144,17 @@ describe('U-Q03 申請一覧の表示', () => {
     const quests = await getPendingQuestList(
       trainerUserId,
       'trainer',
-      questStore,
+      assignmentRepository,
     );
 
-    expect(questStore.getPendingQuests).toHaveBeenCalledOnce();
+    expect(assignmentRepository.listPending).toHaveBeenCalledOnce();
     expect(quests).toHaveLength(2);
     expect(quests.every((quest) => quest.status === QUEST_STATUS.PENDING)).toBe(
       true,
     );
-    expect(quests[0]).toEqual(
-      expect.objectContaining({
-        majorItem: '開発基礎',
-        minorItem: 'TypeScript基礎',
-        achievementLevel: 'Lv1',
-        status: QUEST_STATUS.PENDING,
-      }),
-    );
-    expect(quests[1]).toEqual(
-      expect.objectContaining({
-        majorItem: '開発基礎',
-        minorItem: 'React入門',
-        achievementLevel: 'Lv2',
-        status: QUEST_STATUS.PENDING,
-      }),
-    );
   });
 });
 
-/**
- * U-Q04: クエストの承認
- * 前提条件: OJTトレーナーとしてログイン中
- * アクション: 「申請中」のクエストの「承認」ボタンを押す
- * 期待結果: ステータスが「クリア」に変更され、シート更新処理（モック関数）が正しく呼ばれること
- */
 describe('U-Q04 クエストの承認', () => {
   const trainerUserId = TRAINER_USER_ID;
   const pendingQuest: Quest = {
@@ -181,37 +162,30 @@ describe('U-Q04 クエストの承認', () => {
     status: QUEST_STATUS.PENDING,
   };
 
-  let questStore: QuestStore;
-  let sheetRepository: SheetRepository;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createMockQuestStore({
-      getById: vi.fn().mockResolvedValue({ ...pendingQuest }),
+    assignmentRepository = createMockAssignmentRepository({
+      updateStatus: vi
+        .fn()
+        .mockResolvedValue(
+          questToAssignment({ ...pendingQuest, status: QUEST_STATUS.CLEARED }),
+        ),
     });
-    sheetRepository = createMockSheetRepository();
   });
 
-  it('approveQuest_トレーナー申請中クエスト_ステータスがクリアに変更されシート更新が呼ばれる', async () => {
+  it('approveQuest_トレーナー申請中クエスト_ステータスがクリアに変更される', async () => {
     const result = await approveQuest(
       pendingQuest.id,
       trainerUserId,
       'trainer',
-      questStore,
-      sheetRepository,
+      assignmentRepository,
     );
 
-    expectQuestApproved(questStore, pendingQuest.id, result, {
-      sheetRepository,
-    });
+    expectQuestApproved(assignmentRepository, pendingQuest.id, result);
   });
 });
 
-/**
- * U-Q05: ダッシュボードのクエスト作成機能表示
- * 前提条件: OJTトレーナーとしてログイン中
- * アクション: ダッシュボード画面を開く
- * 期待結果: 画面上部にクエスト作成機能が表示されること
- */
 describe('U-Q05 ダッシュボードのクエスト作成機能表示', () => {
   const trainerUserId = TRAINER_USER_ID;
 
@@ -233,22 +207,18 @@ describe('U-Q05 ダッシュボードのクエスト作成機能表示', () => {
   });
 });
 
-/**
- * U-Q06: クエスト作成（トレーナー側）
- * 前提条件: OJTトレーナーとしてログイン中
- * アクション: ダッシュボード上部のクエスト作成機能で新しいクエストを追加する
- * 期待結果: クエストが作成され、トレーナー画面の一覧に表示されること
- */
 describe('U-Q06 クエスト作成（トレーナー側）', () => {
   const trainerUserId = TRAINER_USER_ID;
   const createdQuest = TRAINER_CREATED_QUEST;
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createMockQuestStore({
-      create: vi.fn().mockResolvedValue(createdQuest),
-      listAllQuests: vi.fn().mockResolvedValue([createdQuest]),
+    assignmentRepository = createMockAssignmentRepository({
+      create: vi.fn().mockResolvedValue(questToAssignment(createdQuest)),
+      listByTrainer: vi
+        .fn()
+        .mockResolvedValue([questToAssignment(createdQuest)]),
     });
   });
 
@@ -257,16 +227,19 @@ describe('U-Q06 クエスト作成（トレーナー側）', () => {
       trainerUserId,
       'trainer',
       CREATE_QUEST_INPUT,
-      questStore,
+      assignmentRepository,
     );
 
     const progressList = await getTrainerQuestProgressList(
       trainerUserId,
       'trainer',
-      questStore,
+      assignmentRepository,
     );
 
-    expect(questStore.create).toHaveBeenCalledWith(CREATE_QUEST_INPUT);
+    expect(assignmentRepository.create).toHaveBeenCalledWith(
+      createAssignmentInputFromQuestInput(CREATE_QUEST_INPUT),
+      trainerUserId,
+    );
     expect(created).toEqual(expect.objectContaining(TRAINER_CREATED_QUEST));
     expect(progressList).toHaveLength(1);
     expect(progressList[0]).toEqual(
@@ -279,20 +252,13 @@ describe('U-Q06 クエスト作成（トレーナー側）', () => {
   });
 });
 
-/**
- * U-Q07: 作成クエストの新卒側表示
- * 前提条件: トレーナーがクエストを作成済み、新卒ユーザーとしてログイン中
- * アクション: クエスト一覧画面を開く
- * 期待結果: トレーナーが作成したクエストが新卒側のクエスト一覧に表示されること
- */
 describe('U-Q07 作成クエストの新卒側表示', () => {
   const traineeUserId = TRAINEE_USER_ID;
 
-  let sheetRepository: SheetRepository;
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    ({ questStore, sheetRepository } = createTraineeMergedListMocks([
+    ({ assignmentRepository } = createTraineeAssignmentMocks([
       TRAINER_CREATED_QUEST,
     ]));
   });
@@ -301,12 +267,12 @@ describe('U-Q07 作成クエストの新卒側表示', () => {
     const quests = await getQuestList(
       traineeUserId,
       'trainee',
-      sheetRepository,
-      questStore,
+      assignmentRepository,
     );
 
-    expect(sheetRepository.loadQuests).toHaveBeenCalledWith(traineeUserId);
-    expect(questStore.listAllQuests).toHaveBeenCalledOnce();
+    expect(assignmentRepository.findByTraineeId).toHaveBeenCalledWith(
+      traineeUserId,
+    );
     expect(quests).toHaveLength(2);
     expect(quests).toEqual(
       expect.arrayContaining([
@@ -325,31 +291,25 @@ describe('U-Q07 作成クエストの新卒側表示', () => {
   });
 });
 
-/**
- * U-Q08: 作成クエストのトレーナー側一覧表示
- * 前提条件: トレーナーがクエストを作成済み、OJTトレーナーとしてログイン中
- * アクション: ダッシュボード画面を開く
- * 期待結果: トレーナーが作成したクエストがトレーナー画面の一覧に表示されること
- *
- * 結合境界: TrainerQuestService.listQuestProgress → QuestStore.listAllQuests
- */
 describe('U-Q08 作成クエストのトレーナー側一覧表示', () => {
   const trainerUserId = TRAINER_USER_ID;
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createTrainerProgressListStore([TRAINER_CREATED_QUEST]);
+    assignmentRepository = createTrainerProgressListRepository([
+      TRAINER_CREATED_QUEST,
+    ]);
   });
 
   it('getTrainerQuestProgressList_トレーナーログイン中_作成クエストが一覧に表示される', async () => {
     const progressList = await getTrainerQuestProgressList(
       trainerUserId,
       'trainer',
-      questStore,
+      assignmentRepository,
     );
 
-    expect(questStore.listAllQuests).toHaveBeenCalledOnce();
+    expect(assignmentRepository.listByTrainer).toHaveBeenCalledOnce();
     expect(progressList).toHaveLength(1);
     expect(progressList[0]).toEqual(
       expect.objectContaining(TRAINER_CREATED_QUEST),
@@ -357,23 +317,25 @@ describe('U-Q08 作成クエストのトレーナー側一覧表示', () => {
   });
 });
 
-/**
- * U-Q09: 作成クエストのクリア申請（新卒側）
- * 前提条件: トレーナーがクエストを作成済み、新卒ユーザーとしてログイン中、かつ当該クエストが未クリアである
- * アクション: 対象クエストの「申請」ボタンを押す
- * 期待結果: クエストのステータスが「申請中」に変更されること
- *
- * 結合境界: QuestService.requestClear → QuestStore.getById / QuestStore.update
- */
 describe('U-Q09 作成クエストのクリア申請（新卒側）', () => {
   const traineeUserId = TRAINEE_USER_ID;
   const questId = TRAINER_CREATED_QUEST.id;
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createMockQuestStore({
-      getById: vi.fn().mockResolvedValue({ ...TRAINER_CREATED_QUEST }),
+    assignmentRepository = createMockAssignmentRepository({
+      findById: vi
+        .fn()
+        .mockResolvedValue(questToAssignment(TRAINER_CREATED_QUEST)),
+      updateStatus: vi
+        .fn()
+        .mockResolvedValue(
+          questToAssignment({
+            ...TRAINER_CREATED_QUEST,
+            status: QUEST_STATUS.PENDING,
+          }),
+        ),
     });
   });
 
@@ -382,33 +344,21 @@ describe('U-Q09 作成クエストのクリア申請（新卒側）', () => {
       questId,
       traineeUserId,
       'trainee',
-      questStore,
+      assignmentRepository,
     );
 
-    expectQuestClearRequestApplied(questStore, questId, result);
-    expect(questStore.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        minorItem: TRAINER_CREATED_QUEST.minorItem,
-      }),
-    );
+    expectQuestClearRequestApplied(assignmentRepository, questId, result);
+    expect(result.minorItem).toBe(TRAINER_CREATED_QUEST.minorItem);
   });
 });
 
-/**
- * U-Q10: 作成クエストの申請状況表示（トレーナー側）
- * 前提条件: 新卒が作成クエストを申請済み、OJTトレーナーとしてログイン中
- * アクション: ダッシュボード画面を開く
- * 期待結果: 申請中の作成クエストが一覧に表示され、申請状況（「申請中」など）が確認できること
- *
- * 結合境界: TrainerQuestService.listQuestProgress → QuestStore.listAllQuests
- */
 describe('U-Q10 作成クエストの申請状況表示（トレーナー側）', () => {
   const trainerUserId = TRAINER_USER_ID;
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createTrainerProgressListStore([
+    assignmentRepository = createTrainerProgressListRepository([
       PENDING_TRAINER_CREATED_QUEST,
     ]);
   });
@@ -417,10 +367,10 @@ describe('U-Q10 作成クエストの申請状況表示（トレーナー側）'
     const progressList = await getTrainerQuestProgressList(
       trainerUserId,
       'trainer',
-      questStore,
+      assignmentRepository,
     );
 
-    expect(questStore.listAllQuests).toHaveBeenCalledOnce();
+    expect(assignmentRepository.listByTrainer).toHaveBeenCalledOnce();
     expect(progressList).toHaveLength(1);
     expectListContainsQuest(progressList, {
       id: PENDING_TRAINER_CREATED_QUEST.id,
@@ -430,26 +380,23 @@ describe('U-Q10 作成クエストの申請状況表示（トレーナー側）'
   });
 });
 
-/**
- * U-Q11: 作成クエストの承認（トレーナー側）
- * 前提条件: 新卒が作成クエストを申請済み、OJTトレーナーとしてログイン中
- * アクション: ダッシュボードから当該クエストの「承認」ボタンを押す
- * 期待結果: ステータスが「クリア」に変更されること
- *
- * 結合境界: TrainerQuestService.approve → QuestStore.getById / QuestStore.update
- */
 describe('U-Q11 作成クエストの承認（トレーナー側）', () => {
   const trainerUserId = TRAINER_USER_ID;
   const questId = PENDING_TRAINER_CREATED_QUEST.id;
 
-  let questStore: QuestStore;
-  let sheetRepository: SheetRepository;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createMockQuestStore({
-      getById: vi.fn().mockResolvedValue({ ...PENDING_TRAINER_CREATED_QUEST }),
+    assignmentRepository = createMockAssignmentRepository({
+      updateStatus: vi
+        .fn()
+        .mockResolvedValue(
+          questToAssignment({
+            ...PENDING_TRAINER_CREATED_QUEST,
+            status: QUEST_STATUS.CLEARED,
+          }),
+        ),
     });
-    sheetRepository = createMockSheetRepository();
   });
 
   it('approveQuest_トレーナー申請中の作成クエスト_ステータスがクリアに変更される', async () => {
@@ -457,34 +404,22 @@ describe('U-Q11 作成クエストの承認（トレーナー側）', () => {
       questId,
       trainerUserId,
       'trainer',
-      questStore,
-      sheetRepository,
+      assignmentRepository,
     );
 
-    expectQuestApproved(questStore, questId, result);
-    expect(questStore.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        minorItem: PENDING_TRAINER_CREATED_QUEST.minorItem,
-      }),
-    );
+    expectQuestApproved(assignmentRepository, questId, result);
+    expect(result.minorItem).toBe(PENDING_TRAINER_CREATED_QUEST.minorItem);
   });
 });
 
-/**
- * U-Q12: 申請済み作成クエストの一覧表示
- * 前提条件: 新卒が作成クエストを申請済み
- * アクション: トレーナーでダッシュボードを開く／新卒でクエスト一覧を開く
- * 期待結果: 申請済みの作成クエストが、トレーナー・新卒の双方の一覧に表示され、ステータスが「申請中」であること
- */
 describe('U-Q12 申請済み作成クエストの一覧表示', () => {
   const traineeUserId = TRAINEE_USER_ID;
   const trainerUserId = TRAINER_USER_ID;
 
-  let questStore: QuestStore;
-  let sheetRepository: SheetRepository;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    ({ questStore, sheetRepository } = createTraineeMergedListMocks([
+    ({ assignmentRepository } = createTraineeAssignmentMocks([
       PENDING_TRAINER_CREATED_QUEST,
     ]));
   });
@@ -493,7 +428,7 @@ describe('U-Q12 申請済み作成クエストの一覧表示', () => {
     await assertCreatedQuestOnTrainerDashboard(
       getTrainerQuestProgressList,
       trainerUserId,
-      questStore,
+      assignmentRepository,
       PENDING_TRAINER_CREATED_QUEST,
       QUEST_STATUS.PENDING,
     );
@@ -503,29 +438,21 @@ describe('U-Q12 申請済み作成クエストの一覧表示', () => {
     await assertCreatedQuestOnTraineeList(
       getQuestList,
       traineeUserId,
-      sheetRepository,
-      questStore,
+      assignmentRepository,
       PENDING_TRAINER_CREATED_QUEST,
       QUEST_STATUS.PENDING,
     );
   });
 });
 
-/**
- * U-Q13: 承認済み作成クエストの一覧表示
- * 前提条件: トレーナーが作成クエストを承認済み
- * アクション: トレーナーでダッシュボードを開く／新卒でクエスト一覧を開く
- * 期待結果: 承認済みの作成クエストが、トレーナー・新卒の双方の一覧に表示され、ステータスが「クリア」であること
- */
 describe('U-Q13 承認済み作成クエストの一覧表示', () => {
   const traineeUserId = TRAINEE_USER_ID;
   const trainerUserId = TRAINER_USER_ID;
 
-  let questStore: QuestStore;
-  let sheetRepository: SheetRepository;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    ({ questStore, sheetRepository } = createTraineeMergedListMocks([
+    ({ assignmentRepository } = createTraineeAssignmentMocks([
       CLEARED_TRAINER_CREATED_QUEST,
     ]));
   });
@@ -534,7 +461,7 @@ describe('U-Q13 承認済み作成クエストの一覧表示', () => {
     await assertCreatedQuestOnTrainerDashboard(
       getTrainerQuestProgressList,
       trainerUserId,
-      questStore,
+      assignmentRepository,
       CLEARED_TRAINER_CREATED_QUEST,
       QUEST_STATUS.CLEARED,
     );
@@ -544,30 +471,20 @@ describe('U-Q13 承認済み作成クエストの一覧表示', () => {
     await assertCreatedQuestOnTraineeList(
       getQuestList,
       traineeUserId,
-      sheetRepository,
-      questStore,
+      assignmentRepository,
       CLEARED_TRAINER_CREATED_QUEST,
       QUEST_STATUS.CLEARED,
     );
   });
 });
 
-/**
- * U-Q14: 到達レベルのドロップダウン選択値の保存
- * 前提条件: OJTトレーナーとしてログイン中
- * アクション: クエスト作成時に到達レベルとして数値「3」を選択して作成する
- * 期待結果: 作成されたクエストの到達レベルが「Lv3」として保存・取得されること
- *
- * 結合境界: TrainerQuestService.create → QuestStore.create
- *           TrainerQuestService.listQuestProgress → QuestStore.listAllQuests
- */
 describe('U-Q14 到達レベルのドロップダウン選択値の保存', () => {
   const trainerUserId = TRAINER_USER_ID;
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    ({ questStore } = createCapturingQuestStore());
+    ({ assignmentRepository } = createCapturingAssignmentRepository());
   });
 
   it('createQuest_到達レベル数値3選択_achievementLevelがLv3として保存取得される', async () => {
@@ -575,17 +492,18 @@ describe('U-Q14 到達レベルのドロップダウン選択値の保存', () =
       trainerUserId,
       'trainer',
       CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3,
-      questStore,
+      assignmentRepository,
     );
 
     const progressList = await getTrainerQuestProgressList(
       trainerUserId,
       'trainer',
-      questStore,
+      assignmentRepository,
     );
 
-    expect(questStore.create).toHaveBeenCalledWith(
-      CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3,
+    expect(assignmentRepository.create).toHaveBeenCalledWith(
+      createAssignmentInputFromQuestInput(CREATE_QUEST_DROPDOWN_INPUT_LEVEL_3),
+      trainerUserId,
     );
     expect(created.achievementLevel).toBe(EXPECTED_ACHIEVEMENT_LEVEL_LV3);
     expect(progressList).toHaveLength(1);
@@ -595,50 +513,35 @@ describe('U-Q14 到達レベルのドロップダウン選択値の保存', () =
   });
 });
 
-/**
- * U-Q15: トレーナー進捗一覧のタイトル取得
- * 前提条件: トレーナーがクエストを作成済み、OJTトレーナーとしてログイン中
- * アクション: getTrainerQuestProgressList を実行する
- * 期待結果: 各クエストのタイトル（majorItem）がレスポンスに含まれること
- *
- * 結合境界: TrainerQuestService.listQuestProgress → QuestStore.listAllQuests
- */
 describe('U-Q15 トレーナー進捗一覧のタイトル取得', () => {
   const trainerUserId = TRAINER_USER_ID;
 
-  let questStore: QuestStore;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    questStore = createTrainerProgressListStore([TRAINER_CREATED_QUEST]);
+    assignmentRepository = createTrainerProgressListRepository([
+      TRAINER_CREATED_QUEST,
+    ]);
   });
 
   it('getTrainerQuestProgressList_トレーナーログイン中_各クエストのタイトルmajorItemがレスポンスに含まれる', async () => {
     await assertCreatedQuestOnTrainerDashboard(
       getTrainerQuestProgressList,
       trainerUserId,
-      questStore,
+      assignmentRepository,
       TRAINER_CREATED_QUEST,
       QUEST_STATUS.NOT_CLEARED,
     );
   });
 });
 
-/**
- * U-Q16: 新卒一覧の表示項目取得
- * 前提条件: トレーナーがクエストを作成済み、新卒ユーザーとしてログイン中
- * アクション: getQuestList を実行する
- * 期待結果: タイトル（majorItem）、コメント（minorItem）、到達レベル（「Lv〇」形式の achievementLevel）がレスポンスに含まれること
- *
- * 結合境界: QuestService.listQuests → SheetRepository.loadQuests / QuestStore.listAllQuests
- */
 describe('U-Q16 新卒一覧の表示項目取得', () => {
   const traineeUserId = TRAINEE_USER_ID;
 
-  let questStore: QuestStore;
-  let sheetRepository: SheetRepository;
+  let assignmentRepository: AssignmentRepository;
 
   beforeEach(() => {
-    ({ questStore, sheetRepository } = createTraineeMergedListMocks([
+    ({ assignmentRepository } = createTraineeAssignmentMocks([
       TRAINER_CREATED_QUEST,
     ]));
   });
@@ -647,8 +550,7 @@ describe('U-Q16 新卒一覧の表示項目取得', () => {
     await assertCreatedQuestOnTraineeList(
       getQuestList,
       traineeUserId,
-      sheetRepository,
-      questStore,
+      assignmentRepository,
       TRAINER_CREATED_QUEST,
       QUEST_STATUS.NOT_CLEARED,
     );

@@ -6,6 +6,7 @@ import {
   createPersistence,
   resolveDbProvider,
 } from '../repositories/createPersistence.js';
+import { createAssignmentRouter } from '../routes/assignmentRoutes.js';
 import { createConditionRouter } from '../routes/conditionRoutes.js';
 import { createQuestRouter } from '../routes/questRoutes.js';
 import { createStatusRouter } from '../routes/statusRoutes.js';
@@ -21,8 +22,7 @@ export async function createApiApp(
 
   const {
     conditionRecordStore,
-    questStore,
-    sheetRepository,
+    assignmentRepository,
     trainerStatusStore,
     chatMessageStore,
   } = await createPersistence();
@@ -40,7 +40,8 @@ export async function createApiApp(
   });
 
   apiRouter.use(createConditionRouter(conditionRecordStore));
-  apiRouter.use(createQuestRouter(questStore, sheetRepository));
+  apiRouter.use(createQuestRouter(assignmentRepository));
+  apiRouter.use(createAssignmentRouter(assignmentRepository));
   apiRouter.use(createStatusRouter(trainerStatusStore, chatMessageStore));
 
   app.use('/api', apiRouter);

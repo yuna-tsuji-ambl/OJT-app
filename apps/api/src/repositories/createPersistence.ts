@@ -1,4 +1,4 @@
-import { createInMemoryQuestPersistence } from './createInMemoryQuestPersistence.js';
+import { createInMemoryAssignmentRepository } from './createInMemoryAssignmentPersistence.js';
 import { createInMemoryStatusPersistence } from './createInMemoryStatusPersistence.js';
 import { createFirestorePersistence } from './createFirestorePersistence.js';
 import { InMemoryConditionRecordStore } from './inMemoryConditionRecordStore.js';
@@ -15,14 +15,12 @@ export async function createPersistence(): Promise<AppPersistence> {
     return createFirestorePersistence();
   }
 
-  const { questStore, sheetRepository } = createInMemoryQuestPersistence();
   const { trainerStatusStore, chatMessageStore } =
     createInMemoryStatusPersistence();
 
   return {
     conditionRecordStore: new InMemoryConditionRecordStore(),
-    questStore,
-    sheetRepository,
+    assignmentRepository: createInMemoryAssignmentRepository(),
     trainerStatusStore,
     chatMessageStore,
   };
