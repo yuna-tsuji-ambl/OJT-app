@@ -1,4 +1,4 @@
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AssignmentForm } from '../components/AssignmentForm';
 import { AssignmentManageCard } from '../components/AssignmentManageCard';
@@ -30,9 +30,6 @@ export function AssignmentManagePage() {
       aria-labelledby="assignment-manage-heading"
     >
       <h1 id="assignment-manage-heading">課題管理</h1>
-      <p>
-        <Link to="/dashboard">ダッシュボードに戻る</Link>
-      </p>
       <AssignmentForm
         regionLabel={ASSIGNMENT_CREATE_REGION_LABEL}
         onSubmit={(input) => createAssignmentAndReload(input, authUser)}

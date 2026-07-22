@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 const QUEST_A_NAME = 'クエストA';
 const QUEST_CLEARED_LABEL = 'クリア（承認済み）';
-const NEW_QUEST_NAME = '新規クエスト';
+const NEW_QUEST_NAME = 'E-Q02新規クエスト';
 const E_Q03_QUEST_NAME = 'E-Q03新規クエスト';
 const E_Q05_QUEST_NAME = 'E-Q05新規クエスト';
 const E_Q05_SELECTED_ACHIEVEMENT_LEVEL = '3';
@@ -57,14 +57,20 @@ async function requestQuestClear(page: Page, questName: string): Promise<void> {
 }
 
 async function openTrainerDashboard(page: Page): Promise<void> {
-  await page.getByRole('link', { name: 'ダッシュボード' }).click();
+  await page
+    .getByRole('navigation', { name: 'メインナビゲーション' })
+    .getByRole('link', { name: 'ダッシュボード' })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'ダッシュボード' }),
   ).toBeVisible();
 }
 
 async function openAssignmentManage(page: Page): Promise<void> {
-  await page.getByRole('link', { name: '課題管理' }).click();
+  await page
+    .getByRole('navigation', { name: 'メインナビゲーション' })
+    .getByRole('link', { name: '課題管理' })
+    .click();
   await expect(page.getByRole('heading', { name: '課題管理' })).toBeVisible();
 }
 
@@ -141,18 +147,18 @@ async function createQuestOnManage(
   page: Page,
   title: string = NEW_QUEST_NAME,
 ): Promise<void> {
+  const createRegion = questCreateRegion(page);
+  await createRegion.getByLabel('大項目').fill(QUEST_MAJOR_ITEM);
+  await createRegion.getByLabel('タイトル').fill(title);
+  await createRegion.getByLabel('説明').fill('テスト説明');
+  await questAchievementLevelField(page).selectOption('1');
+
   const createResponse = page.waitForResponse(
     (response) =>
       /\/api\/assignments\/?$/.test(new URL(response.url()).pathname) &&
       response.request().method() === 'POST' &&
       response.ok(),
   );
-
-  const createRegion = questCreateRegion(page);
-  await createRegion.getByLabel('大項目').fill(QUEST_MAJOR_ITEM);
-  await createRegion.getByLabel('タイトル').fill(title);
-  await createRegion.getByLabel('説明').fill('テスト説明');
-  await questAchievementLevelField(page).selectOption('1');
   await createRegion.getByRole('button', { name: '作成' }).click();
 
   await createResponse;
@@ -172,18 +178,18 @@ async function createQuestWithAchievementLevel(
   achievementLevel: string,
   majorItem: string = QUEST_MAJOR_ITEM,
 ): Promise<void> {
+  const createRegion = questCreateRegion(page);
+  await createRegion.getByLabel('大項目').fill(majorItem);
+  await createRegion.getByLabel('タイトル').fill(title);
+  await createRegion.getByLabel('説明').fill('テスト説明');
+  await questAchievementLevelField(page).selectOption(achievementLevel);
+
   const createResponse = page.waitForResponse(
     (response) =>
       /\/api\/assignments\/?$/.test(new URL(response.url()).pathname) &&
       response.request().method() === 'POST' &&
       response.ok(),
   );
-
-  const createRegion = questCreateRegion(page);
-  await createRegion.getByLabel('大項目').fill(majorItem);
-  await createRegion.getByLabel('タイトル').fill(title);
-  await createRegion.getByLabel('説明').fill('テスト説明');
-  await questAchievementLevelField(page).selectOption(achievementLevel);
   await createRegion.getByRole('button', { name: '作成' }).click();
 
   await createResponse;

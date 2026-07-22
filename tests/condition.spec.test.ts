@@ -40,7 +40,10 @@ async function submitWeeklyCondition(page: Page): Promise<void> {
 }
 
 async function openTrainerDashboard(page: Page): Promise<void> {
-  await page.getByRole('link', { name: 'ダッシュボード' }).click();
+  await page
+    .getByRole('navigation', { name: 'メインナビゲーション' })
+    .getByRole('link', { name: 'ダッシュボード' })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'ダッシュボード' }),
   ).toBeVisible();

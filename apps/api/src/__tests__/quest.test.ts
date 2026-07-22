@@ -93,14 +93,12 @@ describe('U-Q02 クエストのクリア申請', () => {
   beforeEach(() => {
     assignmentRepository = createMockAssignmentRepository({
       findById: vi.fn().mockResolvedValue(questToAssignment(unclearedQuest)),
-      updateStatus: vi
-        .fn()
-        .mockResolvedValue(
-          questToAssignment({
-            ...unclearedQuest,
-            status: QUEST_STATUS.PENDING,
-          }),
-        ),
+      updateStatus: vi.fn().mockResolvedValue(
+        questToAssignment({
+          ...unclearedQuest,
+          status: QUEST_STATUS.PENDING,
+        }),
+      ),
     });
   });
 
@@ -328,14 +326,12 @@ describe('U-Q09 作成クエストのクリア申請（新卒側）', () => {
       findById: vi
         .fn()
         .mockResolvedValue(questToAssignment(TRAINER_CREATED_QUEST)),
-      updateStatus: vi
-        .fn()
-        .mockResolvedValue(
-          questToAssignment({
-            ...TRAINER_CREATED_QUEST,
-            status: QUEST_STATUS.PENDING,
-          }),
-        ),
+      updateStatus: vi.fn().mockResolvedValue(
+        questToAssignment({
+          ...TRAINER_CREATED_QUEST,
+          status: QUEST_STATUS.PENDING,
+        }),
+      ),
     });
   });
 
@@ -388,14 +384,12 @@ describe('U-Q11 作成クエストの承認（トレーナー側）', () => {
 
   beforeEach(() => {
     assignmentRepository = createMockAssignmentRepository({
-      updateStatus: vi
-        .fn()
-        .mockResolvedValue(
-          questToAssignment({
-            ...PENDING_TRAINER_CREATED_QUEST,
-            status: QUEST_STATUS.CLEARED,
-          }),
-        ),
+      updateStatus: vi.fn().mockResolvedValue(
+        questToAssignment({
+          ...PENDING_TRAINER_CREATED_QUEST,
+          status: QUEST_STATUS.CLEARED,
+        }),
+      ),
     });
   });
 

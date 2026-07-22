@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const ASSIGNMENT_CLEARED_LABEL = 'クリア（承認済み）';
-const NEW_ASSIGNMENT_TITLE = '新規クエスト';
+const NEW_ASSIGNMENT_TITLE = 'E-A01新規課題';
 const E_A02_ASSIGNMENT_TITLE = 'E-A02新規課題';
 const E_A03_ASSIGNMENT_TITLE = 'E-A03編集対象';
 const E_A03_UPDATED_TITLE = 'E-A03更新後';
@@ -29,7 +29,10 @@ async function openAssignmentList(page: Page): Promise<void> {
 }
 
 async function openAssignmentManage(page: Page): Promise<void> {
-  await page.getByRole('link', { name: '課題管理' }).click();
+  await page
+    .getByRole('navigation', { name: 'メインナビゲーション' })
+    .getByRole('link', { name: '課題管理' })
+    .click();
   await expect(page.getByRole('heading', { name: '課題管理' })).toBeVisible();
 }
 
@@ -47,18 +50,18 @@ async function createAssignmentOnManage(
   majorItem: string = ASSIGNMENT_MAJOR_ITEM,
   achievementLevel: string = '1',
 ): Promise<void> {
+  const createRegion = assignmentCreateRegion(page);
+  await createRegion.getByLabel('大項目').fill(majorItem);
+  await createRegion.getByLabel('タイトル').fill(title);
+  await createRegion.getByLabel('説明').fill('テスト説明');
+  await createRegion.getByLabel('到達レベル').selectOption(achievementLevel);
+
   const createResponse = page.waitForResponse(
     (response) =>
       /\/api\/assignments\/?$/.test(new URL(response.url()).pathname) &&
       response.request().method() === 'POST' &&
       response.ok(),
   );
-
-  const createRegion = assignmentCreateRegion(page);
-  await createRegion.getByLabel('大項目').fill(majorItem);
-  await createRegion.getByLabel('タイトル').fill(title);
-  await createRegion.getByLabel('説明').fill('テスト説明');
-  await createRegion.getByLabel('到達レベル').selectOption(achievementLevel);
   await createRegion.getByRole('button', { name: '作成' }).click();
 
   await createResponse;
@@ -84,7 +87,10 @@ async function requestAssignmentClear(
 }
 
 async function openTrainerDashboard(page: Page): Promise<void> {
-  await page.getByRole('link', { name: 'ダッシュボード' }).click();
+  await page
+    .getByRole('navigation', { name: 'メインナビゲーション' })
+    .getByRole('link', { name: 'ダッシュボード' })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'ダッシュボード' }),
   ).toBeVisible();

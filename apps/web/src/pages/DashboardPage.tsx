@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ConditionAlertCard } from '../components/ConditionAlertCard';
 import { PendingQuestCard } from '../components/PendingQuestCard';
@@ -20,9 +19,6 @@ export function DashboardPage() {
   return (
     <section className="page-section" aria-labelledby="dashboard-heading">
       <h1 id="dashboard-heading">ダッシュボード</h1>
-      <p>
-        <Link to="/assignments/manage">課題管理画面を開く</Link>
-      </p>
       {progressQuests.map((quest) => (
         <TrainerQuestProgressCard
           key={quest.id}

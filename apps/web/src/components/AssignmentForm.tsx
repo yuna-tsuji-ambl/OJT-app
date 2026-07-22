@@ -1,5 +1,6 @@
 import type { CreateAssignmentInput } from '@ojt-app/shared';
 import type { FormEvent } from 'react';
+import { useId } from 'react';
 import {
   ASSIGNMENT_CREATE_SUBMIT_LABEL,
   ASSIGNMENT_FORM_FIELDS,
@@ -23,6 +24,7 @@ export function AssignmentForm({
   onSubmit,
   onCancel,
 }: AssignmentFormProps) {
+  const formInstanceId = useId();
   const { draft, updateField, resetDraft } =
     useAssignmentCreateDraft(initialDraft);
 
@@ -51,7 +53,10 @@ export function AssignmentForm({
         {ASSIGNMENT_FORM_FIELDS.map((field) => (
           <AssignmentFormField
             key={field.key}
-            field={field}
+            field={{
+              ...field,
+              inputId: `${formInstanceId}-${field.inputId}`,
+            }}
             value={draft[field.key as keyof CreateAssignmentInput] ?? ''}
             onChange={(value) =>
               updateField(field.key as keyof CreateAssignmentInput, value)
