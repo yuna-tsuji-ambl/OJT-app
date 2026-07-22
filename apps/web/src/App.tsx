@@ -1,9 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { Layout } from './components/Layout';
+import { AssignmentListPage } from './pages/AssignmentListPage';
+import { AssignmentManagePage } from './pages/AssignmentManagePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
-import { QuestListPage } from './pages/QuestListPage';
 import { TraineeHomePage } from './pages/TraineeHomePage';
 import { TrainerMessagesPage } from './pages/TrainerMessagesPage';
 import { TrainerStatusSettingsPage } from './pages/TrainerStatusSettingsPage';
@@ -19,7 +20,15 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/condition/weekly" element={<WeeklyConditionPage />} />
             <Route path="/home" element={<TraineeHomePage />} />
-            <Route path="/quests" element={<QuestListPage />} />
+            <Route path="/assignments" element={<AssignmentListPage />} />
+            <Route
+              path="/assignments/manage"
+              element={<AssignmentManagePage />}
+            />
+            <Route
+              path="/quests"
+              element={<Navigate to="/assignments" replace />}
+            />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route
               path="/status/settings"

@@ -32,10 +32,8 @@ async function logout(page: Page): Promise<void> {
 }
 
 async function openQuestList(page: Page): Promise<void> {
-  await page.getByRole('link', { name: 'クエスト一覧' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'クエスト一覧' }),
-  ).toBeVisible();
+  await page.getByRole('link', { name: '課題一覧' }).click();
+  await expect(page.getByRole('heading', { name: '課題一覧' })).toBeVisible();
 }
 
 function questArticle(page: Page, questName: string) {
@@ -45,8 +43,9 @@ function questArticle(page: Page, questName: string) {
 async function requestQuestClear(page: Page, questName: string): Promise<void> {
   const requestResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/quests') &&
+      response.url().includes('/api/assignments') &&
       response.request().method() === 'POST' &&
+      response.url().includes('/request') &&
       response.ok(),
   );
 
@@ -64,11 +63,17 @@ async function openTrainerDashboard(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+async function openAssignmentManage(page: Page): Promise<void> {
+  await page.getByRole('link', { name: '課題管理' }).click();
+  await expect(page.getByRole('heading', { name: '課題管理' })).toBeVisible();
+}
+
 async function approveQuest(page: Page, questName: string): Promise<void> {
   const approveResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/quests') &&
+      response.url().includes('/api/assignments') &&
       response.request().method() === 'POST' &&
+      response.url().includes('/approve') &&
       response.ok(),
   );
 
@@ -89,12 +94,13 @@ async function expectQuestCleared(
 }
 
 function questCreateRegion(page: Page) {
-  return page.getByRole('region', { name: 'クエスト作成' });
+  return page.getByRole('region', { name: '課題作成' });
 }
 
 const QUEST_CREATE_FIELD_LABELS = [
+  '大項目',
   'タイトル',
-  'コメント',
+  '説明',
   '到達レベル',
 ] as const;
 
@@ -131,20 +137,21 @@ async function expectQuestCreateFormDesign(page: Page): Promise<void> {
   ).toHaveClass(/btn-primary/);
 }
 
-async function createQuestOnDashboard(
+async function createQuestOnManage(
   page: Page,
-  minorItem: string = NEW_QUEST_NAME,
+  title: string = NEW_QUEST_NAME,
 ): Promise<void> {
   const createResponse = page.waitForResponse(
     (response) =>
-      /\/api\/quests\/?$/.test(new URL(response.url()).pathname) &&
+      /\/api\/assignments\/?$/.test(new URL(response.url()).pathname) &&
       response.request().method() === 'POST' &&
       response.ok(),
   );
 
   const createRegion = questCreateRegion(page);
-  await createRegion.getByLabel('タイトル').fill(QUEST_MAJOR_ITEM);
-  await createRegion.getByLabel('コメント').fill(minorItem);
+  await createRegion.getByLabel('大項目').fill(QUEST_MAJOR_ITEM);
+  await createRegion.getByLabel('タイトル').fill(title);
+  await createRegion.getByLabel('説明').fill('テスト説明');
   await questAchievementLevelField(page).selectOption('1');
   await createRegion.getByRole('button', { name: '作成' }).click();
 
@@ -161,20 +168,21 @@ async function expectQuestAchievementLevelDropdown(page: Page): Promise<void> {
 
 async function createQuestWithAchievementLevel(
   page: Page,
-  comment: string,
+  title: string,
   achievementLevel: string,
-  title: string = QUEST_MAJOR_ITEM,
+  majorItem: string = QUEST_MAJOR_ITEM,
 ): Promise<void> {
   const createResponse = page.waitForResponse(
     (response) =>
-      /\/api\/quests\/?$/.test(new URL(response.url()).pathname) &&
+      /\/api\/assignments\/?$/.test(new URL(response.url()).pathname) &&
       response.request().method() === 'POST' &&
       response.ok(),
   );
 
   const createRegion = questCreateRegion(page);
+  await createRegion.getByLabel('大項目').fill(majorItem);
   await createRegion.getByLabel('タイトル').fill(title);
-  await createRegion.getByLabel('コメント').fill(comment);
+  await createRegion.getByLabel('説明').fill('テスト説明');
   await questAchievementLevelField(page).selectOption(achievementLevel);
   await createRegion.getByRole('button', { name: '作成' }).click();
 
@@ -233,23 +241,6 @@ async function expectTrainerQuestProgressDisplay(
   await expect(quest).toContainText(display.achievementLevel);
 }
 
-/**
- * E-Q01: クエスト申請から承認までのEnd-to-End
- * 観点: CUJ / 連携 / 操作性
- *
- * 手順:
- * 1. 新卒でログインし、クエスト一覧画面へ遷移
- * 2. クエストAの「申請」ボタンをクリック
- * 3. ログアウトし、トレーナーでログイン
- * 4. ダッシュボードからクエストAの「承認」ボタンをクリック
- * 5. ログアウトし、再度新卒でログイン
- *
- * 期待結果（表示）:
- * - 新卒のクエスト一覧画面で、クエストAに「クリア（承認済み）」が表示される
- *
- * 期待結果（データ）:
- * - 申請・承認の API が成功し、再ログイン後も承認状態が維持される
- */
 test.describe('E-Q01 クエスト申請から承認までのEnd-to-End', () => {
   test('新卒申請からトレーナー承認_クエストAにクリア表示される', async ({
     page,
@@ -274,30 +265,15 @@ test.describe('E-Q01 クエスト申請から承認までのEnd-to-End', () => {
   });
 });
 
-/**
- * E-Q02: クエスト作成から新卒側反映までのEnd-to-End
- * 観点: CUJ / 連携 / 操作性
- *
- * 手順:
- * 1. トレーナーでログインし、ダッシュボードを開く
- * 2. 画面上部のクエスト作成機能で新しいクエストを追加する
- * 3. トレーナー画面で当該クエストの進捗状況が確認できることを確認する
- * 4. ログアウトし、新卒でログインし、クエスト一覧画面を開く
- *
- * 期待結果（表示）:
- * - 作成したクエストが新卒側のクエスト一覧にも表示されていること
- *
- * 期待結果（データ）:
- * - クエスト作成 API が成功し、トレーナー・新卒の両画面で同一クエストが確認できる
- */
 test.describe('E-Q02 クエスト作成から新卒側反映までのEnd-to-End', () => {
   test('トレーナー作成から新卒確認_新規クエストが一覧に表示される', async ({
     page,
   }) => {
     await loginAsTrainer(page);
-    await openTrainerDashboard(page);
+    await openAssignmentManage(page);
     await expect(questCreateRegion(page)).toBeVisible();
-    await createQuestOnDashboard(page);
+    await createQuestOnManage(page);
+    await openTrainerDashboard(page);
     await expectTrainerQuestProgress(
       page,
       NEW_QUEST_NAME,
@@ -317,34 +293,14 @@ test.describe('E-Q02 クエスト作成から新卒側反映までのEnd-to-End'
   });
 });
 
-/**
- * E-Q03: 作成クエストの申請から承認までのEnd-to-End
- * 観点: CUJ / 連携 / 操作性
- *
- * 手順:
- * 1. トレーナーでログインし、ダッシュボードを開く
- * 2. 画面上部のクエスト作成機能で新しいクエストを追加する
- * 3. ログアウトし、新卒でログインし、クエスト一覧画面を開く
- * 4. 作成したクエストの「申請」ボタンをクリック
- * 5. ログアウトし、トレーナーでログインし、ダッシュボードを開く
- * 6. 申請中の作成クエストが表示されていることを確認し、「承認」ボタンをクリック
- * 7. ログアウトし、新卒でログインし、クエスト一覧画面を開く
- *
- * 期待結果（表示）:
- * - 申請後・承認後ともに、作成クエストがトレーナー・新卒の双方の一覧に表示されていること
- * - 承認後は新卒のクエスト一覧で「クリア（承認済み）」が表示されていること
- *
- * 期待結果（データ）:
- * - 作成・申請・承認の各 API が成功し、再ログイン後も状態が双方の一覧に反映される
- */
 test.describe('E-Q03 作成クエストの申請から承認までのEnd-to-End', () => {
   test('トレーナー作成から申請承認_双方一覧に反映され新卒でクリア表示される', async ({
     page,
   }) => {
     await loginAsTrainer(page);
+    await openAssignmentManage(page);
+    await createQuestOnManage(page, E_Q03_QUEST_NAME);
     await openTrainerDashboard(page);
-    await expect(questCreateRegion(page)).toBeVisible();
-    await createQuestOnDashboard(page, E_Q03_QUEST_NAME);
     await expectTrainerQuestProgress(
       page,
       E_Q03_QUEST_NAME,
@@ -390,53 +346,23 @@ test.describe('E-Q03 作成クエストの申請から承認までのEnd-to-End'
   });
 });
 
-/**
- * E-Q04: クエスト作成フォームのデザイン
- * 観点: 操作性 / CUJ
- *
- * 手順:
- * 1. トレーナーでログインし、ダッシュボードを開く
- * 2. 画面上部のクエスト作成領域を確認する
- *
- * 期待結果（表示）:
- * - 各入力項目が縦並びで配置されていること
- * - ラベルが「タイトル」「コメント」「到達レベル」であること
- * - 入力領域のデザインが新卒ホーム画面の送信部分と同様のスタイルであること
- */
 test.describe('E-Q04 クエスト作成フォームのデザイン', () => {
-  test('トレーナーダッシュボード_クエスト作成フォームが縦並びかつホーム送信部と同様のデザインである', async ({
+  test('トレーナー課題管理_作成フォームが縦並びで表示される', async ({
     page,
   }) => {
     await loginAsTrainer(page);
-    await openTrainerDashboard(page);
+    await openAssignmentManage(page);
     await expect(questCreateRegion(page)).toBeVisible();
     await expectQuestCreateFormDesign(page);
   });
 });
 
-/**
- * E-Q05: 到達レベルドロップダウンとLv表示
- * 観点: CUJ / 連携 / 操作性
- *
- * 手順:
- * 1. トレーナーでログインし、ダッシュボードを開く
- * 2. タイトル・コメントを入力し、到達レベルをドロップダウンで数値選択してクエストを作成する
- * 3. ログアウトし、新卒でログインし、クエスト一覧画面を開く
- *
- * 期待結果（表示）:
- * - 到達レベルがドロップダウンで選択できること
- * - 作成したクエストの到達レベルが「Lv〇」形式（例: 数値3を選択した場合は「Lv3」）で表示されること
- *
- * 期待結果（データ）:
- * - クエスト作成 API が成功し、選択した到達レベルが新卒一覧に反映される
- */
 test.describe('E-Q05 到達レベルドロップダウンとLv表示', () => {
   test('トレーナーが到達レベル3を選択_新卒一覧にLv3が表示される', async ({
     page,
   }) => {
     await loginAsTrainer(page);
-    await openTrainerDashboard(page);
-    await expect(questCreateRegion(page)).toBeVisible();
+    await openAssignmentManage(page);
     await expectQuestAchievementLevelDropdown(page);
     await createQuestWithAchievementLevel(
       page,
@@ -456,35 +382,19 @@ test.describe('E-Q05 到達レベルドロップダウンとLv表示', () => {
   });
 });
 
-/**
- * E-Q06: トレーナー画面でのタイトル表示
- * 観点: CUJ / 操作性 / 連携
- *
- * 手順:
- * 1. トレーナーでログインし、ダッシュボードを開く
- * 2. タイトル・コメント・到達レベルを入力してクエストを作成する
- * 3. ダッシュボードの進捗一覧を確認する
- *
- * 期待結果（表示）:
- * - 作成したクエストにタイトル（旧：大項目）が表示されていること
- * - コメント（旧：小項目）および到達レベル（「Lv〇」形式）も確認できること
- *
- * 期待結果（データ）:
- * - クエスト作成 API が成功し、進捗一覧にタイトル・コメント・到達レベルが反映される
- */
 test.describe('E-Q06 トレーナー画面でのタイトル表示', () => {
   test('トレーナー作成後_進捗一覧にタイトルコメント到達レベルが表示される', async ({
     page,
   }) => {
     await loginAsTrainer(page);
-    await openTrainerDashboard(page);
-    await expect(questCreateRegion(page)).toBeVisible();
+    await openAssignmentManage(page);
     await createQuestWithAchievementLevel(
       page,
       E_Q06_QUEST_NAME,
       E_Q06_SELECTED_ACHIEVEMENT_LEVEL,
       E_Q06_TITLE,
     );
+    await openTrainerDashboard(page);
     await expectTrainerQuestProgressDisplay(page, E_Q06_QUEST_NAME, {
       title: E_Q06_TITLE,
       comment: E_Q06_QUEST_NAME,

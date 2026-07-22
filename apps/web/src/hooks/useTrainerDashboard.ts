@@ -1,13 +1,12 @@
-import type { CreateQuestInput } from '@ojt-app/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { fetchConditionAlerts, type ConditionAlert } from '../api/conditionApi';
 import {
-  approveQuest,
-  createQuest,
-  fetchPendingQuests,
-  fetchTrainerQuestProgress,
+  approveAssignment,
+  fetchAssignmentManageList,
+  fetchPendingAssignments,
   type Quest,
-} from '../api/questApi';
+} from '../api/assignmentApi';
+import { assignmentToQuest } from '../domain/assignmentDisplay';
 import type { AuthUser } from '../auth/types';
 
 export function useTrainerDashboard(user: AuthUser | null) {
@@ -16,11 +15,12 @@ export function useTrainerDashboard(user: AuthUser | null) {
   const [progressQuests, setProgressQuests] = useState<Quest[]>([]);
 
   const reloadPendingQuests = useCallback(async (authUser: AuthUser) => {
-    setPendingQuests(await fetchPendingQuests(authUser));
+    setPendingQuests(await fetchPendingAssignments(authUser));
   }, []);
 
   const reloadProgressQuests = useCallback(async (authUser: AuthUser) => {
-    setProgressQuests(await fetchTrainerQuestProgress(authUser));
+    const assignments = await fetchAssignmentManageList(authUser);
+    setProgressQuests(assignments.map(assignmentToQuest));
   }, []);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function useTrainerDashboard(user: AuthUser | null) {
 
   const approveQuestAndReload = useCallback(
     async (questId: string, authUser: AuthUser): Promise<void> => {
-      await approveQuest(questId, authUser);
+      await approveAssignment(questId, authUser);
       await Promise.all([
         reloadPendingQuests(authUser),
         reloadProgressQuests(authUser),
@@ -44,19 +44,10 @@ export function useTrainerDashboard(user: AuthUser | null) {
     [reloadPendingQuests, reloadProgressQuests],
   );
 
-  const createQuestAndReload = useCallback(
-    async (input: CreateQuestInput, authUser: AuthUser): Promise<void> => {
-      await createQuest(input, authUser);
-      await reloadProgressQuests(authUser);
-    },
-    [reloadProgressQuests],
-  );
-
   return {
     alerts,
     pendingQuests,
     progressQuests,
     approveQuestAndReload,
-    createQuestAndReload,
   };
 }
