@@ -1,5 +1,13 @@
 export type QuestStatus = '未クリア' | '申請中' | 'クリア';
 
+export type {
+  MessageThread,
+  MessageThreadListItem,
+  SendMessageResult,
+  SendTemplateMessageResult,
+  ThreadChatMessage,
+} from './messageTypes.js';
+
 export interface CreateQuestInput {
   majorItem: string;
   minorItem: string;

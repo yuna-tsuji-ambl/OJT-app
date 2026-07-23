@@ -8,6 +8,7 @@ import {
 } from '../repositories/createPersistence.js';
 import { createAssignmentRouter } from '../routes/assignmentRoutes.js';
 import { createConditionRouter } from '../routes/conditionRoutes.js';
+import { createMessageRouter } from '../routes/messageRoutes.js';
 import { createQuestRouter } from '../routes/questRoutes.js';
 import { createStatusRouter } from '../routes/statusRoutes.js';
 
@@ -25,6 +26,8 @@ export async function createApiApp(
     assignmentRepository,
     trainerStatusStore,
     chatMessageStore,
+    threadStore,
+    threadChatMessageStore,
   } = await createPersistence();
 
   app.use(express.json());
@@ -42,7 +45,10 @@ export async function createApiApp(
   apiRouter.use(createConditionRouter(conditionRecordStore));
   apiRouter.use(createQuestRouter(assignmentRepository));
   apiRouter.use(createAssignmentRouter(assignmentRepository));
-  apiRouter.use(createStatusRouter(trainerStatusStore, chatMessageStore));
+  apiRouter.use(createStatusRouter(trainerStatusStore));
+  apiRouter.use(
+    createMessageRouter(chatMessageStore, threadStore, threadChatMessageStore),
+  );
 
   app.use('/api', apiRouter);
 

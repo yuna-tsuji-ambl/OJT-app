@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const e2eApiPort = process.env.E2E_API_PORT ?? '8081';
+// Firestore Emulator の既定ポート（8081）と競合しないよう E2E API は別ポートを使う
+const e2eApiPort = process.env.E2E_API_PORT ?? '8091';
 const apiProxyTarget = `http://localhost:${e2eApiPort}`;
 const apiServerCommand =
   'npm run build -w @ojt-app/shared && npm run build -w @ojt-app/api && npm run start -w @ojt-app/api';
@@ -27,7 +28,7 @@ export default defineConfig({
     {
       command: apiServerCommand,
       url: `${apiProxyTarget}/health`,
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: {
         PORT: e2eApiPort,
@@ -36,7 +37,7 @@ export default defineConfig({
     {
       command: 'npm run dev',
       url: 'http://localhost:5173',
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: {
         API_PROXY_TARGET: apiProxyTarget,

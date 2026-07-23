@@ -1,31 +1,67 @@
-import { sendQuickReply } from '../api/statusApi';
 import { useAuth } from '../auth/AuthContext';
-import { ChatHistory } from '../components/ChatHistory';
-import { ReplyStampBar } from '../components/ReplyStampBar';
-import { DEFAULT_TRAINEE_ID } from '../domain/statusConstants';
-import { useConversationMessages } from '../hooks/useConversationMessages';
+
+import { MessageThreadList } from '../components/MessageThreadList';
+
+import { TrainerNewMessageForm } from '../components/TrainerNewMessageForm';
+
+import { TrainerThreadDetailSection } from '../components/TrainerThreadDetailSection';
+
+import { useTrainerMessages } from '../hooks/useTrainerMessages';
 
 export function TrainerMessagesPage() {
   const { user } = useAuth();
-  const { messages, reloadMessages } = useConversationMessages(user);
+
+  const {
+    threads,
+
+    threadMessages,
+
+    selectedThreadId,
+
+    selectedNewMessageTemplateId,
+
+    setSelectedNewMessageTemplateId,
+
+    newMessageFreeTextContent,
+
+    setNewMessageFreeTextContent,
+
+    threadReplyForm,
+
+    selectThread,
+
+    sendNewMessage,
+  } = useTrainerMessages(user);
 
   if (!user) {
     return null;
   }
 
-  const authUser = user;
-
-  function handleReply(stamp: string): void {
-    void sendQuickReply(DEFAULT_TRAINEE_ID, stamp, authUser).then(() =>
-      reloadMessages(authUser),
-    );
-  }
-
   return (
     <section className="page-section" aria-labelledby="messages-heading">
       <h1 id="messages-heading">メッセージ</h1>
-      <ChatHistory messages={messages} />
-      <ReplyStampBar onReply={handleReply} />
+
+      <TrainerNewMessageForm
+        selectedTemplateId={selectedNewMessageTemplateId}
+
+        freeTextContent={newMessageFreeTextContent}
+
+        onSelectTemplate={setSelectedNewMessageTemplateId}
+
+        onFreeTextChange={setNewMessageFreeTextContent}
+
+        onSend={() => void sendNewMessage(user)}
+      />
+
+      <MessageThreadList threads={threads} onSelectThread={selectThread} />
+
+      <TrainerThreadDetailSection
+        selectedThreadId={selectedThreadId}
+
+        messages={threadMessages}
+
+        threadReplyForm={threadReplyForm}
+      />
     </section>
   );
 }

@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
+test.describe.configure({ mode: 'serial' });
+
 const ASSIGNMENT_CLEARED_LABEL = 'クリア（承認済み）';
 const NEW_ASSIGNMENT_TITLE = 'E-A01新規課題';
 const E_A02_ASSIGNMENT_TITLE = 'E-A02新規課題';
@@ -51,10 +53,6 @@ async function createAssignmentOnManage(
   achievementLevel: string = '1',
 ): Promise<void> {
   const createRegion = assignmentCreateRegion(page);
-  await createRegion.getByLabel('大項目').fill(majorItem);
-  await createRegion.getByLabel('タイトル').fill(title);
-  await createRegion.getByLabel('説明').fill('テスト説明');
-  await createRegion.getByLabel('到達レベル').selectOption(achievementLevel);
 
   const createResponse = page.waitForResponse(
     (response) =>
@@ -62,9 +60,20 @@ async function createAssignmentOnManage(
       response.request().method() === 'POST' &&
       response.ok(),
   );
+
+  await createRegion.getByLabel('大項目').fill(majorItem);
+  await createRegion.getByLabel('タイトル').fill(title);
+  await createRegion.getByLabel('説明').fill('テスト説明');
+  await createRegion.getByLabel('到達レベル').selectOption(achievementLevel);
+  await expect(createRegion.getByLabel('タイトル')).toHaveValue(title);
+  await expect(createRegion.getByLabel('到達レベル')).toHaveValue(
+    achievementLevel,
+  );
   await createRegion.getByRole('button', { name: '作成' }).click();
 
   await createResponse;
+  await expect(assignmentArticle(page, title)).toBeVisible();
+  await expect(createRegion.getByLabel('タイトル')).toHaveValue('');
 }
 
 async function requestAssignmentClear(
@@ -177,8 +186,15 @@ test.describe('E-A03 課題の編集・削除が新卒側に反映', () => {
     const editTarget = assignmentArticle(page, E_A03_ASSIGNMENT_TITLE);
     await editTarget.getByRole('button', { name: '編集' }).click();
     const editRegion = page.getByRole('region', { name: '課題編集' });
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        /\/api\/assignments\/[^/]+$/.test(new URL(response.url()).pathname) &&
+        response.request().method() === 'PUT' &&
+        response.ok(),
+    );
     await editRegion.getByLabel('タイトル').fill(E_A03_UPDATED_TITLE);
     await editRegion.getByRole('button', { name: '保存' }).click();
+    await updateResponse;
 
     const deleteResponse = page.waitForResponse(
       (response) =>

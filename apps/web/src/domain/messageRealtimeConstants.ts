@@ -1,0 +1,1 @@
+export const MESSAGE_UPDATE_POLL_INTERVAL_MS = 5000;
