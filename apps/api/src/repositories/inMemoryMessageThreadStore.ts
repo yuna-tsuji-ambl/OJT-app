@@ -14,6 +14,11 @@ export class InMemoryMessageThreadStore implements MessageThreadStore {
     return thread;
   }
 
+  async update(thread: MessageThread): Promise<MessageThread> {
+    this.threads.set(thread.id, { ...thread });
+    return thread;
+  }
+
   async listByParticipants(
     traineeId: string,
     trainerId: string,

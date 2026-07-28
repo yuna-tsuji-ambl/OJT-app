@@ -8,8 +8,13 @@ import { useTrainerThreadReply } from './useTrainerThreadReply';
 export function useTrainerMessages(user: AuthUser | null) {
   const {
     threads,
+    visibleThreads,
+    threadListPage,
+    threadListTotalPages,
+    goToNextThreadListPage,
     threadMessages,
-    selectedThreadId,
+    historyError,
+    inlineDetail,
     selectThread,
     syncThreadViews,
     reloadThreadList,
@@ -26,7 +31,7 @@ export function useTrainerMessages(user: AuthUser | null) {
     setSelectedReplyTemplateId,
     sendReply,
     sendStampReply,
-  } = useTrainerThreadReply(selectedThreadId, syncThreadViews);
+  } = useTrainerThreadReply(inlineDetail.selectedThreadId, syncThreadViews);
 
   const threadReplyForm = useMemo((): TrainerThreadReplyFormState => {
     return {
@@ -53,8 +58,13 @@ export function useTrainerMessages(user: AuthUser | null) {
 
   return {
     threads,
+    visibleThreads,
+    threadListPage,
+    threadListTotalPages,
+    goToNextThreadListPage,
     threadMessages,
-    selectedThreadId,
+    historyError,
+    inlineDetail,
     selectedNewMessageTemplateId,
     setSelectedNewMessageTemplateId,
     newMessageFreeTextContent,

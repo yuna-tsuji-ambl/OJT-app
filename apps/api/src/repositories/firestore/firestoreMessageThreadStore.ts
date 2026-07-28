@@ -29,6 +29,14 @@ export class FirestoreMessageThreadStore implements MessageThreadStore {
     return thread;
   }
 
+  async update(thread: MessageThread): Promise<MessageThread> {
+    await this.threadsCollection()
+      .doc(thread.id)
+      .set(toMessageThreadDocument(thread));
+
+    return thread;
+  }
+
   async listByParticipants(
     traineeId: string,
     trainerId: string,

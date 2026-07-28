@@ -1,6 +1,14 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import {
+  formatThreadUpdatedAtLocal,
+  MESSAGE_THREAD_LIST_PAGE_SIZE,
+} from '@ojt-app/shared';
+
+export { formatThreadUpdatedAtLocal };
 
 export const FREE_TEXT_INPUT_LABEL = '自由記述';
+
+const TRAINEE_HOME_QUESTION_TEMPLATE_FIELD_ID = 'question-template';
 
 export const QUESTION_TEMPLATE_TQ1_LABEL = '〇〇の件で3分いいですか？';
 
@@ -54,8 +62,141 @@ export const STAMP_REPLY_REGION_LABEL = 'スタンプ返信';
 
 export const REALTIME_UPDATE_TIMEOUT_MS = 10_000;
 
+export const MESSAGE_SENDER_SELF_LABEL = 'あなた';
+
+export const MESSAGE_SENDER_TRAINER_LABEL = 'トレーナー';
+
+export const MESSAGE_SENDER_TRAINEE_LABEL = '新卒';
+
+export const MESSAGE_THREAD_DETAIL_REGION_LABEL = 'スレッド詳細';
+
+export const MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR = 'data-state';
+
+export const MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE = 'open';
+
+export const MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE = 'closed';
+
+export const MESSAGE_THREAD_ROW_SELECTED_ATTR = 'aria-selected';
+
+export const MESSAGE_THREAD_LIST_NEXT_PAGE_LABEL = '次のページ';
+
+export const MESSAGE_THREAD_HISTORY_ERROR_PATTERN =
+  /履歴.*(取得|読み込み).*(できません|失敗)/;
+
+export { MESSAGE_THREAD_LIST_PAGE_SIZE };
+
+export type MessageSenderRole = 'self' | 'other';
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function messageThreadSenderBubble(
+  page: Page,
+  sender: MessageSenderRole,
+  messageText: string,
+): Locator {
+  return messageThreadRoomHistory(page).locator(
+    `article[data-sender="${sender}"]`,
+    { hasText: messageText },
+  );
+}
+
+export function messageThreadSenderName(
+  page: Page,
+  senderLabel: string,
+  messageText: string,
+): Locator {
+  return messageThreadRoomHistory(page).getByRole('article', {
+    name: new RegExp(`${senderLabel}[:：].*${escapeRegExp(messageText)}`),
+  });
+}
+
+export async function expectBubbleAlignedRight(
+  bubble: Locator,
+  container: Locator,
+): Promise<void> {
+  const bubbleBox = await bubble.boundingBox();
+  const containerBox = await container.boundingBox();
+
+  expect(bubbleBox).not.toBeNull();
+  expect(containerBox).not.toBeNull();
+
+  const bubbleCenterX = bubbleBox!.x + bubbleBox!.width / 2;
+  const containerCenterX = containerBox!.x + containerBox!.width / 2;
+
+  expect(bubbleCenterX).toBeGreaterThan(containerCenterX);
+}
+
+export async function expectBubbleAlignedLeft(
+  bubble: Locator,
+  container: Locator,
+): Promise<void> {
+  const bubbleBox = await bubble.boundingBox();
+  const containerBox = await container.boundingBox();
+
+  expect(bubbleBox).not.toBeNull();
+  expect(containerBox).not.toBeNull();
+
+  const bubbleCenterX = bubbleBox!.x + bubbleBox!.width / 2;
+  const containerCenterX = containerBox!.x + containerBox!.width / 2;
+
+  expect(bubbleCenterX).toBeLessThan(containerCenterX);
+}
+
+export function messageThreadUpdatedTime(
+  page: Page,
+  previewText: string,
+): Locator {
+  return messageThread(page, previewText).first().getByRole('time');
+}
+
+export async function expectMessageThreadUpdatedAt(
+  page: Page,
+  previewText: string,
+  sentAt: Date,
+): Promise<void> {
+  const updatedTime = messageThreadUpdatedTime(page, previewText);
+
+  await expect(updatedTime).toBeVisible();
+  await expect(updatedTime).toHaveText(formatThreadUpdatedAtLocal(sentAt));
+
+  const datetime = await updatedTime.getAttribute('datetime');
+  expect(datetime).toBeTruthy();
+
+  const parsed = new Date(datetime!);
+  const sentAtMinute = new Date(sentAt);
+  sentAtMinute.setSeconds(0, 0);
+  sentAtMinute.setMilliseconds(0);
+
+  const parsedMinute = new Date(parsed);
+  parsedMinute.setSeconds(0, 0);
+  parsedMinute.setMilliseconds(0);
+
+  expect(parsedMinute.getTime()).toBe(sentAtMinute.getTime());
+}
+
 export function messageThreadArticles(page: Page) {
-  return messageThreadList(page).getByRole('article');
+  return messageThreadList(page)
+    .locator(':scope > [role="listitem"]')
+    .getByRole('article');
+}
+
+export async function goToMessageThreadListPageContaining(
+  page: Page,
+  previewText: string,
+): Promise<void> {
+  const nextButton = messageThreadListNextPageButton(page);
+
+  while (
+    !(await messageThreadListItem(page, previewText, 'first').isVisible())
+  ) {
+    if (!(await nextButton.isVisible())) {
+      throw new Error(`Thread not found on any page: ${previewText}`);
+    }
+
+    await nextButton.click();
+  }
 }
 
 export async function expectRealtimeThreadOnTrainer(
@@ -71,8 +212,9 @@ export async function expectRealtimeMessageInTraineeHistory(
   page: Page,
   messageText: string,
 ): Promise<void> {
+  await expect(messageThreadDetail(page)).toBeVisible();
   await expect(
-    messageThreadHistory(page)
+    messageThreadRoomHistory(page)
       .getByRole('listitem')
       .filter({ hasText: messageText }),
   ).toBeVisible({ timeout: REALTIME_UPDATE_TIMEOUT_MS });
@@ -172,7 +314,9 @@ export async function expectRealtimeMessageInTrainerThreadHistory(
 }
 
 export function messageSendRegion(page: Page) {
-  return page.getByRole('region', { name: 'メッセージ送信' });
+  return page
+    .locator(`#${TRAINEE_HOME_QUESTION_TEMPLATE_FIELD_ID}`)
+    .locator('xpath=ancestor::*[@role="region"][1]');
 }
 
 export function messageThreadList(page: Page) {
@@ -180,7 +324,9 @@ export function messageThreadList(page: Page) {
 }
 
 export function messageThread(page: Page, previewText: string) {
-  return messageThreadList(page).getByRole('article', { name: previewText });
+  return messageThreadList(page)
+    .getByRole('listitem')
+    .getByRole('article', { name: previewText, exact: true });
 }
 
 export function messageThreadDetail(page: Page) {
@@ -203,6 +349,48 @@ export function messageThreadRoomHistory(page: Page) {
 
 export function messageThreadBubbles(page: Page) {
   return messageThreadRoomHistory(page).getByRole('article');
+}
+
+const MESSAGE_THREAD_HISTORY_SCROLL_TOLERANCE_PX = 1;
+
+export async function expectMessageThreadHistoryScrolledToBottom(
+  history: Locator,
+): Promise<void> {
+  await expect(history).toBeVisible();
+
+  const isScrolledToBottom = await history.evaluate(
+    (element, tolerance) =>
+      element.scrollTop + element.clientHeight >=
+      element.scrollHeight - tolerance,
+    MESSAGE_THREAD_HISTORY_SCROLL_TOLERANCE_PX,
+  );
+
+  expect(isScrolledToBottom).toBe(true);
+}
+
+export async function expectMessageBubbleWithinHistoryViewport(
+  history: Locator,
+  bubble: Locator,
+): Promise<void> {
+  await expect(bubble).toBeVisible();
+
+  const isWithinViewport = await bubble.evaluate((bubbleElement, tolerance) => {
+    const historyElement = bubbleElement.closest('[role="log"]');
+
+    if (!historyElement) {
+      return false;
+    }
+
+    const historyRect = historyElement.getBoundingClientRect();
+    const bubbleRect = bubbleElement.getBoundingClientRect();
+
+    return (
+      bubbleRect.bottom <= historyRect.bottom + tolerance &&
+      bubbleRect.top >= historyRect.top - tolerance
+    );
+  }, MESSAGE_THREAD_HISTORY_SCROLL_TOLERANCE_PX);
+
+  expect(isWithinViewport).toBe(true);
 }
 
 export async function sendFollowUpInThreadRoom(
@@ -348,6 +536,26 @@ export async function sendSelectedMessage(page: Page): Promise<void> {
   await messageSendRegion(page).getByRole('button', { name: '送信' }).click();
 
   await sendResponse;
+  await waitForMessageThreadsLoaded(page);
+}
+
+async function closeOpenInlineMessageThread(page: Page): Promise<void> {
+  const openDetail = openInlineMessageThreadDetails(page);
+
+  if ((await openDetail.count()) === 0) {
+    return;
+  }
+
+  await expect(openDetail).toBeVisible();
+
+  const threadId = await openDetail.getAttribute('data-thread-id');
+
+  if (!threadId) {
+    return;
+  }
+
+  await messageThreadRowById(page, threadId).getByRole('article').click();
+  await expect(openDetail).toBeHidden();
 }
 
 export function questionTemplateCombobox(page: Page) {
@@ -396,11 +604,322 @@ export async function sendFreeTextMessage(
       response.request().method() === 'POST' &&
       response.ok(),
   );
-  const threadsLoaded = waitForMessageThreadsLoaded(page);
 
   await freeTextInput(page).fill(content);
   await messageSendRegion(page).getByRole('button', { name: '送信' }).click();
 
   await sendResponse;
-  await threadsLoaded;
+  await waitForMessageThreadsLoaded(page);
+  await expect(
+    messageThreadList(page)
+      .getByRole('listitem')
+      .first()
+      .getByRole('article', { name: content, exact: true }),
+  ).toBeVisible();
+  await closeOpenInlineMessageThread(page);
+}
+
+export function messageThreadListItem(
+  page: Page,
+  previewText: string,
+  position: MessageThreadRowPosition = 'first',
+): Locator {
+  const matchingRows = messageThreadList(page)
+    .getByRole('listitem')
+    .filter({
+      has: page.getByRole('article', { name: previewText, exact: true }),
+    });
+
+  if (position === 'first') {
+    return matchingRows.first();
+  }
+
+  return matchingRows.last();
+}
+
+export type MessageThreadRowPosition = 'first' | 'last';
+
+export function messageThreadRowById(page: Page, threadId: string): Locator {
+  return messageThreadList(page).locator(
+    `[role="listitem"][data-thread-id="${threadId}"]`,
+  );
+}
+
+export function inlineMessageThreadDetailAfterThreadId(
+  page: Page,
+  threadId: string,
+): Locator {
+  return messageThreadRowById(page, threadId).locator(
+    `xpath=following-sibling::*[1][@role="region"][@aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"]`,
+  );
+}
+
+export function inlineMessageThreadDetailAfterRow(
+  page: Page,
+  previewText: string,
+  position: MessageThreadRowPosition = 'first',
+  threadId?: string,
+): Locator {
+  if (threadId) {
+    return inlineMessageThreadDetailAfterThreadId(page, threadId);
+  }
+
+  return messageThreadListItem(page, previewText, position).locator(
+    `xpath=following-sibling::*[1][@role="region"][@aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"]`,
+  );
+}
+
+export function openInlineMessageThreadDetails(page: Page): Locator {
+  return page.locator(
+    `[role="region"][aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"][${MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR}="${MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE}"]`,
+  );
+}
+
+export function messageThreadListNextPageButton(page: Page): Locator {
+  return page.getByRole('button', {
+    name: MESSAGE_THREAD_LIST_NEXT_PAGE_LABEL,
+  });
+}
+
+export function messageThreadHistoryError(page: Page): Locator {
+  return page.getByRole('alert');
+}
+
+export async function clickClosedMessageThreadRow(page: Page): Promise<void> {
+  const closedDetail = page.locator(
+    `[role="region"][aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"][${MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR}="${MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE}"]`,
+  );
+
+  await closedDetail
+    .locator('xpath=preceding-sibling::*[@role="listitem"][1]')
+    .getByRole('article')
+    .click();
+}
+
+export async function clickMessageThreadRow(
+  page: Page,
+  previewText: string,
+  position: MessageThreadRowPosition = 'first',
+): Promise<string> {
+  const row = messageThreadListItem(page, previewText, position);
+
+  await row.getByRole('article', { name: previewText, exact: true }).click();
+
+  const threadId = await row.getAttribute('data-thread-id');
+
+  if (!threadId) {
+    throw new Error(`Thread row not found for preview: ${previewText}`);
+  }
+
+  return threadId;
+}
+
+export async function clickMessageThreadRowAndWaitForHistory(
+  page: Page,
+  previewText: string,
+  position: MessageThreadRowPosition = 'first',
+): Promise<void> {
+  const historyLoaded = waitForThreadHistoryLoaded(page);
+  const threadId = await clickMessageThreadRow(page, previewText, position);
+
+  await historyLoaded;
+  await expectInlineDetailOpenAfterRow(page, previewText, position, threadId);
+}
+
+export async function expectInlineDetailOpenAfterRow(
+  page: Page,
+  previewText: string,
+  position: MessageThreadRowPosition = 'first',
+  threadId?: string,
+): Promise<void> {
+  const detail = inlineMessageThreadDetailAfterRow(
+    page,
+    previewText,
+    position,
+    threadId,
+  );
+
+  await expect
+    .poll(async () => detail.isVisible(), {
+      timeout: REALTIME_UPDATE_TIMEOUT_MS,
+    })
+    .toBe(true);
+  await expect(detail).toHaveAttribute(
+    MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
+    MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+  );
+  await expect(detail.getByRole('log', { name: 'スレッド履歴' })).toBeVisible();
+}
+
+export async function expectInlineDetailClosedAfterRow(
+  page: Page,
+  previewText: string,
+): Promise<void> {
+  const detail = inlineMessageThreadDetailAfterRow(page, previewText);
+
+  await expect(detail).toHaveAttribute(
+    MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
+    MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+  );
+  await expect(detail).toBeHidden();
+}
+
+export async function expectMessageThreadRowSelected(
+  page: Page,
+  previewText: string,
+): Promise<void> {
+  await expect(messageThread(page, previewText).first()).toHaveAttribute(
+    MESSAGE_THREAD_ROW_SELECTED_ATTR,
+    'true',
+  );
+}
+
+export async function expectMessageThreadRowNotSelected(
+  page: Page,
+  previewText: string,
+): Promise<void> {
+  await expect(messageThread(page, previewText).first()).toHaveAttribute(
+    MESSAGE_THREAD_ROW_SELECTED_ATTR,
+    'false',
+  );
+}
+
+export async function expectOpenInlineDetailsCount(
+  page: Page,
+  count: number,
+): Promise<void> {
+  await expect(openInlineMessageThreadDetails(page)).toHaveCount(count);
+}
+
+export async function expectInlineDetailOpensWithExpandingHeight(
+  page: Page,
+  previewText: string,
+): Promise<void> {
+  const threadId = await clickMessageThreadRow(page, previewText);
+  const detail = inlineMessageThreadDetailAfterThreadId(page, threadId);
+
+  await expectInlineDetailOpenAfterRow(page, previewText, 'first', threadId);
+  await expect(detail).toBeVisible();
+  await expect(detail).toHaveAttribute(
+    MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
+    MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+  );
+
+  await expect
+    .poll(async () =>
+      detail.evaluate((element) => element.getBoundingClientRect().height),
+    )
+    .toBeGreaterThan(0);
+}
+
+export async function expectInlineDetailClosesWithCollapsingHeight(
+  page: Page,
+  previewText: string,
+): Promise<void> {
+  const openedDetail = openInlineMessageThreadDetails(page);
+  const threadId = await openedDetail.getAttribute('data-thread-id');
+
+  if (!threadId) {
+    throw new Error(
+      `Open inline detail thread id not found for: ${previewText}`,
+    );
+  }
+
+  const detail = inlineMessageThreadDetailAfterThreadId(page, threadId);
+  const heightBefore = await detail.evaluate(
+    (element) => element.getBoundingClientRect().height,
+  );
+
+  expect(heightBefore).toBeGreaterThan(0);
+
+  await clickMessageThreadRow(page, previewText, 'first');
+
+  await expect(detail).toHaveAttribute(
+    MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
+    MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+  );
+  await expect
+    .poll(async () =>
+      detail.evaluate((element) => element.getBoundingClientRect().height),
+    )
+    .toBeLessThan(heightBefore);
+  await expect(detail).toBeHidden();
+}
+
+export async function expectInlineDetailSwitchBetweenRows(
+  page: Page,
+  fromPreview: string,
+  toPreview: string,
+): Promise<void> {
+  await clickMessageThreadRowAndWaitForHistory(page, toPreview);
+
+  await expectOpenInlineDetailsCount(page, 1);
+  await expectInlineDetailOpenAfterRow(page, toPreview);
+  await expectMessageThreadRowSelected(page, toPreview);
+  await expectMessageThreadRowNotSelected(page, fromPreview);
+  await expect(
+    inlineMessageThreadDetailAfterRow(page, fromPreview),
+  ).toHaveCount(0);
+  await expect(
+    inlineMessageThreadDetailAfterRow(page, toPreview)
+      .getByRole('log', { name: 'スレッド履歴' })
+      .getByRole('article')
+      .filter({ hasText: toPreview }),
+  ).toBeVisible();
+}
+
+export async function seedTraineeFreeTextThreads(
+  page: Page,
+  count: number,
+  contentPrefix: string,
+): Promise<readonly string[]> {
+  const previews: string[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const content = `${contentPrefix}-${String(index + 1).padStart(2, '0')}`;
+    previews.push(content);
+    await sendFreeTextMessage(page, content);
+  }
+
+  return previews;
+}
+
+export async function mockEmptyMessageThreadList(page: Page): Promise<void> {
+  await page.route('**/api/status/messages?*view=threads*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '[]',
+    });
+  });
+}
+
+export async function mockMessageThreadHistoryFailure(
+  page: Page,
+): Promise<void> {
+  await page.route('**/api/status/messages?*view=thread*', async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Failed to load thread history' }),
+    });
+  });
+}
+
+export async function assertInlineOpenCloseAndSwitchBehavior(
+  page: Page,
+  threadA: string,
+  threadB: string,
+): Promise<void> {
+  await clickMessageThreadRowAndWaitForHistory(page, threadA);
+  await expectInlineDetailOpenAfterRow(page, threadA);
+  await expectMessageThreadRowSelected(page, threadA);
+
+  await clickMessageThreadRow(page, threadA);
+  await expectInlineDetailClosedAfterRow(page, threadA);
+
+  await clickMessageThreadRowAndWaitForHistory(page, threadA);
+  await expectInlineDetailOpenAfterRow(page, threadA);
+
+  await expectInlineDetailSwitchBetweenRows(page, threadA, threadB);
 }

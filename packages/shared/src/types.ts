@@ -2,6 +2,7 @@ export type QuestStatus = '未クリア' | '申請中' | 'クリア';
 
 export type {
   MessageThread,
+  MessageThreadId,
   MessageThreadListItem,
   SendMessageResult,
   SendTemplateMessageResult,

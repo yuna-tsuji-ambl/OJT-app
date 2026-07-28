@@ -1,4 +1,5 @@
 import type { ThreadChatMessage } from '@ojt-app/shared';
+import type { AuthUser } from '../auth/types';
 import {
   THREAD_QUESTION_FREE_TEXT_FIELD_ID,
   THREAD_QUESTION_TEMPLATE_FIELD_ID,
@@ -10,17 +11,19 @@ import { QuestionForm } from './QuestionForm';
 import { TraineeStampReplyBar } from './TraineeStampReplyBar';
 
 interface TraineeThreadHistorySectionProps {
+  viewer: AuthUser;
   selectedThreadId: string | null;
   messages: ThreadChatMessage[];
   threadReplyForm: TraineeThreadReplyFormState;
 }
 
 export function TraineeThreadHistorySection({
+  viewer,
   selectedThreadId,
   messages,
   threadReplyForm,
 }: TraineeThreadHistorySectionProps) {
-  const history = <MessageThreadHistory messages={messages} />;
+  const history = <MessageThreadHistory messages={messages} viewer={viewer} />;
 
   if (!selectedThreadId) {
     return history;

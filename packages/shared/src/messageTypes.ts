@@ -8,6 +8,8 @@ export interface MessageThread {
   updatedAt: string;
 }
 
+export type MessageThreadId = MessageThread['id'];
+
 export interface ThreadChatMessage {
   id: string;
   threadId: string;

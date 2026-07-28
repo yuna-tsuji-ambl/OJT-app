@@ -1,4 +1,5 @@
 import { persistNewMessageThread } from '../domain/persistNewMessageThread.js';
+import { persistUpdatedMessageThread } from '../domain/persistUpdatedMessageThread.js';
 import { selectMissedThreadChatMessages } from '../domain/messageRealtimeSync.js';
 import type {
   MessageThread,
@@ -7,7 +8,6 @@ import type {
   ThreadMessageBuilder,
 } from '../domain/messageTypes.js';
 import { createSendMessageResult } from '../domain/sendMessageResult.js';
-import type { MessageThreadStore } from '../repositories/messageThreadStore.js';
 import type { ThreadChatMessageStore } from '../repositories/threadChatMessageStore.js';
 import type { MessagePersistenceStores } from './messagePersistenceStores.js';
 import { requireParticipantThread } from './messageThreadLoader.js';
@@ -21,14 +21,6 @@ interface NewThreadParticipants {
 
 type NewThreadSender = 'trainee' | 'trainer';
 
-async function createMessageThread(
-  threadStore: MessageThreadStore,
-  traineeId: string,
-  trainerId: string,
-): Promise<MessageThread> {
-  return persistNewMessageThread(threadStore, { traineeId, trainerId });
-}
-
 async function deliverThreadChatMessage(
   messageStore: ThreadChatMessageStore,
   result: SendMessageResult,
@@ -38,17 +30,22 @@ async function deliverThreadChatMessage(
 }
 
 export async function appendMessageToThread(
-  messageStore: ThreadChatMessageStore,
+  stores: MessagePersistenceStores,
   thread: MessageThread,
   senderId: string,
   receiverId: string,
   buildMessage: ThreadMessageBuilder,
 ): Promise<SendMessageResult> {
   const message = buildMessage(thread.id, senderId, receiverId);
+  const updatedThread = await persistUpdatedMessageThread(
+    stores.threadStore,
+    thread,
+    message.createdAt,
+  );
 
   return deliverThreadChatMessage(
-    messageStore,
-    createSendMessageResult(thread, message),
+    stores.messageStore,
+    createSendMessageResult(updatedThread, message),
   );
 }
 
@@ -69,14 +66,13 @@ async function sendNewThreadMessage(
   buildMessage: ThreadMessageBuilder,
 ): Promise<SendMessageResult> {
   const { traineeId, trainerId, senderId, receiverId } = participants;
-  const thread = await createMessageThread(
-    stores.threadStore,
+  const thread = await persistNewMessageThread(stores.threadStore, {
     traineeId,
     trainerId,
-  );
+  });
 
   return appendMessageToThread(
-    stores.messageStore,
+    stores,
     thread,
     senderId,
     receiverId,

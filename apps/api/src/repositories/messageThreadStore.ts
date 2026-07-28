@@ -5,6 +5,7 @@ import type {
 
 export interface MessageThreadStore {
   create(input: CreateMessageThreadInput): Promise<MessageThread>;
+  update(thread: MessageThread): Promise<MessageThread>;
   listByParticipants(
     traineeId: string,
     trainerId: string,

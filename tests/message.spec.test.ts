@@ -21,6 +21,41 @@ import {
   messageThreadHistory,
   messageThreadList,
   messageThreadRoomHistory,
+  messageThreadSenderBubble,
+  messageThreadSenderName,
+  MESSAGE_SENDER_SELF_LABEL,
+  MESSAGE_SENDER_TRAINEE_LABEL,
+  MESSAGE_SENDER_TRAINER_LABEL,
+  expectBubbleAlignedLeft,
+  expectBubbleAlignedRight,
+  expectMessageBubbleWithinHistoryViewport,
+  expectMessageThreadHistoryScrolledToBottom,
+  expectMessageThreadUpdatedAt,
+  assertInlineOpenCloseAndSwitchBehavior,
+  clickMessageThreadRow,
+  clickMessageThreadRowAndWaitForHistory,
+  expectInlineDetailClosesWithCollapsingHeight,
+  expectInlineDetailClosedAfterRow,
+  expectInlineDetailOpenAfterRow,
+  expectInlineDetailOpensWithExpandingHeight,
+  expectInlineDetailSwitchBetweenRows,
+  expectMessageThreadRowNotSelected,
+  expectMessageThreadRowSelected,
+  expectOpenInlineDetailsCount,
+  goToMessageThreadListPageContaining,
+  inlineMessageThreadDetailAfterRow,
+  inlineMessageThreadDetailAfterThreadId,
+  messageThreadHistoryError,
+  messageThreadRowById,
+  MESSAGE_THREAD_HISTORY_ERROR_PATTERN,
+  MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+  MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+  MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
+  MESSAGE_THREAD_LIST_PAGE_SIZE,
+  mockEmptyMessageThreadList,
+  mockMessageThreadHistoryFailure,
+  openInlineMessageThreadDetails,
+  seedTraineeFreeTextThreads,
   openMessageThread,
   openTrainerMessages,
   openTrainerMessagesAndWaitForThreads,
@@ -62,6 +97,12 @@ const E_M11_INITIAL_MESSAGE = 'E-M11 LINE風ルームの初回メッセージ';
 const E_M11_FOLLOW_UP_MESSAGE = 'E-M11追記の自由記述です';
 const E_M12_QUESTION_CONTENT = 'E-M12スタンプバー配置の確認です';
 const E_M13_QUESTION_CONTENT = 'E-M13新卒敬語スタンプ返信の確認です';
+const E_M14_QUESTION_CONTENT = 'E-M14送信者表示の確認です';
+const E_M16_QUESTION_CONTENT = `E-M16下端固定の確認です。${'スクロール検証用の長文です。'.repeat(30)}`;
+
+const E_M17_THREAD_A_CONTENT = 'E-M17ルームAのメッセージ';
+const E_M17_THREAD_B_CONTENT = 'E-M17ルームBのメッセージ';
+const E_M17_PAGING_PREFIX = 'E-M17-paging';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -384,6 +425,14 @@ test.describe('E-M08 リアルタイム反映（手動リロード不要）', ()
 
       await selectQuestionTemplate(traineePage, QUESTION_TEMPLATE_TQ1_LABEL);
       await sendSelectedMessage(traineePage);
+      await expect(messageThreadDetail(traineePage)).toBeVisible({
+        timeout: REALTIME_UPDATE_TIMEOUT_MS,
+      });
+      await expect(
+        messageThreadRoomHistory(traineePage)
+          .getByRole('listitem')
+          .filter({ hasText: QUESTION_TEMPLATE_TQ1_LABEL }),
+      ).toBeVisible({ timeout: REALTIME_UPDATE_TIMEOUT_MS });
 
       await expect(messageThreadArticles(trainerPage)).toHaveCount(
         threadsBefore + 1,
@@ -399,7 +448,7 @@ test.describe('E-M08 リアルタイム反映（手動リロード不要）', ()
 
       await expectRealtimeMessageInTraineeHistory(traineePage, STAMP_ST1_LABEL);
 
-      const history = messageThreadHistory(traineePage);
+      const history = messageThreadRoomHistory(traineePage);
       const messages = history.getByRole('listitem');
 
       await expect(messages).toHaveCount(2, {
@@ -679,5 +728,634 @@ test.describe('E-M13 新卒が敬語スタンプで返信', () => {
       await traineeContext.close();
       await trainerContext.close();
     }
+  });
+});
+
+/**
+ * E-M14: メッセージの送信者表示（LINE 風）
+ * 観点: CUJ / 操作性 / 連携
+ *
+ * 手順:
+ * 1. 新卒が質問を送信し、トレーナーが当該ルームで TT2 で返信
+ * 2. 新卒で当該ルームを開く
+ * 3. トレーナーでも同一ルームを開く
+ *
+ * 期待結果（表示）:
+ * - 新卒画面で自分のメッセージが右寄せ、トレーナーの返信が左寄せかつ「トレーナー」等の名前が見えること
+ * - トレーナー画面では自分の返信が右寄せ、新卒の質問が左寄せかつ「新卒」等の名前が見えること
+ *
+ * 期待結果（データ）:
+ * - 質問・返信送信 API（POST /api/status/messages）が成功する
+ * - 同一 threadId の履歴に 2 件のメッセージが保存されること
+ */
+test.describe('E-M14 メッセージの送信者表示（LINE 風）', () => {
+  test('双方のルーム詳細で自分は右寄せ相手は左寄せかつ送信者名が表示される', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openTraineeHome(page);
+    await sendFreeTextMessage(page, E_M14_QUESTION_CONTENT);
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerMessages(page);
+    await openMessageThread(page, E_M14_QUESTION_CONTENT);
+    await selectReplyTemplate(page, REPLY_TEMPLATE_TT2_LABEL);
+    await sendTrainerReply(page);
+
+    await logout(page);
+    await loginAsTrainee(page);
+    await openTraineeHome(page);
+    await openMessageThread(page, E_M14_QUESTION_CONTENT);
+
+    await expect(messageThreadDetail(page)).toBeVisible();
+
+    const traineeHistory = messageThreadRoomHistory(page);
+    const traineeSelfBubble = messageThreadSenderBubble(
+      page,
+      'self',
+      E_M14_QUESTION_CONTENT,
+    );
+    const traineeOtherBubble = messageThreadSenderBubble(
+      page,
+      'other',
+      REPLY_TEMPLATE_TT2_LABEL,
+    );
+
+    await expect(traineeSelfBubble).toBeVisible();
+    await expect(traineeOtherBubble).toBeVisible();
+    await expect(
+      messageThreadSenderName(
+        page,
+        MESSAGE_SENDER_SELF_LABEL,
+        E_M14_QUESTION_CONTENT,
+      ),
+    ).toBeVisible();
+    await expect(
+      messageThreadSenderName(
+        page,
+        MESSAGE_SENDER_TRAINER_LABEL,
+        REPLY_TEMPLATE_TT2_LABEL,
+      ),
+    ).toBeVisible();
+    await expectBubbleAlignedRight(traineeSelfBubble, traineeHistory);
+    await expectBubbleAlignedLeft(traineeOtherBubble, traineeHistory);
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerMessages(page);
+    await openMessageThread(page, E_M14_QUESTION_CONTENT);
+
+    await expect(messageThreadDetail(page)).toBeVisible();
+
+    const trainerHistory = messageThreadRoomHistory(page);
+    const trainerSelfBubble = messageThreadSenderBubble(
+      page,
+      'self',
+      REPLY_TEMPLATE_TT2_LABEL,
+    );
+    const trainerOtherBubble = messageThreadSenderBubble(
+      page,
+      'other',
+      E_M14_QUESTION_CONTENT,
+    );
+
+    await expect(trainerSelfBubble).toBeVisible();
+    await expect(trainerOtherBubble).toBeVisible();
+    await expect(
+      messageThreadSenderName(
+        page,
+        MESSAGE_SENDER_SELF_LABEL,
+        REPLY_TEMPLATE_TT2_LABEL,
+      ),
+    ).toBeVisible();
+    await expect(
+      messageThreadSenderName(
+        page,
+        MESSAGE_SENDER_TRAINEE_LABEL,
+        E_M14_QUESTION_CONTENT,
+      ),
+    ).toBeVisible();
+    await expectBubbleAlignedRight(trainerSelfBubble, trainerHistory);
+    await expectBubbleAlignedLeft(trainerOtherBubble, trainerHistory);
+  });
+});
+
+/**
+ * E-M15: ルーム一覧に最終やり取り日時を表示
+ * 観点: CUJ / 連携 / 操作性
+ *
+ * 手順:
+ * 1. 新卒で TQ1 を送信（送信直後の日時を記録）
+ * 2. `/home` のルーム一覧を確認
+ * 3. トレーナーで `/messages` の一覧も確認
+ *
+ * 期待結果（表示）:
+ * - 当該ルーム行に送信日時と一致する `YYYY年M月D日 H:mm` 形式の日時が表示されること（新卒・トレーナー双方）
+ *
+ * 期待結果（データ）:
+ * - メッセージ送信 API（POST /api/status/messages）が成功する
+ * - ルーム一覧 API（GET ...&view=threads）の `thread.updatedAt` が直近メッセージ時刻と一致すること
+ */
+test.describe('E-M15 ルーム一覧に最終やり取り日時を表示', () => {
+  test('新卒TQ1送信後_双方のルーム一覧に送信日時がYYYY年M月D日H:mm形式で表示される', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+
+    const threadsLoaded = waitForMessageThreadsLoaded(page);
+    await openTraineeHome(page);
+    await threadsLoaded;
+
+    await selectQuestionTemplate(page, QUESTION_TEMPLATE_TQ1_LABEL);
+    await sendSelectedMessage(page);
+    const sentAt = new Date();
+
+    await expect(messageThreadList(page)).toBeVisible();
+    await expect(
+      messageThread(page, QUESTION_TEMPLATE_TQ1_LABEL).first(),
+    ).toBeVisible();
+    await expectMessageThreadUpdatedAt(
+      page,
+      QUESTION_TEMPLATE_TQ1_LABEL,
+      sentAt,
+    );
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerMessagesAndWaitForThreads(page);
+
+    await expect(
+      messageThread(page, QUESTION_TEMPLATE_TQ1_LABEL).first(),
+    ).toBeVisible();
+    await expectMessageThreadUpdatedAt(
+      page,
+      QUESTION_TEMPLATE_TQ1_LABEL,
+      sentAt,
+    );
+  });
+});
+
+/**
+ * E-M16: ルーム開封時にチャット欄下端へ視点固定
+ * 観点: CUJ / 操作性 / 連携
+ *
+ * 手順:
+ * 1. 新卒が質問を送信し、トレーナーが TT2 で返信
+ * 2. 新卒で当該ルームを開く
+ * 3. トレーナーでも同一ルームを開く
+ *
+ * 期待結果（表示）:
+ * - 双方ともルーム開封直後に最新メッセージ（TT2）が表示範囲内にあること
+ * - 履歴コンテナ（role="log"）のスクロール位置が最下部であること
+ *
+ * 期待結果（データ）:
+ * - 質問・返信送信 API（POST /api/status/messages）が成功する
+ * - ルーム詳細 API（GET ...&view=thread）が時系列で履歴を返すこと
+ *
+ * 備考: 履歴がスクロール領域を超えるよう長文質問を用い、下端固定の検証を安定化する
+ */
+test.describe('E-M16 ルーム開封時にチャット欄下端へ視点固定', () => {
+  test('双方がルーム開封直後に最新メッセージが表示範囲内かつ履歴が最下部にスクロールされる', async ({
+    page,
+  }) => {
+    await loginAsTrainee(page);
+    await openTraineeHome(page);
+    await sendFreeTextMessage(page, E_M16_QUESTION_CONTENT);
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerMessages(page);
+    await openMessageThread(page, E_M16_QUESTION_CONTENT);
+    await selectReplyTemplate(page, REPLY_TEMPLATE_TT2_LABEL);
+    await sendTrainerReply(page);
+
+    await logout(page);
+    await loginAsTrainee(page);
+    await openTraineeHome(page);
+    await openMessageThread(page, E_M16_QUESTION_CONTENT);
+
+    await expect(messageThreadDetail(page)).toBeVisible();
+
+    const traineeHistory = messageThreadRoomHistory(page);
+    const traineeLatestBubble = messageThreadSenderBubble(
+      page,
+      'other',
+      REPLY_TEMPLATE_TT2_LABEL,
+    );
+
+    await expect(traineeLatestBubble).toBeVisible();
+    await expectMessageThreadHistoryScrolledToBottom(traineeHistory);
+    await expectMessageBubbleWithinHistoryViewport(
+      traineeHistory,
+      traineeLatestBubble,
+    );
+
+    await logout(page);
+    await loginAsTrainer(page);
+    await openTrainerMessages(page);
+    await openMessageThread(page, E_M16_QUESTION_CONTENT);
+
+    await expect(messageThreadDetail(page)).toBeVisible();
+
+    const trainerHistory = messageThreadRoomHistory(page);
+    const trainerLatestBubble = messageThreadSenderBubble(
+      page,
+      'self',
+      REPLY_TEMPLATE_TT2_LABEL,
+    );
+
+    await expect(trainerLatestBubble).toBeVisible();
+    await expectMessageThreadHistoryScrolledToBottom(trainerHistory);
+    await expectMessageBubbleWithinHistoryViewport(
+      trainerHistory,
+      trainerLatestBubble,
+    );
+  });
+});
+
+/**
+ * E-M17 スレッド一覧インライン展開（R-M17）
+ *
+ * シリアル実行の前テスト状態を引き継がないよう、各ケース前にページをリロードする。
+ */
+test.describe('E-M17 スレッド一覧インライン展開', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  });
+
+  /**
+   * E-M17: ルーム選択で直下にチャット欄が開き履歴が表示される
+   * 観点: CUJ / 操作性 / 連携
+   * 対応: TC-MSG-UI-001〜006, TC-MSG-UI-010
+   *
+   * 手順:
+   * 1. 新卒でスレッド2件以上を用意
+   * 2. 2件目のルーム行をクリック
+   *
+   * 期待結果（表示）:
+   * - 選択行の DOM 直後に `role="region"`（スレッド詳細）が下方向展開で表示される
+   * - `role="log"` に履歴が表示される
+   * - 選択行のみ選択色（`aria-selected="true"`）
+   */
+  test.describe('E-M17 ルーム選択で直下にチャット欄が開き履歴が表示される', () => {
+    test('ルーム行選択_直下に詳細が開き履歴表示と選択色が付く', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await sendFreeTextMessage(page, E_M17_THREAD_B_CONTENT);
+
+      await expectInlineDetailOpensWithExpandingHeight(
+        page,
+        E_M17_THREAD_B_CONTENT,
+      );
+      await expectInlineDetailOpenAfterRow(page, E_M17_THREAD_B_CONTENT);
+      await expectMessageThreadRowSelected(page, E_M17_THREAD_B_CONTENT);
+      await expectMessageThreadRowNotSelected(page, E_M17_THREAD_A_CONTENT);
+      await expect(
+        inlineMessageThreadDetailAfterRow(page, E_M17_THREAD_B_CONTENT)
+          .getByRole('log', { name: 'スレッド履歴' })
+          .getByRole('article')
+          .filter({ hasText: E_M17_THREAD_B_CONTENT }),
+      ).toBeVisible();
+    });
+
+    test('先頭ルーム選択_先頭li直後に詳細が表示される', async ({ page }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await sendFreeTextMessage(page, E_M17_THREAD_B_CONTENT);
+
+      await clickMessageThreadRowAndWaitForHistory(
+        page,
+        E_M17_THREAD_B_CONTENT,
+      );
+      await expectInlineDetailOpenAfterRow(page, E_M17_THREAD_B_CONTENT);
+    });
+
+    test('末尾ルーム選択_末尾li直後に詳細が表示される', async ({ page }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await sendFreeTextMessage(page, E_M17_THREAD_B_CONTENT);
+
+      await clickMessageThreadRowAndWaitForHistory(
+        page,
+        E_M17_THREAD_A_CONTENT,
+        'last',
+      );
+      await expectInlineDetailOpenAfterRow(
+        page,
+        E_M17_THREAD_A_CONTENT,
+        'last',
+      );
+    });
+  });
+
+  /**
+   * E-M17-02: 同一ルーム再クリックで閉じる
+   * 観点: CUJ / 操作性
+   * 対応: TC-MSG-UI-008, TC-MSG-UI-013（開→閉）, TC-MSG-UI-023（開→閉）
+   *
+   * 手順:
+   * 1. 新卒でスレッド1件を用意しルームAを選択（チャット欄表示中）
+   * 2. ルームAを再クリック
+   *
+   * 期待結果（表示）:
+   * - 閉じアニメーション（高さ減少）後、チャット欄（`role="region"`）が非表示
+   * - `data-state="closed"`、選択行は非選択色（`aria-selected="false"`）
+   *
+   * 期待結果（データ）:
+   * - 同一ルームのトグル閉じのため、新規の履歴 API 呼び出しは不要
+   */
+  test.describe('E-M17-02 同一ルーム再クリックで閉じる', () => {
+    test('選択中ルーム再クリック_閉じアニメーション後に詳細が非表示になる', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+
+      await clickMessageThreadRowAndWaitForHistory(
+        page,
+        E_M17_THREAD_A_CONTENT,
+      );
+      await expectInlineDetailOpenAfterRow(page, E_M17_THREAD_A_CONTENT);
+      await expectMessageThreadRowSelected(page, E_M17_THREAD_A_CONTENT);
+
+      await expectInlineDetailClosesWithCollapsingHeight(
+        page,
+        E_M17_THREAD_A_CONTENT,
+      );
+
+      await expectOpenInlineDetailsCount(page, 0);
+      await expectInlineDetailClosedAfterRow(page, E_M17_THREAD_A_CONTENT);
+      await expectMessageThreadRowNotSelected(page, E_M17_THREAD_A_CONTENT);
+    });
+  });
+
+  /**
+   * E-M17-03: 閉じた後に再オープンできる
+   * 観点: CUJ / 操作性
+   * 対応: TC-MSG-UI-009
+   */
+  test.describe('E-M17-03 閉じた後に再オープンできる', () => {
+    test('閉状態から再クリック_開くアニメーションで履歴が再表示される', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await clickMessageThreadRowAndWaitForHistory(
+        page,
+        E_M17_THREAD_A_CONTENT,
+      );
+
+      const openedDetail = openInlineMessageThreadDetails(page);
+      const threadId = await openedDetail.getAttribute('data-thread-id');
+
+      if (!threadId) {
+        throw new Error('Open inline detail thread id not found');
+      }
+
+      const detail = inlineMessageThreadDetailAfterThreadId(page, threadId);
+      const openedRow = messageThreadRowById(page, threadId);
+
+      await openedRow.getByRole('article').click();
+      await expect(detail).toHaveAttribute(
+        MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
+        MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+      );
+      await expect(detail).toBeHidden();
+
+      await openedRow.getByRole('article').click();
+      await expect(detail).toHaveAttribute(
+        MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
+        MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+      );
+      await expect(
+        detail.getByRole('log', { name: 'スレッド履歴' }),
+      ).toBeVisible();
+    });
+  });
+
+  /**
+   * E-M17-04: 別ルーム選択時は閉じてから開く
+   * 観点: CUJ / 操作性
+   * 対応: TC-MSG-UI-007, TC-MSG-UI-011, TC-MSG-UI-014, TC-MSG-UI-024
+   */
+  test.describe('E-M17-04 別ルーム選択時は閉じてから開く', () => {
+    test('ルームA表示中にルームB選択_B直下に1つだけ開きBのみ選択色', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await sendFreeTextMessage(page, E_M17_THREAD_B_CONTENT);
+      await clickMessageThreadRowAndWaitForHistory(
+        page,
+        E_M17_THREAD_A_CONTENT,
+      );
+
+      await expectInlineDetailSwitchBetweenRows(
+        page,
+        E_M17_THREAD_A_CONTENT,
+        E_M17_THREAD_B_CONTENT,
+      );
+    });
+  });
+
+  /**
+   * E-M17-05: スレッド0件は空状態のみ
+   * 観点: 異常系 / 境界値
+   * 対応: TC-MSG-UI-012
+   */
+  test.describe('E-M17-05 スレッド0件は空状態のみ', () => {
+    test('スレッド0件_クリック可能なルーム行とチャット欄がない', async ({
+      page,
+    }) => {
+      await mockEmptyMessageThreadList(page);
+      await loginAsTrainee(page);
+      await openTraineeHome(page);
+
+      await expect(messageThreadList(page)).toBeVisible();
+      await expect(messageThreadArticles(page)).toHaveCount(0);
+      await expect(openInlineMessageThreadDetails(page)).toHaveCount(0);
+    });
+  });
+
+  /**
+   * E-M17-06: 履歴取得失敗時にエラーメッセージ
+   * 観点: 異常系 / 連携
+   * 対応: TC-MSG-UI-015
+   */
+  test.describe('E-M17-06 履歴取得失敗時にエラーメッセージ', () => {
+    test('履歴APIエラー時_エラーメッセージ表示しクラッシュしない', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await mockMessageThreadHistoryFailure(page);
+
+      await clickMessageThreadRow(page, E_M17_THREAD_A_CONTENT);
+
+      await expect(messageThreadHistoryError(page)).toBeVisible();
+      await expect(messageThreadHistoryError(page)).toHaveText(
+        MESSAGE_THREAD_HISTORY_ERROR_PATTERN,
+      );
+      await expect(page.getByRole('heading', { name: 'ホーム' })).toBeVisible();
+    });
+  });
+
+  /**
+   * E-M17-07: 新卒・トレーナー双方で同一挙動
+   * 観点: CUJ / 操作性
+   * 対応: TC-MSG-UI-021
+   */
+  test.describe('E-M17-07 新卒・トレーナー双方で同一挙動', () => {
+    test('新卒画面で開閉と別ルーム切替が仕様どおり動作する', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await sendFreeTextMessage(page, E_M17_THREAD_B_CONTENT);
+
+      await assertInlineOpenCloseAndSwitchBehavior(
+        page,
+        E_M17_THREAD_A_CONTENT,
+        E_M17_THREAD_B_CONTENT,
+      );
+    });
+
+    test('トレーナー画面で開閉と別ルーム切替が仕様どおり動作する', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+      await openTraineeHome(page);
+      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
+      await sendFreeTextMessage(page, E_M17_THREAD_B_CONTENT);
+
+      await logout(page);
+      await loginAsTrainer(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTrainerMessages(page);
+      await threadsLoaded;
+
+      await assertInlineOpenCloseAndSwitchBehavior(
+        page,
+        E_M17_THREAD_A_CONTENT,
+        E_M17_THREAD_B_CONTENT,
+      );
+    });
+  });
+
+  /**
+   * E-M17-08: 一覧20件境界（20件目・21件目）
+   * 観点: 境界値 / 操作性
+   * 対応: TC-MSG-UI-018〜020
+   */
+  test.describe('E-M17-08 一覧20件境界（20件目・21件目）', () => {
+    test('21件表示時_20件目と21件目の直後にそれぞれ詳細が開く', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      const previews = await seedTraineeFreeTextThreads(
+        page,
+        MESSAGE_THREAD_LIST_PAGE_SIZE + 1,
+        E_M17_PAGING_PREFIX,
+      );
+
+      await expect(messageThreadArticles(page)).toHaveCount(
+        MESSAGE_THREAD_LIST_PAGE_SIZE,
+      );
+
+      const twentiethVisiblePreview = previews[1];
+      const twentyFirstOverallPreview = previews[0];
+
+      await clickMessageThreadRowAndWaitForHistory(
+        page,
+        twentiethVisiblePreview,
+      );
+      await expectInlineDetailOpenAfterRow(page, twentiethVisiblePreview);
+
+      await clickMessageThreadRow(page, twentiethVisiblePreview);
+      await expectInlineDetailClosedAfterRow(page, twentiethVisiblePreview);
+
+      await goToMessageThreadListPageContaining(
+        page,
+        twentyFirstOverallPreview,
+      );
+
+      await clickMessageThreadRowAndWaitForHistory(
+        page,
+        twentyFirstOverallPreview,
+      );
+      await expectInlineDetailOpenAfterRow(page, twentyFirstOverallPreview);
+    });
+
+    test('21件表示時_1ページ目先頭選択でページングと干渉しない', async ({
+      page,
+    }) => {
+      await loginAsTrainee(page);
+
+      const threadsLoaded = waitForMessageThreadsLoaded(page);
+      await openTraineeHome(page);
+      await threadsLoaded;
+
+      const previews = await seedTraineeFreeTextThreads(
+        page,
+        MESSAGE_THREAD_LIST_PAGE_SIZE + 1,
+        E_M17_PAGING_PREFIX,
+      );
+      const newestPreview = previews[MESSAGE_THREAD_LIST_PAGE_SIZE];
+
+      await clickMessageThreadRowAndWaitForHistory(page, newestPreview);
+      await expectInlineDetailOpenAfterRow(page, newestPreview);
+      await expect(messageThreadArticles(page)).toHaveCount(
+        MESSAGE_THREAD_LIST_PAGE_SIZE,
+      );
+    });
   });
 });

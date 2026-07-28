@@ -16,9 +16,15 @@ export function useTraineeHomeMessaging(user: AuthUser | null) {
   } = useTraineeMessageSend(user);
   const {
     threads,
+    visibleThreads,
+    threadListPage,
+    threadListTotalPages,
+    goToNextThreadListPage,
     threadMessages,
-    selectedThreadId,
+    historyError,
+    inlineDetail,
     selectThread,
+    clearInlineThreadSelection,
     syncThreadViews,
   } = useMessageThreadRooms(user);
   const {
@@ -28,14 +34,21 @@ export function useTraineeHomeMessaging(user: AuthUser | null) {
     setFreeTextContent: setThreadFreeTextContent,
     sendThreadMessage,
     sendStampReply,
-  } = useTraineeThreadReply(selectedThreadId, syncThreadViews);
+  } = useTraineeThreadReply(inlineDetail.selectedThreadId, syncThreadViews);
 
   const sendMessage = useCallback(
     async (authUser: AuthUser): Promise<void> => {
-      await sendTraineeMessage(authUser);
+      const result = await sendTraineeMessage(authUser);
+
+      if (result?.thread.id) {
+        await syncThreadViews(authUser, result.thread.id);
+        return;
+      }
+
       await syncThreadViews(authUser);
+      clearInlineThreadSelection();
     },
-    [sendTraineeMessage, syncThreadViews],
+    [clearInlineThreadSelection, sendTraineeMessage, syncThreadViews],
   );
 
   const threadReplyForm = useMemo((): TraineeThreadReplyFormState => {
@@ -69,7 +82,12 @@ export function useTraineeHomeMessaging(user: AuthUser | null) {
     messages,
     threadMessages,
     threads,
-    selectedThreadId,
+    visibleThreads,
+    threadListPage,
+    threadListTotalPages,
+    goToNextThreadListPage,
+    historyError,
+    inlineDetail,
     selectedTemplateId,
     freeTextContent,
     threadReplyForm,

@@ -20,6 +20,25 @@ export {
 export { LEGACY_QUICK_REPLY_CONTENT } from './domain/legacyMessageConstants.js';
 export { MESSAGE_UPDATE_POLL_INTERVAL_MS } from './domain/messageRealtimeConstants.js';
 export {
+  applyMessageThreadSelection,
+  selectInlineMessageThread,
+  FIRST_MESSAGE_THREAD_LIST_PAGE,
+  MESSAGE_THREAD_LIST_PAGE_SIZE,
+  paginateMessageThreads,
+  isEmptyPaginatedMessageThreads,
+  isInlineThreadDetailOpen,
+  resolveInlineThreadSelection,
+  shouldCloseInlineThreadSelection,
+  shouldSwitchInlineThreadSelection,
+} from '@ojt-app/shared';
+export type {
+  MessageThreadId,
+  MessageThreadSelection,
+  PaginatedMessageThreads,
+  ReloadMessageThreadHistory,
+  SetMessageThreadSelection,
+} from '@ojt-app/shared';
+export {
   REPLY_TEMPLATE_TT2_CONTENT,
   REPLY_TEMPLATE_TT2_ID,
   REPLY_TEMPLATE_TT4_CONTENT,

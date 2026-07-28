@@ -26,7 +26,6 @@ import {
   STAMP_ST1_ID,
   TRAINEE_STAMP_STS2_CONTENT,
   TRAINEE_STAMP_STS2_ID,
-  type MessageThread,
   type MessageThreadListItem,
   type MessageThreadStore,
   type SendTemplateMessageResult,
@@ -56,6 +55,28 @@ import {
   QUESTION_TEMPLATE_TQ5_CONTENT,
   QUESTION_TEMPLATE_TQ5_ID,
 } from '../domain/messageConstants.js';
+import {
+  isThreadHistoryViewportAnchored,
+  selectThreadViewportAnchorMessage,
+} from '../domain/messageThreadViewport.js';
+import {
+  FIRST_MESSAGE_THREAD_LIST_PAGE,
+  MESSAGE_THREAD_LIST_PAGE_SIZE,
+  applyMessageThreadSelection,
+  applyInlineMessageThreadDetailSelection,
+  isEmptyPaginatedMessageThreads,
+  isInlineThreadDetailOpen,
+  isInlineMessageThreadRowSelected,
+  paginateMessageThreads,
+  resolveInlineMessageThreadDetailState,
+  resolveInlineThreadSelection,
+  selectInlineMessageThread,
+  shouldClearInlineMessageThreadDetailOnThreadCountIncrease,
+  shouldCloseInlineThreadSelection,
+  shouldSwitchInlineThreadSelection,
+  MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+  MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+} from '@ojt-app/shared';
 import { resetFirestoreForTests } from '../firestore/client.js';
 import { prepareFirestoreMessageTestEnvironment } from '../repositories/firestore/firestoreMessageTestSupport.js';
 import { reconnectFirestoreMessagePersistence } from '../repositories/reconnectFirestoreMessagePersistence.js';
@@ -68,6 +89,20 @@ import {
   sendIm04TwoNewThreads,
   sendTraineeTq1NewThread,
 } from './messageFirestoreTestHelpers.js';
+import {
+  MOCK_MESSAGE_THREAD as CREATED_THREAD,
+  U_M19_REALISTIC_THREAD_ID,
+  U_M19_THREAD_A,
+  U_M21_THREAD_B,
+  U_M23_TRAINEE_USER,
+  U_M23_THREAD_SELECTION_CASES,
+  U_M24_INLINE_DESELECT_CASES,
+  buildR_M17_THREAD_ID,
+  createMessageThreadSelectionMocks,
+  createMockMessageThreadStore,
+  createR_M17_THREAD_LIST,
+  expectThreadWithLatestActivity,
+} from './messageTestHelpers.js';
 
 const TRAINEE_USER_ID = 'trainee-1';
 const TRAINER_USER_ID = 'trainer-1';
@@ -80,14 +115,6 @@ const I_M04_SECOND_MESSAGE_CONTENT = 'レビューをお願いしたいです';
 const I_M05_FIRST_SENT_AT = new Date('2026-07-22T05:00:00.000Z');
 const I_M05_SECOND_SENT_AT = new Date('2026-07-22T05:00:05.000Z');
 const I_M05_SECOND_MESSAGE_CONTENT = 'わからないことがあるので教えてください';
-
-const CREATED_THREAD: MessageThread = {
-  id: 'thread-1',
-  traineeId: TRAINEE_USER_ID,
-  trainerId: TRAINER_USER_ID,
-  createdAt: '2026-07-22T03:00:00.000Z',
-  updatedAt: '2026-07-22T03:00:00.000Z',
-};
 
 /**
  * U-M01: 新卒がテンプレートで新規メッセージ送信
@@ -104,11 +131,7 @@ describe('U-M01 新卒がテンプレートで新規メッセージ送信', () =
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
-      create: vi.fn().mockResolvedValue(CREATED_THREAD),
-      listByParticipants: vi.fn().mockResolvedValue([]),
-      getById: vi.fn(),
-    };
+    threadStore = createMockMessageThreadStore({ getById: vi.fn() });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([]),
@@ -145,7 +168,7 @@ describe('U-M01 新卒がテンプレートで新規メッセージ送信', () =
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.message).toMatchObject(expectedMessageFields);
     expect(result.message.id).toEqual(expect.any(String));
     expect(result.message.createdAt).toEqual(expect.any(String));
@@ -167,11 +190,7 @@ describe('U-M02 新卒が自由記述で新規メッセージ送信', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
-      create: vi.fn().mockResolvedValue(CREATED_THREAD),
-      listByParticipants: vi.fn().mockResolvedValue([]),
-      getById: vi.fn(),
-    };
+    threadStore = createMockMessageThreadStore({ getById: vi.fn() });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([]),
@@ -207,7 +226,7 @@ describe('U-M02 新卒が自由記述で新規メッセージ送信', () => {
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.message).toMatchObject(expectedMessageFields);
     expect(result.message.id).toEqual(expect.any(String));
     expect(result.message.createdAt).toEqual(expect.any(String));
@@ -259,11 +278,7 @@ describe('R-M01 新卒のテンプレートまたは自由記述でのメッセ�
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
-      create: vi.fn().mockResolvedValue(CREATED_THREAD),
-      listByParticipants: vi.fn().mockResolvedValue([]),
-      getById: vi.fn(),
-    };
+    threadStore = createMockMessageThreadStore({ getById: vi.fn() });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([]),
@@ -303,7 +318,7 @@ describe('R-M01 新卒のテンプレートまたは自由記述でのメッセ�
         expect.objectContaining(expectedMessageFields),
       );
 
-      expect(result.thread).toEqual(CREATED_THREAD);
+      expectThreadWithLatestActivity(result.thread, result.message);
       expect(result.message).toMatchObject(expectedMessageFields);
       expect(result.message.type).toBe('template');
       expect(result.message.templateId).toBe(templateId);
@@ -339,7 +354,7 @@ describe('R-M01 新卒のテンプレートまたは自由記述でのメッセ�
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.message).toMatchObject(expectedMessageFields);
     expect(result.message.type).toBe('text');
     expect(result.message.content).toBe(R_M01_FREE_TEXT_CONTENT);
@@ -721,11 +736,10 @@ describe('R-M11 Slack風スタンプバーからのスタンプ送信', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([]),
@@ -761,7 +775,7 @@ describe('R-M11 Slack風スタンプバーからのスタンプ送信', () => {
         expect.objectContaining(expectedMessageFields),
       );
 
-      expect(result.thread).toEqual(CREATED_THREAD);
+      expectThreadWithLatestActivity(result.thread, result.message);
       expect(result.message).toMatchObject(expectedMessageFields);
       expect(result.message.type).toBe('stamp');
       expect(result.message.content).toBe(content);
@@ -795,11 +809,10 @@ describe('R-M12 新卒敬語スタンプでのクイック返信', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([]),
@@ -836,7 +849,7 @@ describe('R-M12 新卒敬語スタンプでのクイック返信', () => {
         expect.objectContaining(expectedMessageFields),
       );
 
-      expect(result.thread).toEqual(CREATED_THREAD);
+      expectThreadWithLatestActivity(result.thread, result.message);
       expect(result.message).toMatchObject(expectedMessageFields);
       expect(result.message.type).toBe('stamp');
       expect(result.message.stampId).toBe(stampId);
@@ -901,11 +914,11 @@ describe('U-M03 トレーナーが受信メッセージ一覧を取得', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn().mockResolvedValue([CREATED_THREAD]),
       getById: vi.fn(),
-    };
+    });
     messageStore = {
       append: vi.fn(),
       listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
@@ -955,11 +968,10 @@ describe('U-M04 トレーナーがスレッドにテンプレートで返信', (
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
@@ -996,7 +1008,7 @@ describe('U-M04 トレーナーがスレッドにテンプレートで返信', (
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.message).toMatchObject(expectedMessageFields);
     expect(result.message.id).toEqual(expect.any(String));
     expect(result.message.createdAt).toEqual(expect.any(String));
@@ -1021,11 +1033,10 @@ describe('U-M05 トレーナーがスレッドに自由記述で返信', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
@@ -1060,7 +1071,7 @@ describe('U-M05 トレーナーがスレッドに自由記述で返信', () => {
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.message).toMatchObject(expectedMessageFields);
     expect(result.message.id).toEqual(expect.any(String));
     expect(result.message.createdAt).toEqual(expect.any(String));
@@ -1086,11 +1097,10 @@ describe('U-M06 トレーナーがスタンプで返信', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
@@ -1125,7 +1135,7 @@ describe('U-M06 トレーナーがスタンプで返信', () => {
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.message).toMatchObject(expectedMessageFields);
     expect(result.message.id).toEqual(expect.any(String));
     expect(result.message.createdAt).toEqual(expect.any(String));
@@ -1169,11 +1179,10 @@ describe('U-M07 新卒がスレッド履歴を取得', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn(),
       listByThreadId: vi.fn().mockResolvedValue(U_M07_THREAD_HISTORY),
@@ -1227,11 +1236,7 @@ describe('U-M08 トレーナーが新規メッセージでスレッド開始', (
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
-      create: vi.fn().mockResolvedValue(CREATED_THREAD),
-      listByParticipants: vi.fn().mockResolvedValue([]),
-      getById: vi.fn(),
-    };
+    threadStore = createMockMessageThreadStore({ getById: vi.fn() });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([]),
@@ -1270,7 +1275,7 @@ describe('U-M08 トレーナーが新規メッセージでスレッド開始', (
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.thread.traineeId).toBe(TRAINEE_USER_ID);
     expect(result.thread.trainerId).toBe(TRAINER_USER_ID);
     expect(result.message).toMatchObject(expectedMessageFields);
@@ -1297,11 +1302,11 @@ describe('U-M09 空の自由記述は送信拒否', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
       getById: vi.fn(),
-    };
+    });
     messageStore = {
       append: vi.fn(),
       listByThreadId: vi.fn(),
@@ -1357,11 +1362,11 @@ describe('U-M10 未選択テンプレートは送信拒否', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
       getById: vi.fn(),
-    };
+    });
     messageStore = {
       append: vi.fn(),
       listByThreadId: vi.fn(),
@@ -1416,11 +1421,11 @@ describe('U-M11 参加者以外はメッセージ取得不可', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn().mockResolvedValue([CREATED_THREAD]),
       getById: vi.fn(),
-    };
+    });
     messageStore = {
       append: vi.fn(),
       listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
@@ -1459,11 +1464,11 @@ describe('U-M12 存在しないスレッドへの返信拒否', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
       getById: vi.fn().mockResolvedValue(null),
-    };
+    });
     messageStore = {
       append: vi.fn(),
       listByThreadId: vi.fn(),
@@ -1506,11 +1511,11 @@ describe('U-M13 新卒がトレーナー宛以外に送信不可', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
       getById: vi.fn(),
-    };
+    });
     messageStore = {
       append: vi.fn(),
       listByThreadId: vi.fn(),
@@ -1656,11 +1661,10 @@ describe('U-M15 新卒が敬語スタンプで返信', () => {
   let messageStore: ThreadChatMessageStore;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi
@@ -1698,7 +1702,7 @@ describe('U-M15 新卒が敬語スタンプで返信', () => {
       expect.objectContaining(expectedMessageFields),
     );
 
-    expect(result.thread).toEqual(CREATED_THREAD);
+    expectThreadWithLatestActivity(result.thread, result.message);
     expect(result.message).toMatchObject(expectedMessageFields);
     expect(result.message.id).toEqual(expect.any(String));
     expect(result.message.createdAt).toEqual(expect.any(String));
@@ -1738,6 +1742,804 @@ describe('U-M16 レガシー「後で話そう」返信の廃止', () => {
 });
 
 /**
+ * U-M17: ルーム一覧に最終更新日時を返す
+ *
+ * 前提条件: 新卒がメッセージ送信済み（返信ケースではトレーナー返信済み）
+ * アクション: `GET /api/status/messages?trainerId&traineeId&view=threads` 相当（`listMessageThreads`）
+ * 期待結果: 各 `MessageThreadListItem.thread.updatedAt` が当該ルームの **直近メッセージ** の `createdAt` と一致すること
+ *
+ * 結合境界: messageFacade → messageService → MessageThreadStore / ThreadChatMessageStore
+ * （インメモリストアで送受信フローを検証。HTTP 層・E2E は対象外）
+ *
+ * 要件 ID 単位の網羅のため U-M14（並び順）と重複するが、日時の意味（最終やり取り）を検証する。
+ */
+describe('U-M17 ルーム一覧に最終更新日時を返す', () => {
+  const U_M17_INITIAL_SENT_AT = new Date('2026-07-23T05:00:00.000Z');
+  const U_M17_REPLY_SENT_AT = new Date('2026-07-23T05:00:10.000Z');
+
+  let threadStore: InMemoryMessageThreadStore;
+  let messageStore: InMemoryThreadChatMessageStore;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(U_M17_INITIAL_SENT_AT);
+    threadStore = new InMemoryMessageThreadStore();
+    messageStore = new InMemoryThreadChatMessageStore();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function latestThreadChatMessage(
+    messages: ThreadChatMessage[],
+  ): ThreadChatMessage {
+    return [...messages].sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() -
+        new Date(left.createdAt).getTime(),
+    )[0]!;
+  }
+
+  it('listMessageThreads_新卒初回送信後_updatedAtが直近メッセージ時刻と一致する', async () => {
+    const sendResult: SendTemplateMessageResult =
+      await sendTraineeTemplateMessage(
+        {
+          templateId: QUESTION_TEMPLATE_TQ1_ID,
+          trainerId: TRAINER_USER_ID,
+        },
+        TRAINEE_USER_ID,
+        'trainee',
+        threadStore,
+        messageStore,
+      );
+
+    const threadList: MessageThreadListItem[] = await listMessageThreads(
+      TRAINER_USER_ID,
+      TRAINEE_USER_ID,
+      TRAINEE_USER_ID,
+      'trainee',
+      threadStore,
+      messageStore,
+    );
+
+    const history: ThreadChatMessage[] = await listThreadChatMessages(
+      TRAINER_USER_ID,
+      TRAINEE_USER_ID,
+      sendResult.thread.id,
+      TRAINEE_USER_ID,
+      'trainee',
+      threadStore,
+      messageStore,
+    );
+    const latestMessage = latestThreadChatMessage(history);
+
+    expect(threadList).toHaveLength(1);
+    expect(threadList[0]?.thread.updatedAt).toBe(latestMessage.createdAt);
+    expect(threadList[0]?.thread.updatedAt).toBe(sendResult.message.createdAt);
+    expect(threadList[0]?.thread.updatedAt).toBe(sendResult.thread.updatedAt);
+  });
+
+  it.each([
+    {
+      role: 'trainee' as const,
+      userId: TRAINEE_USER_ID,
+      label: '新卒コンテキスト',
+    },
+    {
+      role: 'trainer' as const,
+      userId: TRAINER_USER_ID,
+      label: 'トレーナーコンテキスト',
+    },
+  ])(
+    'listMessageThreads_$labelでトレーナー返信後_updatedAtが直近メッセージ時刻と一致する',
+    async ({ role, userId }) => {
+      const initialResult: SendTemplateMessageResult =
+        await sendTraineeTemplateMessage(
+          {
+            templateId: QUESTION_TEMPLATE_TQ1_ID,
+            trainerId: TRAINER_USER_ID,
+          },
+          TRAINEE_USER_ID,
+          'trainee',
+          threadStore,
+          messageStore,
+        );
+
+      vi.setSystemTime(U_M17_REPLY_SENT_AT);
+
+      const replyResult: SendTrainerTemplateReplyResult =
+        await sendTrainerTemplateReply(
+          {
+            threadId: initialResult.thread.id,
+            templateId: REPLY_TEMPLATE_TT2_ID,
+          },
+          TRAINER_USER_ID,
+          'trainer',
+          threadStore,
+          messageStore,
+        );
+
+      const threadList: MessageThreadListItem[] = await listMessageThreads(
+        TRAINER_USER_ID,
+        TRAINEE_USER_ID,
+        userId,
+        role,
+        threadStore,
+        messageStore,
+      );
+
+      const history: ThreadChatMessage[] = await listThreadChatMessages(
+        TRAINER_USER_ID,
+        TRAINEE_USER_ID,
+        initialResult.thread.id,
+        userId,
+        role,
+        threadStore,
+        messageStore,
+      );
+      const latestMessage = latestThreadChatMessage(history);
+
+      expect(threadList).toHaveLength(1);
+      expect(threadList[0]?.thread.updatedAt).toBe(latestMessage.createdAt);
+      expect(threadList[0]?.thread.updatedAt).toBe(
+        replyResult.message.createdAt,
+      );
+      expect(threadList[0]?.thread.updatedAt).not.toBe(
+        initialResult.message.createdAt,
+      );
+      expect(
+        new Date(threadList[0]!.thread.updatedAt).getTime(),
+      ).toBeGreaterThan(new Date(initialResult.message.createdAt).getTime());
+    },
+  );
+});
+
+/**
+ * R-M16: ルーム開封時にチャット欄下端へ視点固定（API 契約）
+ *
+ * UI のスクロール位置は E-M16 で検証する。API 層ではルーム詳細取得時に返す履歴が
+ * **昇順（古い→新しい）** であり、**末尾が最新メッセージ（viewport アンカー）** であることを保証する。
+ *
+ * 結合境界: messageThreadViewport（純関数） / messageFacade → messageService → messageThreadDetailQuery
+ * （インメモリストアで送受信フローを検証。HTTP 層・E2E は対象外）
+ *
+ * 要件 ID 単位の網羅のため U-M07 / R-M10（時系列）と重複するが、下端固定の API 契約を検証する。
+ */
+describe('R-M16 ルーム開封時に履歴末尾が最新メッセージである', () => {
+  it('selectThreadViewportAnchorMessage_逆順配列_最新createdAtのメッセージを返す', () => {
+    const anchor = selectThreadViewportAnchorMessage([
+      U_M04_TRAINER_TEMPLATE_REPLY,
+      U_M01_HEAD_MESSAGE,
+    ]);
+
+    expect(anchor).toEqual(U_M04_TRAINER_TEMPLATE_REPLY);
+    expect(anchor?.createdAt).toBe(U_M04_REPLY_MESSAGE_CREATED_AT);
+  });
+
+  it('isThreadHistoryViewportAnchored_末尾が最新でない配列_falseを返す', () => {
+    expect(
+      isThreadHistoryViewportAnchored([
+        U_M04_TRAINER_TEMPLATE_REPLY,
+        U_M01_HEAD_MESSAGE,
+      ]),
+    ).toBe(false);
+  });
+
+  it('isThreadHistoryViewportAnchored_末尾が最新の昇順配列_trueを返す', () => {
+    expect(
+      isThreadHistoryViewportAnchored([
+        U_M01_HEAD_MESSAGE,
+        U_M04_TRAINER_TEMPLATE_REPLY,
+      ]),
+    ).toBe(true);
+  });
+});
+
+/**
+ * U-M18: ルーム開封時に履歴末尾が最新メッセージである
+ *
+ * 前提条件: 新卒が質問送信済み（返信ケースではトレーナー TT2 返信済み）
+ * アクション: `GET /api/status/messages?view=thread&threadId=...` 相当（`listThreadChatMessages`）
+ * 期待結果: 返却配列の **末尾** が当該ルームの最新メッセージであり、`thread.updatedAt` と一致すること
+ *
+ * 結合境界: messageFacade → messageService → messageThreadDetailQuery → messageThreadViewport
+ * （インメモリストアで送受信フローを検証。HTTP 層・E2E は対象外）
+ */
+describe('U-M18 ルーム開封時に履歴末尾が最新メッセージである', () => {
+  const U_M18_INITIAL_SENT_AT = new Date('2026-07-23T05:10:00.000Z');
+  const U_M18_REPLY_SENT_AT = new Date('2026-07-23T05:10:10.000Z');
+
+  let threadStore: InMemoryMessageThreadStore;
+  let messageStore: InMemoryThreadChatMessageStore;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(U_M18_INITIAL_SENT_AT);
+    threadStore = new InMemoryMessageThreadStore();
+    messageStore = new InMemoryThreadChatMessageStore();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function latestThreadChatMessage(
+    messages: ThreadChatMessage[],
+  ): ThreadChatMessage {
+    return [...messages].sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() -
+        new Date(left.createdAt).getTime(),
+    )[0]!;
+  }
+
+  it('listThreadChatMessages_新卒初回送信後_履歴末尾が最新メッセージかつupdatedAtと一致する', async () => {
+    const sendResult: SendTemplateMessageResult =
+      await sendTraineeTemplateMessage(
+        {
+          templateId: QUESTION_TEMPLATE_TQ1_ID,
+          trainerId: TRAINER_USER_ID,
+        },
+        TRAINEE_USER_ID,
+        'trainee',
+        threadStore,
+        messageStore,
+      );
+
+    const threadList: MessageThreadListItem[] = await listMessageThreads(
+      TRAINER_USER_ID,
+      TRAINEE_USER_ID,
+      TRAINEE_USER_ID,
+      'trainee',
+      threadStore,
+      messageStore,
+    );
+
+    const history: ThreadChatMessage[] = await listThreadChatMessages(
+      TRAINER_USER_ID,
+      TRAINEE_USER_ID,
+      sendResult.thread.id,
+      TRAINEE_USER_ID,
+      'trainee',
+      threadStore,
+      messageStore,
+    );
+
+    const latestMessage = latestThreadChatMessage(history);
+    const viewportAnchor = selectThreadViewportAnchorMessage(history);
+
+    expect(history).toHaveLength(1);
+    expect(isThreadHistoryViewportAnchored(history)).toBe(true);
+    expect(history[history.length - 1]).toEqual(latestMessage);
+    expect(history[history.length - 1]).toEqual(viewportAnchor);
+    expect(history[history.length - 1]?.createdAt).toBe(
+      sendResult.message.createdAt,
+    );
+    expect(threadList[0]?.thread.updatedAt).toBe(
+      history[history.length - 1]?.createdAt,
+    );
+  });
+
+  it.each([
+    {
+      role: 'trainee' as const,
+      userId: TRAINEE_USER_ID,
+      label: '新卒コンテキスト',
+    },
+    {
+      role: 'trainer' as const,
+      userId: TRAINER_USER_ID,
+      label: 'トレーナーコンテキスト',
+    },
+  ])(
+    'listThreadChatMessages_$labelでトレーナー返信後_履歴末尾が最新メッセージかつupdatedAtと一致する',
+    async ({ role, userId }) => {
+      const initialResult: SendTemplateMessageResult =
+        await sendTraineeTemplateMessage(
+          {
+            templateId: QUESTION_TEMPLATE_TQ1_ID,
+            trainerId: TRAINER_USER_ID,
+          },
+          TRAINEE_USER_ID,
+          'trainee',
+          threadStore,
+          messageStore,
+        );
+
+      vi.setSystemTime(U_M18_REPLY_SENT_AT);
+
+      const replyResult: SendTrainerTemplateReplyResult =
+        await sendTrainerTemplateReply(
+          {
+            threadId: initialResult.thread.id,
+            templateId: REPLY_TEMPLATE_TT2_ID,
+          },
+          TRAINER_USER_ID,
+          'trainer',
+          threadStore,
+          messageStore,
+        );
+
+      const threadList: MessageThreadListItem[] = await listMessageThreads(
+        TRAINER_USER_ID,
+        TRAINEE_USER_ID,
+        userId,
+        role,
+        threadStore,
+        messageStore,
+      );
+
+      const history: ThreadChatMessage[] = await listThreadChatMessages(
+        TRAINER_USER_ID,
+        TRAINEE_USER_ID,
+        initialResult.thread.id,
+        userId,
+        role,
+        threadStore,
+        messageStore,
+      );
+
+      const latestMessage = latestThreadChatMessage(history);
+      const viewportAnchor = selectThreadViewportAnchorMessage(history);
+
+      expect(history).toHaveLength(2);
+      expect(isThreadHistoryViewportAnchored(history)).toBe(true);
+      expect(history[history.length - 1]).toEqual(latestMessage);
+      expect(history[history.length - 1]).toEqual(viewportAnchor);
+      expect(history[history.length - 1]).toEqual(replyResult.message);
+      expect(history[history.length - 1]?.createdAt).toBe(
+        replyResult.message.createdAt,
+      );
+      expect(threadList[0]?.thread.updatedAt).toBe(
+        history[history.length - 1]?.createdAt,
+      );
+      expect(history[history.length - 1]?.createdAt).not.toBe(
+        initialResult.message.createdAt,
+      );
+    },
+  );
+});
+
+/**
+ * U-M19: 未選択からルームを選択
+ *
+ * 前提条件: `selectedId = null`
+ * アクション: `threadId` で選択（`resolveInlineThreadSelection`）
+ * 期待結果: 当該 `threadId` が返る（開状態）
+ *
+ * 結合境界: messageThreadInlineSelection（純関数 / `@ojt-app/shared`）
+ * （HTTP 層・hook 連携・E2E は対象外）
+ */
+describe('U-M19 未選択からルームを選択', () => {
+  it.each([
+    {
+      label: 'thread-a',
+      clickedThreadId: U_M19_THREAD_A,
+    },
+    {
+      label: '実在threadId形式',
+      clickedThreadId: U_M19_REALISTIC_THREAD_ID,
+    },
+    {
+      label: '別threadId',
+      clickedThreadId: U_M21_THREAD_B,
+    },
+  ])(
+    'resolveInlineThreadSelection_未選択から$labelを選択_当該threadIdを返す',
+    ({ clickedThreadId }) => {
+      const result = resolveInlineThreadSelection(null, clickedThreadId);
+
+      expect(result).toBe(clickedThreadId);
+      expect(isInlineThreadDetailOpen(result)).toBe(true);
+    },
+  );
+});
+
+/**
+ * U-M20: 同一ルーム再クリックで閉じる
+ *
+ * 前提条件: `selectedId = 'a'`
+ * アクション: 再度 `threadId = 'a'` で選択（`resolveInlineThreadSelection`）
+ * 期待結果: `null` が返る（閉状態）
+ *
+ * 結合境界: messageThreadInlineSelection（純関数 / `@ojt-app/shared`）
+ */
+describe('U-M20 同一ルーム再クリックで閉じる', () => {
+  it.each([
+    {
+      label: 'thread-a',
+      threadId: U_M19_THREAD_A,
+    },
+    {
+      label: '実在threadId形式',
+      threadId: U_M19_REALISTIC_THREAD_ID,
+    },
+    {
+      label: '別threadId',
+      threadId: U_M21_THREAD_B,
+    },
+  ])(
+    'resolveInlineThreadSelection_選択中の$labelを再クリック_閉状態になる',
+    ({ threadId }) => {
+      expect(shouldCloseInlineThreadSelection(threadId, threadId)).toBe(true);
+
+      const result = resolveInlineThreadSelection(threadId, threadId);
+
+      expect(result).toBeNull();
+      expect(isInlineThreadDetailOpen(result)).toBe(false);
+    },
+  );
+});
+
+/**
+ * U-M21: 別ルームクリックで選択切替
+ *
+ * 前提条件: `selectedId = 'a'`
+ * アクション: `threadId = 'b'` で選択（`resolveInlineThreadSelection`）
+ * 期待結果: `'b'` が返る（UI 層で閉じ→開の 2 段階）
+ *
+ * 結合境界: messageThreadInlineSelection（純関数 / `@ojt-app/shared`）
+ */
+describe('U-M21 別ルームクリックで選択切替', () => {
+  it.each([
+    {
+      label: 'thread-aからthread-b',
+      selectedThreadId: U_M19_THREAD_A,
+      clickedThreadId: U_M21_THREAD_B,
+    },
+    {
+      label: 'thread-aから実在threadId形式',
+      selectedThreadId: U_M19_THREAD_A,
+      clickedThreadId: U_M19_REALISTIC_THREAD_ID,
+    },
+    {
+      label: 'thread-bからthread-a',
+      selectedThreadId: U_M21_THREAD_B,
+      clickedThreadId: U_M19_THREAD_A,
+    },
+  ])(
+    'resolveInlineThreadSelection_$label_切替後に新しいthreadIdで開状態になる',
+    ({ selectedThreadId, clickedThreadId }) => {
+      expect(
+        shouldSwitchInlineThreadSelection(selectedThreadId, clickedThreadId),
+      ).toBe(true);
+      expect(
+        shouldCloseInlineThreadSelection(selectedThreadId, clickedThreadId),
+      ).toBe(false);
+
+      const result = resolveInlineThreadSelection(
+        selectedThreadId,
+        clickedThreadId,
+      );
+
+      expect(result).toBe(clickedThreadId);
+      expect(isInlineThreadDetailOpen(result)).toBe(true);
+    },
+  );
+});
+
+/**
+ * R-M17: インライン詳細パネル状態（純関数）
+ *
+ * `resolveInlineThreadSelection` の結果を UI 状態（開閉・パネル表示）へ写像する。
+ */
+describe('R-M17 インライン詳細パネル状態', () => {
+  it('resolveInlineMessageThreadDetailState_未選択から選択_開状態の詳細になる', () => {
+    const result = resolveInlineMessageThreadDetailState(null, U_M19_THREAD_A);
+
+    expect(result).toEqual({
+      inlineDetailThreadId: U_M19_THREAD_A,
+      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+      selectedThreadId: U_M19_THREAD_A,
+    });
+    expect(
+      isInlineMessageThreadRowSelected(
+        U_M19_THREAD_A,
+        result.selectedThreadId,
+        result.inlineDetailState,
+      ),
+    ).toBe(true);
+  });
+
+  it('resolveInlineMessageThreadDetailState_同一ルーム再クリック_閉状態の詳細になる', () => {
+    const result = resolveInlineMessageThreadDetailState(
+      U_M19_THREAD_A,
+      U_M19_THREAD_A,
+    );
+
+    expect(result).toEqual({
+      inlineDetailThreadId: U_M19_THREAD_A,
+      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+      selectedThreadId: null,
+    });
+    expect(
+      isInlineMessageThreadRowSelected(
+        U_M19_THREAD_A,
+        result.selectedThreadId,
+        result.inlineDetailState,
+      ),
+    ).toBe(false);
+  });
+
+  it('shouldClearInlineMessageThreadDetailOnThreadCountIncrease_未選択時のみクリアする', () => {
+    expect(
+      shouldClearInlineMessageThreadDetailOnThreadCountIncrease(1, 2, {
+        inlineDetailThreadId: null,
+        inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+        selectedThreadId: null,
+      }),
+    ).toBe(true);
+    expect(
+      shouldClearInlineMessageThreadDetailOnThreadCountIncrease(1, 2, {
+        inlineDetailThreadId: U_M19_THREAD_A,
+        inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+        selectedThreadId: U_M19_THREAD_A,
+      }),
+    ).toBe(false);
+  });
+});
+
+/**
+ * R-M17: インライン詳細パネル選択アクション（純関数）
+ *
+ * `resolveInlineMessageThreadDetailState` の結果を apply コールバックへ渡す。
+ */
+describe('R-M17 インライン詳細パネル選択アクション', () => {
+  it('applyInlineMessageThreadDetailSelection_同一ルーム再クリック_閉状態を適用する', () => {
+    const applyDetailState = vi.fn();
+
+    const result = applyInlineMessageThreadDetailSelection(
+      U_M19_THREAD_A,
+      U_M19_THREAD_A,
+      applyDetailState,
+    );
+
+    expect(result).toEqual({
+      inlineDetailThreadId: U_M19_THREAD_A,
+      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+      selectedThreadId: null,
+    });
+    expect(applyDetailState).toHaveBeenCalledTimes(1);
+    expect(applyDetailState).toHaveBeenCalledWith(result);
+    expect(
+      isInlineMessageThreadRowSelected(
+        U_M19_THREAD_A,
+        result.selectedThreadId,
+        result.inlineDetailState,
+      ),
+    ).toBe(false);
+  });
+});
+
+/**
+ * R-M17: メッセージスレッド一覧のインライン展開（ページング純関数）
+ *
+ * 一覧 UI は 20 件ずつ表示する。API 契約は変更せず、クライアント側でページングする。
+ * ページングの振る舞い詳細は U-M22 を参照。
+ *
+ * 結合境界: messageThreadListPaging（純関数）
+ * （Firestore 結合・E2E は対象外）
+ */
+describe('R-M17 スレッド一覧ページング純関数', () => {
+  it('MESSAGE_THREAD_LIST_PAGE_SIZE_20件である', () => {
+    expect(MESSAGE_THREAD_LIST_PAGE_SIZE).toBe(20);
+  });
+});
+
+/**
+ * U-M22: 一覧を 20 件ずつページング
+ *
+ * 前提条件: スレッド 0 / 20 / 21 件
+ * アクション: `paginateMessageThreads` で各ページ取得
+ * 期待結果: 1 ページ目最大 20 件。21 件目は 2 ページ目先頭。0 件は空配列
+ *
+ * 結合境界: messageThreadListPaging（純関数 / `@ojt-app/shared`）
+ * （Firestore 結合・E2E は対象外）
+ */
+describe('U-M22 一覧を 20 件ずつページング', () => {
+  it('paginateMessageThreads_スレッド0件_空配列を返す', () => {
+    const result = paginateMessageThreads([], FIRST_MESSAGE_THREAD_LIST_PAGE);
+
+    expect(isEmptyPaginatedMessageThreads(result)).toBe(true);
+    expect(result.items).toEqual([]);
+    expect(result.totalPages).toBe(0);
+    expect(result.page).toBe(FIRST_MESSAGE_THREAD_LIST_PAGE);
+    expect(result.pageSize).toBe(MESSAGE_THREAD_LIST_PAGE_SIZE);
+  });
+
+  it('paginateMessageThreads_スレッド20件_1ページ目に20件を返す', () => {
+    const threads = createR_M17_THREAD_LIST(
+      MESSAGE_THREAD_LIST_PAGE_SIZE,
+      TRAINEE_USER_ID,
+      TRAINER_USER_ID,
+    );
+
+    const result = paginateMessageThreads(
+      threads,
+      FIRST_MESSAGE_THREAD_LIST_PAGE,
+    );
+
+    expect(isEmptyPaginatedMessageThreads(result)).toBe(false);
+    expect(result.items).toHaveLength(MESSAGE_THREAD_LIST_PAGE_SIZE);
+    expect(result.items[0]?.thread.id).toBe(buildR_M17_THREAD_ID(0));
+    expect(result.items[19]?.thread.id).toBe(
+      buildR_M17_THREAD_ID(MESSAGE_THREAD_LIST_PAGE_SIZE - 1),
+    );
+    expect(result.totalItems).toBe(MESSAGE_THREAD_LIST_PAGE_SIZE);
+    expect(result.totalPages).toBe(1);
+    expect(result.pageSize).toBe(MESSAGE_THREAD_LIST_PAGE_SIZE);
+  });
+
+  it('paginateMessageThreads_スレッド21件_2ページ目先頭が21件目である', () => {
+    const threads = createR_M17_THREAD_LIST(
+      MESSAGE_THREAD_LIST_PAGE_SIZE + 1,
+      TRAINEE_USER_ID,
+      TRAINER_USER_ID,
+    );
+
+    const page1 = paginateMessageThreads(
+      threads,
+      FIRST_MESSAGE_THREAD_LIST_PAGE,
+    );
+    const page2 = paginateMessageThreads(
+      threads,
+      FIRST_MESSAGE_THREAD_LIST_PAGE + 1,
+    );
+
+    expect(page1.items).toHaveLength(MESSAGE_THREAD_LIST_PAGE_SIZE);
+    expect(page1.totalItems).toBe(MESSAGE_THREAD_LIST_PAGE_SIZE + 1);
+    expect(page1.totalPages).toBe(2);
+
+    expect(page2.items).toHaveLength(1);
+    expect(page2.items[0]?.thread.id).toBe(
+      buildR_M17_THREAD_ID(MESSAGE_THREAD_LIST_PAGE_SIZE),
+    );
+    expect(page2.page).toBe(FIRST_MESSAGE_THREAD_LIST_PAGE + 1);
+    expect(page2.pageSize).toBe(MESSAGE_THREAD_LIST_PAGE_SIZE);
+  });
+});
+
+/**
+ * U-M23: ルーム選択で履歴取得が走る
+ *
+ * 前提条件: スレッド一覧モック 1 件以上
+ * アクション: ルーム行選択（`selectThread` / `applyMessageThreadSelection` 相当）
+ * 期待結果: 当該 `threadId` で履歴取得関数が 1 回呼ばれ、選択 ID が更新されること
+ *
+ * 結合境界: messageThreadSelectionAction → setSelectedThreadId / reloadThreadHistory
+ * （React hook・HTTP 層・E2E は対象外）
+ */
+describe('U-M23 ルーム選択で履歴取得が走る', () => {
+  it('applyMessageThreadSelection_ルーム選択_選択ID更新と履歴取得が1回呼ばれる', async () => {
+    const { setSelectedThreadId, reloadThreadHistory } =
+      createMessageThreadSelectionMocks();
+
+    await applyMessageThreadSelection(
+      U_M19_THREAD_A,
+      U_M23_TRAINEE_USER,
+      setSelectedThreadId,
+      reloadThreadHistory,
+    );
+
+    expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
+    expect(setSelectedThreadId).toHaveBeenCalledWith(U_M19_THREAD_A);
+    expect(reloadThreadHistory).toHaveBeenCalledTimes(1);
+    expect(reloadThreadHistory).toHaveBeenCalledWith(
+      U_M23_TRAINEE_USER,
+      U_M19_THREAD_A,
+    );
+  });
+
+  it('applyMessageThreadSelection_未ログイン_選択IDのみ更新し履歴取得しない', async () => {
+    const { setSelectedThreadId, reloadThreadHistory } =
+      createMessageThreadSelectionMocks();
+
+    await applyMessageThreadSelection(
+      U_M19_THREAD_A,
+      null,
+      setSelectedThreadId,
+      reloadThreadHistory,
+    );
+
+    expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
+    expect(setSelectedThreadId).toHaveBeenCalledWith(U_M19_THREAD_A);
+    expect(reloadThreadHistory).not.toHaveBeenCalled();
+  });
+
+  it.each(U_M23_THREAD_SELECTION_CASES)(
+    'applyMessageThreadSelection_$labelでルーム選択_当該threadIdで履歴取得する',
+    async ({ authUser, threadId }) => {
+      const { setSelectedThreadId, reloadThreadHistory } =
+        createMessageThreadSelectionMocks();
+
+      await applyMessageThreadSelection(
+        threadId,
+        authUser,
+        setSelectedThreadId,
+        reloadThreadHistory,
+      );
+
+      expect(setSelectedThreadId).toHaveBeenCalledWith(threadId);
+      expect(reloadThreadHistory).toHaveBeenCalledTimes(1);
+      expect(reloadThreadHistory).toHaveBeenCalledWith(authUser, threadId);
+    },
+  );
+});
+
+/**
+ * U-M24: 選択解除でインライン詳細が非表示状態になる
+ *
+ * 前提条件: ルーム A 選択済み（表示中）
+ * アクション: 同一ルーム再選択（トグル / `selectInlineMessageThread` 相当）
+ * 期待結果: `selectedThreadId` が `null` になり、詳細表示用の派生状態が falsy になること
+ *
+ * 結合境界: messageThreadInlineSelection → messageThreadSelectionAction
+ *           → setSelectedThreadId / reloadThreadHistory
+ * （React hook・HTTP 層・E2E は対象外）
+ */
+describe('U-M24 選択解除でインライン詳細が非表示状態になる', () => {
+  it('selectInlineMessageThread_選択中ルーム再クリック_選択解除し履歴取得しない', async () => {
+    const { setSelectedThreadId, reloadThreadHistory } =
+      createMessageThreadSelectionMocks();
+
+    const result = await selectInlineMessageThread(
+      U_M19_THREAD_A,
+      U_M19_THREAD_A,
+      U_M23_TRAINEE_USER,
+      setSelectedThreadId,
+      reloadThreadHistory,
+    );
+
+    expect(result).toBeNull();
+    expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
+    expect(setSelectedThreadId).toHaveBeenCalledWith(null);
+    expect(isInlineThreadDetailOpen(result)).toBe(false);
+    expect(reloadThreadHistory).not.toHaveBeenCalled();
+  });
+
+  it('selectInlineMessageThread_未ログインで再クリック_選択解除のみ行う', async () => {
+    const { setSelectedThreadId, reloadThreadHistory } =
+      createMessageThreadSelectionMocks();
+
+    const result = await selectInlineMessageThread(
+      U_M19_THREAD_A,
+      U_M19_THREAD_A,
+      null,
+      setSelectedThreadId,
+      reloadThreadHistory,
+    );
+
+    expect(result).toBeNull();
+    expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
+    expect(setSelectedThreadId).toHaveBeenCalledWith(null);
+    expect(isInlineThreadDetailOpen(result)).toBe(false);
+    expect(reloadThreadHistory).not.toHaveBeenCalled();
+  });
+
+  it.each(U_M24_INLINE_DESELECT_CASES)(
+    'selectInlineMessageThread_$labelで同一ルーム再選択_詳細非表示になる',
+    async ({ authUser, selectedThreadId, clickedThreadId }) => {
+      const { setSelectedThreadId, reloadThreadHistory } =
+        createMessageThreadSelectionMocks();
+
+      const result = await selectInlineMessageThread(
+        clickedThreadId,
+        selectedThreadId,
+        authUser,
+        setSelectedThreadId,
+        reloadThreadHistory,
+      );
+
+      expect(result).toBeNull();
+      expect(setSelectedThreadId).toHaveBeenCalledWith(null);
+      expect(isInlineThreadDetailOpen(result)).toBe(false);
+      expect(reloadThreadHistory).not.toHaveBeenCalled();
+    },
+  );
+});
+
+/**
  * U-M-RT01: 新規メッセージのプッシュ通知受信
  *
  * 前提条件: 新卒・トレーナーの 2 クライアント（本ケースはトレーナー側コールバックをモック）
@@ -1753,11 +2555,7 @@ describe('U-M-RT01 新規メッセージのプッシュ通知受信', () => {
   let realtimeHub: MessageRealtimeHub;
 
   beforeEach(() => {
-    threadStore = {
-      create: vi.fn().mockResolvedValue(CREATED_THREAD),
-      listByParticipants: vi.fn().mockResolvedValue([]),
-      getById: vi.fn(),
-    };
+    threadStore = createMockMessageThreadStore({ getById: vi.fn() });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([]),
@@ -1819,11 +2617,10 @@ describe('U-M-RT02 返信のプッシュ通知受信', () => {
   let realtimeHub: MessageRealtimeHub;
 
   beforeEach(() => {
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockResolvedValue(undefined),
       listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
@@ -1887,11 +2684,10 @@ describe('U-M-RT03 再接続後の差分同期', () => {
 
   beforeEach(() => {
     persistedMessages = [U_M01_HEAD_MESSAGE];
-    threadStore = {
+    threadStore = createMockMessageThreadStore({
       create: vi.fn(),
       listByParticipants: vi.fn(),
-      getById: vi.fn().mockResolvedValue(CREATED_THREAD),
-    };
+    });
     messageStore = {
       append: vi.fn().mockImplementation(async (message: ThreadChatMessage) => {
         persistedMessages.push(message);

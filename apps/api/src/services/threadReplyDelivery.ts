@@ -67,7 +67,7 @@ export async function deliverThreadReply(
   );
 
   return appendMessageToThread(
-    operation.stores.messageStore,
+    operation.stores,
     thread,
     senderId,
     receiverId,

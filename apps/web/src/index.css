@@ -379,6 +379,18 @@ button {
   list-style: none;
 }
 
+.message-thread-history-item {
+  display: flex;
+}
+
+.message-thread-history-item--self {
+  justify-content: flex-end;
+}
+
+.message-thread-history-item--other {
+  justify-content: flex-start;
+}
+
 .message-thread-bubble {
   display: inline-block;
   max-width: 85%;
@@ -390,7 +402,48 @@ button {
 }
 
 .message-thread-detail {
-  margin-top: 1rem;
+  overflow: hidden;
+  transition:
+    max-height 0.25s ease,
+    opacity 0.25s ease;
+}
+
+.message-thread-detail[data-state='open'] {
+  max-height: 60rem;
+  opacity: 1;
+}
+
+.message-thread-detail[data-state='closed'] {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+.message-thread-list-item--selected {
+  background: rgba(229, 9, 20, 0.2);
+  border-radius: 0.375rem;
+}
+
+[role='list'][aria-label='メッセージスレッド一覧'] {
+  padding: 0;
+  margin: 1rem 0;
+}
+
+[role='list'][aria-label='メッセージスレッド一覧'] > [role='listitem'] {
+  list-style: none;
+}
+
+.message-thread-list-preview {
+  margin: 0 0 0.25rem;
+}
+
+.message-thread-list-updated-at {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.65));
 }
 
 input[type='range'] {

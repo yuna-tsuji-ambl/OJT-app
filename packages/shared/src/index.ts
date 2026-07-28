@@ -4,6 +4,7 @@ export type {
   CreateQuestInput,
   MessageThread,
   MessageThreadListItem,
+  MessageThreadId,
   Quest,
   QuestStatus,
   SendMessageResult,
@@ -52,6 +53,45 @@ export {
   sortMessageThreadListItemsByLatestActivity,
   sortMessageThreadsByLatestActivity,
 } from './messageThreadList.js';
+export {
+  applyMessageThreadSelection,
+  selectInlineMessageThread,
+  type ReloadMessageThreadHistory,
+  type SetMessageThreadSelection,
+} from './messageThreadSelectionAction.js';
+export {
+  resolveInlineThreadSelection,
+  shouldCloseInlineThreadSelection,
+  shouldSwitchInlineThreadSelection,
+  isInlineThreadDetailOpen,
+  type MessageThreadSelection,
+} from './messageThreadInlineSelection.js';
+export {
+  MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
+  MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+  createInitialInlineMessageThreadDetailState,
+  createOpenInlineMessageThreadDetailState,
+  isInlineMessageThreadRowSelected,
+  resolveInlineMessageThreadDetailState,
+  shouldClearInlineMessageThreadDetailOnThreadCountIncrease,
+  type InlineMessageThreadDetailState,
+  type MessageThreadInlineDetailVisibilityState,
+} from './messageThreadInlineDetail.js';
+export {
+  applyInlineMessageThreadDetailSelection,
+  type ApplyInlineMessageThreadDetailState,
+} from './messageThreadInlineDetailAction.js';
+export {
+  FIRST_MESSAGE_THREAD_LIST_PAGE,
+  MESSAGE_THREAD_LIST_PAGE_SIZE,
+  isEmptyPaginatedMessageThreads,
+  paginateMessageThreads,
+  type PaginatedMessageThreads,
+} from './messageThreadListPaging.js';
+export {
+  formatThreadUpdatedAtDisplay,
+  formatThreadUpdatedAtLocal,
+} from './formatThreadUpdatedAt.js';
 export {
   QUEST_STATUS,
   ACHIEVEMENT_LEVEL_MIN,
