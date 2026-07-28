@@ -1,1 +1,1 @@
-export const DEFAULT_TRAINEE_ID = 'trainee-1';
+export { DEFAULT_TRAINEE_ID } from './participantConstants';

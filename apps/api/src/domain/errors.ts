@@ -69,3 +69,52 @@ export class InvalidAssignmentStatusError extends Error {
     this.name = 'InvalidAssignmentStatusError';
   }
 }
+
+export class UnknownQuestionTemplateError extends Error {
+  constructor(templateId: string) {
+    super(`Unknown question template: ${templateId}`);
+    this.name = 'UnknownQuestionTemplateError';
+  }
+}
+
+export class UnknownReplyTemplateError extends Error {
+  constructor(templateId: string) {
+    super(`Unknown reply template: ${templateId}`);
+    this.name = 'UnknownReplyTemplateError';
+  }
+}
+
+export class MessageThreadNotFoundError extends Error {
+  constructor(threadId: string) {
+    super(`Message thread not found: ${threadId}`);
+    this.name = 'MessageThreadNotFoundError';
+  }
+}
+
+export class UnknownStampError extends Error {
+  constructor(stampId: string) {
+    super(`Unknown stamp: ${stampId}`);
+    this.name = 'UnknownStampError';
+  }
+}
+
+export class MessageContentRequiredError extends Error {
+  constructor() {
+    super('Message content is required');
+    this.name = 'MessageContentRequiredError';
+  }
+}
+
+export class MessageTemplateRequiredError extends Error {
+  constructor() {
+    super('Message template is required');
+    this.name = 'MessageTemplateRequiredError';
+  }
+}
+
+export class LegacyQuickReplyNotSupportedError extends Error {
+  constructor() {
+    super('Legacy quick reply is not supported');
+    this.name = 'LegacyQuickReplyNotSupportedError';
+  }
+}

@@ -5,8 +5,15 @@ import {
   ConditionRecordNotFoundError,
   ForbiddenError,
   InvalidAssignmentStatusError,
+  LegacyQuickReplyNotSupportedError,
+  MessageContentRequiredError,
+  MessageTemplateRequiredError,
+  MessageThreadNotFoundError,
   QuestNotFoundError,
   TrainerStatusNotFoundError,
+  UnknownQuestionTemplateError,
+  UnknownReplyTemplateError,
+  UnknownStampError,
 } from '../domain/errors.js';
 
 function sendSharedAuthErrors(response: Response, error: unknown): boolean {
@@ -91,6 +98,35 @@ export function sendStatusErrorResponse(
 ): void {
   if (error instanceof TrainerStatusNotFoundError) {
     response.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (error instanceof ForbiddenError) {
+    response.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  response.status(401).json({ error: 'Unauthorized' });
+}
+
+export function sendMessageErrorResponse(
+  response: Response,
+  error: unknown,
+): void {
+  if (error instanceof MessageThreadNotFoundError) {
+    response.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (
+    error instanceof LegacyQuickReplyNotSupportedError ||
+    error instanceof MessageContentRequiredError ||
+    error instanceof MessageTemplateRequiredError ||
+    error instanceof UnknownQuestionTemplateError ||
+    error instanceof UnknownReplyTemplateError ||
+    error instanceof UnknownStampError
+  ) {
+    response.status(400).json({ error: 'Bad request' });
     return;
   }
 

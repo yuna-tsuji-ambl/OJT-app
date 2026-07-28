@@ -1,31 +1,71 @@
-import { sendQuickReply } from '../api/statusApi';
 import { useAuth } from '../auth/AuthContext';
-import { ChatHistory } from '../components/ChatHistory';
-import { ReplyStampBar } from '../components/ReplyStampBar';
-import { DEFAULT_TRAINEE_ID } from '../domain/statusConstants';
-import { useConversationMessages } from '../hooks/useConversationMessages';
+import { MessageThreadList } from '../components/MessageThreadList';
+import { TrainerNewMessageForm } from '../components/TrainerNewMessageForm';
+import { TrainerThreadReplyPanel } from '../components/TrainerThreadReplyPanel';
+import { useTrainerMessages } from '../hooks/useTrainerMessages';
 
 export function TrainerMessagesPage() {
   const { user } = useAuth();
-  const { messages, reloadMessages } = useConversationMessages(user);
+
+  const {
+    visibleThreads,
+    threadListPage,
+    threadListTotalPages,
+    goToNextThreadListPage,
+    threadMessages,
+    historyError,
+    inlineDetail,
+    selectedNewMessageTemplateId,
+    setSelectedNewMessageTemplateId,
+    newMessageFreeTextContent,
+    setNewMessageFreeTextContent,
+    threadReplyForm,
+    selectThread,
+    sendNewMessage,
+  } = useTrainerMessages(user);
 
   if (!user) {
     return null;
   }
 
-  const authUser = user;
-
-  function handleReply(stamp: string): void {
-    void sendQuickReply(DEFAULT_TRAINEE_ID, stamp, authUser).then(() =>
-      reloadMessages(authUser),
-    );
-  }
+  const {
+    selectedReplyTemplateId,
+    onSelectTemplate,
+    onSendTemplateReply,
+    onSendStampReply,
+  } = threadReplyForm;
 
   return (
     <section className="page-section" aria-labelledby="messages-heading">
       <h1 id="messages-heading">メッセージ</h1>
-      <ChatHistory messages={messages} />
-      <ReplyStampBar onReply={handleReply} />
+
+      <TrainerNewMessageForm
+        selectedTemplateId={selectedNewMessageTemplateId}
+        freeTextContent={newMessageFreeTextContent}
+        onSelectTemplate={setSelectedNewMessageTemplateId}
+        onFreeTextChange={setNewMessageFreeTextContent}
+        onSend={() => void sendNewMessage(user)}
+      />
+
+      <MessageThreadList
+        threads={visibleThreads}
+        page={threadListPage}
+        totalPages={threadListTotalPages}
+        onNextPage={goToNextThreadListPage}
+        inlineDetail={inlineDetail}
+        viewer={user}
+        threadMessages={threadMessages}
+        historyError={historyError}
+        onSelectThread={selectThread}
+        inlineDetailActions={
+          <TrainerThreadReplyPanel
+            selectedReplyTemplateId={selectedReplyTemplateId}
+            onSelectTemplate={onSelectTemplate}
+            onSendTemplateReply={onSendTemplateReply}
+            onSendStampReply={onSendStampReply}
+          />
+        }
+      />
     </section>
   );
 }
