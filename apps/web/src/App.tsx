@@ -6,6 +6,7 @@ import { AssignmentManagePage } from './pages/AssignmentManagePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { TraineeHomePage } from './pages/TraineeHomePage';
+import { TrainerConditionPage } from './pages/TrainerConditionPage';
 import { TrainerMessagesPage } from './pages/TrainerMessagesPage';
 import { TrainerStatusSettingsPage } from './pages/TrainerStatusSettingsPage';
 import { TraineeDetailPage } from './pages/TraineeDetailPage';
@@ -30,6 +31,7 @@ export default function App() {
               element={<Navigate to="/assignments" replace />}
             />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/condition" element={<TrainerConditionPage />} />
             <Route
               path="/status/settings"
               element={<TrainerStatusSettingsPage />}

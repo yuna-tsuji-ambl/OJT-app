@@ -25,6 +25,7 @@ export function Layout() {
             <>
               <Link to="/dashboard">ダッシュボード</Link>
               <Link to="/assignments/manage">課題管理</Link>
+              <Link to="/condition">コンディション</Link>
               <Link to="/status/settings">ステータス設定</Link>
               <Link to="/messages">メッセージ</Link>
             </>

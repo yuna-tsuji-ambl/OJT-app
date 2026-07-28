@@ -1,28 +1,56 @@
 export type {
   ConditionAlert,
+  ConditionAlertMessage,
   ConditionDraft,
-  ConditionGraphData,
-  ConditionHistoryRecord,
-  ConditionSubmitResult,
-} from './domain/conditionTypes.js';
-export type {
   ConditionField,
+  ConditionGraphData,
+  ConditionGraphTableRow,
+  ConditionHistoryRecord,
+  ConditionLineChartData,
+  ConditionLineChartDisplaySize,
+  ConditionLineChartHorizontalScroll,
+  ConditionLineChartSeries,
+  ConditionPageAlert,
+  ConditionRecordStore,
+  ConditionSubmitResult,
+  ConditionTransitionTableColumn,
+  ConditionTransitionTableColumnKey,
+  ConditionTransitionTableData,
   MonitoredTraineeId,
-} from './domain/conditionConstants.js';
+} from './api/conditionPublicSurface.js';
+
 export {
   CONDITION_ALERT_MESSAGE,
   CONDITION_ALERT_THRESHOLD,
   CONDITION_DEFAULT_VALUE,
+  CONDITION_DRAFT_FIELDS,
   CONDITION_FIELD,
+  CONDITION_PAGE_ALERT_MESSAGE,
   CONDITION_SUBMIT_MESSAGE,
+  CONDITION_VALUE_MAX,
+  CONDITION_VALUE_MIN,
   MONITORED_TRAINEE_IDS,
-} from './domain/conditionConstants.js';
-export type { ConditionRecordStore } from './repositories/conditionRecordStore.js';
+} from './api/conditionPublicSurface.js';
+
+export {
+  buildConditionAlert,
+  buildConditionGraphTableRows,
+  buildConditionLineChartData,
+  buildConditionPageAlert,
+  buildConditionTransitionTable,
+  hasConditionAlertDraft,
+  isConditionAlertValue,
+  isValidConditionValue,
+  validateConditionDraft,
+} from './api/conditionDomainExports.js';
+
+export { ConditionService } from './services/conditionService.js';
 
 export {
   createConditionDraft,
   getConditionAlert,
   getConditionGraphData,
+  getConditionPageAlert,
   getLatestConditionRecord,
   listConditionAlerts,
   submitConditionRecord,

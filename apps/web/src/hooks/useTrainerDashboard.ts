@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { fetchConditionAlerts, type ConditionAlert } from '../api/conditionApi';
 import {
   approveAssignment,
@@ -10,9 +11,14 @@ import { assignmentToQuest } from '../domain/assignmentDisplay';
 import type { AuthUser } from '../auth/types';
 
 export function useTrainerDashboard(user: AuthUser | null) {
+  const location = useLocation();
   const [alerts, setAlerts] = useState<ConditionAlert[]>([]);
   const [pendingQuests, setPendingQuests] = useState<Quest[]>([]);
   const [progressQuests, setProgressQuests] = useState<Quest[]>([]);
+
+  const reloadAlerts = useCallback(async (authUser: AuthUser) => {
+    setAlerts(await fetchConditionAlerts(authUser));
+  }, []);
 
   const reloadPendingQuests = useCallback(async (authUser: AuthUser) => {
     setPendingQuests(await fetchPendingAssignments(authUser));
@@ -24,14 +30,20 @@ export function useTrainerDashboard(user: AuthUser | null) {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || location.pathname !== '/dashboard') {
       return;
     }
 
-    void fetchConditionAlerts(user).then(setAlerts);
+    void reloadAlerts(user);
     void reloadPendingQuests(user);
     void reloadProgressQuests(user);
-  }, [reloadPendingQuests, reloadProgressQuests, user]);
+  }, [
+    location.pathname,
+    reloadAlerts,
+    reloadPendingQuests,
+    reloadProgressQuests,
+    user,
+  ]);
 
   const approveQuestAndReload = useCallback(
     async (questId: string, authUser: AuthUser): Promise<void> => {
