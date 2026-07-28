@@ -170,11 +170,6 @@ async function submitWeeklyCondition(page: Page): Promise<void> {
   await expect(page.getByText(CONDITION_SUBMIT_MESSAGE)).toBeVisible();
 }
 
-async function openTrainerDashboard(page: Page): Promise<void> {
-  await page
-    .getByRole('navigation', { name: 'メインナビゲーション' })
-    .getByRole('link', { name: 'ダッシュボード' })
-    .click();
 function traineeAlertCard(page: Page, traineeId: string) {
   return page.getByRole('article', { name: `新卒 ${traineeId}` });
 }
