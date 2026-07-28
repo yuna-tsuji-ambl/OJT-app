@@ -83,13 +83,13 @@
 
 #### 一部実装の既知ギャップ（F-01〜F-03）
 
-| ID   | ギャップ                                                                         | 対応予定                           |
-| ---- | -------------------------------------------------------------------------------- | ---------------------------------- |
-| F-01 | 課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし | F-06 実装時に置換                  |
-| F-02 | グラフ API はサービス層のみ。フロントに推移グラフなし                            | 別途 UI 実装                       |
-| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                       | ドメイン層で追加                   |
-| F-03 | メッセージ非リアルタイム（手動リロード）                                         | WebSocket / ポーリング（計画のみ） |
-| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                              | F-11                               |
+| ID   | ギャップ                                                                             | 対応予定                           |
+| ---- | ------------------------------------------------------------------------------------ | ---------------------------------- |
+| F-01 | 課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし     | F-06 実装時に置換                  |
+| F-02 | 推移折れ線グラフのフロントエンド表示が未実装（API は `ConditionGraphData` 公開済み） | 折れ線グラフ UI 実装               |
+| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                           | ドメイン層で追加                   |
+| F-03 | メッセージ非リアルタイム（手動リロード）                                             | WebSocket / ポーリング（計画のみ） |
+| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                                  | F-11                               |
 
 #### 実装フェーズとステータス
 
@@ -139,7 +139,7 @@ PR では `Closes #8` のように Issue 番号を記載して自動クローズ
 - [ ] 本番認証（Identity Platform / Firebase Auth 等）
 - [ ] E2E テスト本格運用（Playwright 設定済み、仕様書整備中）
 - [ ] 複数新卒・複数トレーナー対応
-- [ ] コンディション推移グラフのフロントエンド表示
+- [ ] コンディション推移の折れ線グラフ表示（フロントエンド）
 - [ ] リアルタイムメッセージ更新（WebSocket / SSE 等）
 - [ ] BigQuery 連携（分析・ダッシュボード集計用。§9.4 参照）
 - [ ] ~~Google Sheets API 連携~~ → **課題管理機能で代替**（`SheetRepository` は段階的に廃止予定）
@@ -483,8 +483,16 @@ type QuestStatus = '未クリア' | '申請中' | 'クリア';
 
 #### 7.2.3 アラート判定
 
-- **条件**: 直近記録の `mental === 1`（`CONDITION_ALERT_THRESHOLD`）
+**ダッシュボード（SOSアラート）**
+
+- **条件**: 直近記録の業務量・理解度・メンタルのいずれかが `1`（`CONDITION_ALERT_THRESHOLD`）
 - **メッセージ**: 「要フォロー」（`CONDITION_ALERT_MESSAGE`）
+
+**コンディション画面**
+
+- **条件**: ダッシュボードと同様（直近記録のいずれかが `1`）
+- **メッセージ**: 「新卒が不安定です。」（`CONDITION_PAGE_ALERT_MESSAGE`）
+
 - **監視対象新卒**: `MONITORED_TRAINEE_IDS = ['trainee-1']`（固定）
 
 #### 7.2.4 処理フロー
@@ -505,10 +513,20 @@ type QuestStatus = '未クリア' | '申請中' | 'クリア';
 1. ロール検証（trainer）
 2. 指定新卒の最新履歴を返却（なければ 404）
 
-**グラフデータ（サービス層のみ、API 未公開）**:
+**グラフデータ（トレーナー）**:
 
-- `ConditionService.getGraphData` / `buildConditionGraphData` で 3 項目の時系列データを生成
-- フロントエンドでのグラフ描画は **未実装**
+1. ロール検証（trainer）
+2. 指定新卒の履歴から `buildConditionGraphData` で 3 項目の時系列データを返却
+
+- `GET /api/condition/trainees/:traineeId/graph` で公開済み
+- トレーナーコンディション画面で推移を**折れ線グラフ**表示（横軸: `labels`、系列: `workload` / `comprehension` / `mental`）
+
+**コンディション画面アラート（トレーナー）**:
+
+1. ロール検証（trainer）
+2. 指定新卒の履歴から `buildConditionPageAlert` で画面用アラートを返却
+
+- `GET /api/condition/trainees/:traineeId/page-alert` で公開済み
 
 #### 7.2.5 ドメインモデル
 
@@ -523,10 +541,13 @@ interface ConditionHistoryRecord extends ConditionDraft {
   recordedAt: string; // ISO 8601
 }
 
-interface ConditionAlert {
-  traineeId: string;
+interface ConditionPageAlert {
   hasAlert: boolean;
   message: string;
+}
+
+interface ConditionAlert extends ConditionPageAlert {
+  traineeId: string;
   latestMental: number;
 }
 
@@ -535,7 +556,11 @@ interface ConditionGraphData {
   workload: number[];
   comprehension: number[];
   mental: number[];
+  rows: ConditionHistoryRecord[];
 }
+
+/** 推移表の1行。履歴レコードと同一構造 */
+type ConditionGraphTableRow = ConditionHistoryRecord;
 ```
 
 #### 7.2.6 テスト仕様
@@ -878,11 +903,13 @@ interface LearningPost {
 
 ### 8.4 コンディション API
 
-| メソッド | パス                                        | ロール  | 説明         | 成功                         |
-| -------- | ------------------------------------------- | ------- | ------------ | ---------------------------- |
-| POST     | `/api/condition`                            | trainee | 記録送信     | 200 `ConditionSubmitResult`  |
-| GET      | `/api/condition/alerts`                     | trainer | アラート一覧 | 200 `ConditionAlert[]`       |
-| GET      | `/api/condition/trainees/:traineeId/latest` | trainer | 最新記録     | 200 `ConditionHistoryRecord` |
+| メソッド | パス                                            | ロール  | 説明         | 成功                         |
+| -------- | ----------------------------------------------- | ------- | ------------ | ---------------------------- |
+| POST     | `/api/condition`                                | trainee | 記録送信     | 200 `ConditionSubmitResult`  |
+| GET      | `/api/condition/alerts`                         | trainer | アラート一覧 | 200 `ConditionAlert[]`       |
+| GET      | `/api/condition/trainees/:traineeId/latest`     | trainer | 最新記録     | 200 `ConditionHistoryRecord` |
+| GET      | `/api/condition/trainees/:traineeId/graph`      | trainer | 推移グラフ   | 200 `ConditionGraphData`     |
+| GET      | `/api/condition/trainees/:traineeId/page-alert` | trainer | 画面アラート | 200 `ConditionPageAlert`     |
 
 **POST `/api/condition` リクエストボディ**:
 

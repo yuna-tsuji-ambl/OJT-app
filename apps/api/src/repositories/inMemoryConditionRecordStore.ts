@@ -1,3 +1,4 @@
+import { createConditionHistoryRecord } from '../domain/conditionHistory.js';
 import type {
   ConditionDraft,
   ConditionHistoryRecord,
@@ -9,16 +10,13 @@ export class InMemoryConditionRecordStore implements ConditionRecordStore {
 
   async save(userId: string, record: ConditionDraft): Promise<void> {
     const history = this.records.get(userId) ?? [];
-    history.push({
-      ...record,
-      recordedAt: new Date().toISOString().slice(0, 10),
-    });
+    history.push(createConditionHistoryRecord(record));
     this.records.set(userId, history);
   }
 
   async findHistoryByTraineeId(
     traineeId: string,
   ): Promise<ConditionHistoryRecord[]> {
-    return [...(this.records.get(traineeId) ?? [])];
+    return (this.records.get(traineeId) ?? []).map((record) => ({ ...record }));
   }
 }

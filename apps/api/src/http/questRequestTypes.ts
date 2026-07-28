@@ -1,8 +1,5 @@
 import type { CreateQuestInput } from '../domain/questTypes.js';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isUnknownRecord } from './requestParsing.js';
 
 function readNonEmptyString(
   body: Record<string, unknown>,
@@ -32,7 +29,7 @@ function readAchievementLevel(body: Record<string, unknown>): string | null {
 }
 
 export function parseCreateQuestBody(body: unknown): CreateQuestInput | null {
-  if (!isRecord(body)) {
+  if (!isUnknownRecord(body)) {
     return null;
   }
 

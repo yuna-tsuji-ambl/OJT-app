@@ -24,6 +24,7 @@ export function Layout() {
           {user.role === 'trainer' && (
             <>
               <Link to="/dashboard">ダッシュボード</Link>
+              <Link to="/condition">コンディション</Link>
               <Link to="/status/settings">ステータス設定</Link>
               <Link to="/messages">メッセージ</Link>
             </>

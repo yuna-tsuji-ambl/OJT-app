@@ -1,12 +1,7 @@
+import { CONDITION_DRAFT_FIELDS } from '../domain/conditionConstants.js';
 import type { ConditionDraft } from '../domain/conditionTypes.js';
-import { CONDITION_FIELD } from '../domain/conditionConstants.js';
-
-const CONDITION_VALUE_MIN = 1;
-const CONDITION_VALUE_MAX = 5;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isValidConditionValue } from '../domain/conditionValidation.js';
+import { isUnknownRecord } from './requestParsing.js';
 
 function readConditionValue(
   body: Record<string, unknown>,
@@ -14,11 +9,7 @@ function readConditionValue(
 ): number | null {
   const value = body[field];
 
-  if (typeof value !== 'number' || !Number.isInteger(value)) {
-    return null;
-  }
-
-  if (value < CONDITION_VALUE_MIN || value > CONDITION_VALUE_MAX) {
+  if (typeof value !== 'number' || !isValidConditionValue(value)) {
     return null;
   }
 
@@ -26,17 +17,21 @@ function readConditionValue(
 }
 
 export function parseConditionDraftBody(body: unknown): ConditionDraft | null {
-  if (!isRecord(body)) {
+  if (!isUnknownRecord(body)) {
     return null;
   }
 
-  const workload = readConditionValue(body, CONDITION_FIELD.WORKLOAD);
-  const comprehension = readConditionValue(body, CONDITION_FIELD.COMPREHENSION);
-  const mental = readConditionValue(body, CONDITION_FIELD.MENTAL);
+  const parsed = {} as ConditionDraft;
 
-  if (workload === null || comprehension === null || mental === null) {
-    return null;
+  for (const field of CONDITION_DRAFT_FIELDS) {
+    const value = readConditionValue(body, field);
+
+    if (value === null) {
+      return null;
+    }
+
+    parsed[field] = value;
   }
 
-  return { workload, comprehension, mental };
+  return parsed;
 }

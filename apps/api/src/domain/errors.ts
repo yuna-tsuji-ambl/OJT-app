@@ -26,6 +26,13 @@ export class ConditionRecordNotFoundError extends Error {
   }
 }
 
+export class ConditionInvalidValueError extends Error {
+  constructor() {
+    super('Condition value must be between 1 and 5');
+    this.name = 'ConditionInvalidValueError';
+  }
+}
+
 export class QuestTitleRequiredError extends Error {
   constructor(questId: string) {
     super(`Quest title is required: ${questId}`);
