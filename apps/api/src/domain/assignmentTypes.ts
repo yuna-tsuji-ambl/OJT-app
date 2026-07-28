@@ -1,18 +1,4 @@
-export type QuestStatus = '未クリア' | '申請中' | 'クリア';
-
-export interface CreateQuestInput {
-  majorItem: string;
-  minorItem: string;
-  achievementLevel: string;
-}
-
-export interface Quest {
-  id: string;
-  majorItem: string;
-  minorItem: string;
-  achievementLevel: string;
-  status?: QuestStatus;
-}
+import type { QuestStatus } from './types.js';
 
 export interface Assignment {
   id: string;
@@ -43,11 +29,4 @@ export interface UpdateAssignmentInput {
   description?: string;
   achievementLevel?: string;
   dueDate?: string;
-}
-
-export type UserRole = 'trainee' | 'trainer';
-
-export interface UserContext {
-  userId: string;
-  role: UserRole;
 }

@@ -21,15 +21,35 @@ const USER_IDS: Record<UserRole, string> = {
   trainer: 'trainer-1',
 };
 
+const AUTH_STORAGE_KEY = 'ojt-auth-user';
+
+function readStoredUser(): AuthUser | null {
+  const stored = sessionStorage.getItem(AUTH_STORAGE_KEY);
+
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(stored) as AuthUser;
+  } catch {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
 
   const login = useCallback((role: UserRole) => {
-    setUser({ userId: USER_IDS[role], role });
+    const authUser = { userId: USER_IDS[role], role };
+    setUser(authUser);
+    sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
   }, []);
 
   const value = useMemo(

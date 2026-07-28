@@ -1,19 +1,13 @@
 import { useAuth } from '../auth/AuthContext';
 import { ConditionAlertCard } from '../components/ConditionAlertCard';
 import { PendingQuestCard } from '../components/PendingQuestCard';
-import { QuestCreateForm } from '../components/QuestCreateForm';
 import { TrainerQuestProgressCard } from '../components/TrainerQuestProgressCard';
 import { useTrainerDashboard } from '../hooks/useTrainerDashboard';
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const {
-    alerts,
-    pendingQuests,
-    progressQuests,
-    approveQuestAndReload,
-    createQuestAndReload,
-  } = useTrainerDashboard(user);
+  const { alerts, pendingQuests, progressQuests, approveQuestAndReload } =
+    useTrainerDashboard(user);
 
   if (!user) {
     return null;
@@ -25,9 +19,6 @@ export function DashboardPage() {
   return (
     <section className="page-section" aria-labelledby="dashboard-heading">
       <h1 id="dashboard-heading">ダッシュボード</h1>
-      <QuestCreateForm
-        onCreate={(input) => createQuestAndReload(input, authUser)}
-      />
       {progressQuests.map((quest) => (
         <TrainerQuestProgressCard
           key={quest.id}

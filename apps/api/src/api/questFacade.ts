@@ -1,27 +1,19 @@
-import type { Quest, UserRole } from '../domain/types.js';
 import type { CreateQuestInput } from '../domain/questTypes.js';
-import type { TrainerDashboard } from '../domain/trainerDashboardTypes.js';
+import type { Quest, UserRole } from '../domain/types.js';
 import { toUserContext } from '../domain/userContext.js';
-import type { QuestStore } from '../repositories/questStore.js';
-import type { SheetRepository } from '../repositories/sheetRepository.js';
-import { QuestService } from '../services/questService.js';
-import { TrainerDashboardService } from '../services/trainerDashboardService.js';
-import { TrainerQuestService } from '../services/trainerQuestService.js';
+import type { AssignmentRepository } from '../repositories/assignmentRepository.js';
+import { AssignmentService } from '../services/assignmentService.js';
 
-const questService = new QuestService();
-const trainerQuestService = new TrainerQuestService();
-const trainerDashboardService = new TrainerDashboardService();
+const assignmentService = new AssignmentService();
 
 export async function getQuestList(
   userId: string,
   role: UserRole,
-  sheetRepository: SheetRepository,
-  questStore?: QuestStore,
+  assignmentRepository: AssignmentRepository,
 ): Promise<Quest[]> {
-  return questService.listQuests(
+  return assignmentService.listForTrainee(
     toUserContext(userId, role),
-    sheetRepository,
-    questStore,
+    assignmentRepository,
   );
 }
 
@@ -29,23 +21,23 @@ export async function requestClearQuest(
   questId: string,
   userId: string,
   role: UserRole,
-  questStore: QuestStore,
+  assignmentRepository: AssignmentRepository,
 ): Promise<Quest> {
-  return questService.requestClear(
+  return assignmentService.requestClear(
     questId,
     toUserContext(userId, role),
-    questStore,
+    assignmentRepository,
   );
 }
 
 export async function getPendingQuestList(
   userId: string,
   role: UserRole,
-  questStore: QuestStore,
+  assignmentRepository: AssignmentRepository,
 ): Promise<Quest[]> {
-  return trainerQuestService.listPendingQuests(
+  return assignmentService.listPending(
     toUserContext(userId, role),
-    questStore,
+    assignmentRepository,
   );
 }
 
@@ -53,44 +45,37 @@ export async function approveQuest(
   questId: string,
   userId: string,
   role: UserRole,
-  questStore: QuestStore,
-  sheetRepository: SheetRepository,
+  assignmentRepository: AssignmentRepository,
 ): Promise<Quest> {
-  return trainerQuestService.approve(
+  return assignmentService.approve(
     questId,
     toUserContext(userId, role),
-    questStore,
-    sheetRepository,
+    assignmentRepository,
   );
-}
-
-export function getTrainerDashboard(
-  userId: string,
-  role: UserRole,
-): TrainerDashboard {
-  return trainerDashboardService.getDashboard(toUserContext(userId, role));
 }
 
 export async function createQuest(
   userId: string,
   role: UserRole,
   input: CreateQuestInput,
-  questStore: QuestStore,
+  assignmentRepository: AssignmentRepository,
 ): Promise<Quest> {
-  return trainerQuestService.create(
+  return assignmentService.createFromQuestInput(
     input,
     toUserContext(userId, role),
-    questStore,
+    assignmentRepository,
   );
 }
 
 export async function getTrainerQuestProgressList(
   userId: string,
   role: UserRole,
-  questStore: QuestStore,
+  assignmentRepository: AssignmentRepository,
 ): Promise<Quest[]> {
-  return trainerQuestService.listQuestProgress(
+  return assignmentService.listTrainerProgress(
     toUserContext(userId, role),
-    questStore,
+    assignmentRepository,
   );
 }
+
+export { getTrainerDashboard } from './trainerDashboardFacade.js';

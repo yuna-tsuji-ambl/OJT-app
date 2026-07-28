@@ -1,7 +1,10 @@
 export type {
+  Assignment,
+  CreateAssignmentInput,
   CreateQuestInput,
   Quest,
   QuestStatus,
+  UpdateAssignmentInput,
   UserContext,
   UserRole,
 } from './types.js';

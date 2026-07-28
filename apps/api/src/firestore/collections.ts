@@ -1,5 +1,6 @@
 export const FIRESTORE_COLLECTIONS = {
   QUESTS: 'quests',
+  ASSIGNMENTS: 'assignments',
   CONDITION_RECORDS: 'conditionRecords',
   TRAINER_STATUSES: 'trainerStatuses',
   CHAT_MESSAGES: 'chatMessages',

@@ -10,12 +10,10 @@ import {
 import { parseCreateQuestBody } from '../http/questRequestTypes.js';
 import { readRouteParam } from '../http/expressRouteParams.js';
 import { runQuestRoute } from '../http/runQuestRoute.js';
-import type { QuestStore } from '../repositories/questStore.js';
-import type { SheetRepository } from '../repositories/sheetRepository.js';
+import type { AssignmentRepository } from '../repositories/assignmentRepository.js';
 
 export function createQuestRouter(
-  questStore: QuestStore,
-  sheetRepository: SheetRepository,
+  assignmentRepository: AssignmentRepository,
 ): Router {
   const router = Router();
 
@@ -23,7 +21,7 @@ export function createQuestRouter(
     '/quests',
     (request, response) =>
       void runQuestRoute(request, response, (context) =>
-        getQuestList(context.userId, context.role, sheetRepository, questStore),
+        getQuestList(context.userId, context.role, assignmentRepository),
       ),
   );
 
@@ -31,7 +29,7 @@ export function createQuestRouter(
     '/quests/pending',
     (request, response) =>
       void runQuestRoute(request, response, (context) =>
-        getPendingQuestList(context.userId, context.role, questStore),
+        getPendingQuestList(context.userId, context.role, assignmentRepository),
       ),
   );
 
@@ -39,7 +37,11 @@ export function createQuestRouter(
     '/quests/progress',
     (request, response) =>
       void runQuestRoute(request, response, (context) =>
-        getTrainerQuestProgressList(context.userId, context.role, questStore),
+        getTrainerQuestProgressList(
+          context.userId,
+          context.role,
+          assignmentRepository,
+        ),
       ),
   );
 
@@ -54,7 +56,8 @@ export function createQuestRouter(
     void runQuestRoute(
       request,
       response,
-      (context) => createQuest(context.userId, context.role, body, questStore),
+      (context) =>
+        createQuest(context.userId, context.role, body, assignmentRepository),
       { successStatus: 201 },
     );
   });
@@ -67,7 +70,7 @@ export function createQuestRouter(
           readRouteParam(request.params.questId),
           context.userId,
           context.role,
-          questStore,
+          assignmentRepository,
         ),
       ),
   );
@@ -80,8 +83,7 @@ export function createQuestRouter(
           readRouteParam(request.params.questId),
           context.userId,
           context.role,
-          questStore,
-          sheetRepository,
+          assignmentRepository,
         ),
       ),
   );
