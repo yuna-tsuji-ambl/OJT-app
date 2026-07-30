@@ -75,7 +75,7 @@
 | F-05 | モック認証・ロール制御                 | **実装済**         | —    | §5         | —                                                                                                          |
 | F-06 | 課題管理（トレーナー入力・スプシ代替） | **実装済**         | P1   | §7.4       | [quest-feature.md](./test-specs/quest-feature.md)（F-01 移行節）                                           |
 | F-07 | 日次・週次報告書                       | **設計済・未着手** | P1   | §7.5       | 未作成                                                                                                     |
-| F-08 | 目標・タスク管理（ガントチャート）     | **設計済・未着手** | P2   | §7.6       | 未作成                                                                                                     |
+| F-08 | 目標・タスク管理（ガントチャート）     | **実装済**         | P2   | §7.6       | [goal-feature.md](./test-specs/goal-feature.md)                                                            |
 | F-09 | 学び共有（デイリーログ + リンク）      | **設計済・未着手** | P2   | §7.7       | 未作成                                                                                                     |
 | F-10 | 本番認証（Identity Platform 等）       | **計画のみ**       | —    | §5.4       | —                                                                                                          |
 | F-11 | 複数新卒・複数トレーナー               | **計画のみ**       | —    | §13        | —                                                                                                          |
@@ -100,7 +100,7 @@
 | Phase 2  | 課題管理（§7.4）          | **完了**   |
 | Phase 3  | 日次・週次報告（§7.5）    | 未着手     |
 | Phase 4  | 学び共有（§7.7）          | 未着手     |
-| Phase 5  | ガント（§7.6）            | 未着手     |
+| Phase 5  | ガント（§7.6）            | 実装済     |
 | Phase 6  | BigQuery 分析（任意）     | 計画のみ   |
 
 #### 開発対象外（現時点）
@@ -319,8 +319,8 @@ Vite（`apps/web/vite.config.ts`）が `/api` および `/health` を `localhost
 | `/reports/weekly/list` | TraineeWeeklyReportListPage                       | trainee          | 過去週次一覧（本文検索、`from`/`to` または `date`＝日付/週キー両可。同時指定はエラー）           |
 | `/reports/daily`       | —（`/reports` へリダイレクト）                    | trainee          | 旧日次入力 URL 互換                                                                              |
 | `/reports/weekly`      | —（`/reports` へリダイレクト）                    | trainee          | 旧週次入力 URL 互換                                                                              |
-| `/goals`               | GoalGanttPage                                     | trainee, trainer | 目標・タスクのガントチャート表示                                                                 |
-| `/goals/manage`        | GoalManagePage                                    | trainer          | 目標・タスクの登録・期間設定                                                                     |
+| `/goals`               | GoalGanttPage                                     | trainee, trainer | 目標・タスクのガントチャート表示（バー移動・端ドラッグで期間変更可）。ヘッダー「目標」から遷移   |
+| `/goals/manage`        | GoalManagePage                                    | trainee, trainer | 目標の登録・変更（双方）。削除はトレーナーのみ                                                   |
 | `/learnings`           | LearningFeedPage                                  | trainee, trainer | 学び共有タイムライン                                                                             |
 | `/learnings/new`       | LearningCreatePage                                | trainee          | その日の学び + リンク投稿                                                                        |
 | `*`                    | —                                                 | —                | `/login` へリダイレクト                                                                          |
@@ -781,28 +781,31 @@ interface Report {
 
 ---
 
-### 7.6 目標・タスク管理（ガントチャート） `設計済・未着手（F-08）`
+### 7.6 目標・タスク管理（ガントチャート） `実装済（F-08）`
 
 #### 7.6.1 概要
 
-OJT 期間中の**目標（タスク）**を期間付きで登録し、**ガントチャート**で進捗・スケジュールを可視化する。トレーナーが目標を登録し、新卒が進捗を更新する（またはトレーナーが更新）。
+OJT 期間中の**目標（タスク）**を期間付きで登録し、**ガントチャート**で進捗・スケジュールを可視化する。  
+**新卒・トレーナー双方が作成・変更でき、同一データとして連動する。削除はトレーナーのみ。**
 
 #### 7.6.2 ユースケース
 
-| UC-ID  | アクター          | 操作                                               | 結果                       |
-| ------ | ----------------- | -------------------------------------------------- | -------------------------- |
-| UC-G01 | trainer           | 目標タスクを登録（名前、開始日、終了日、担当新卒） | ガントにバー表示           |
-| UC-G02 | trainer / trainee | 進捗率（0〜100%）・ステータスを更新                | バー表示が更新             |
-| UC-G03 | trainee / trainer | ガントチャートで全体スケジュールを閲覧             | 期間横軸 + タスクバー      |
-| UC-G04 | trainer           | タスク間の依存関係を設定（Phase 2）                | 先行タスク完了後に着手可能 |
+| UC-ID  | アクター          | 操作                                                                 | 結果                       |
+| ------ | ----------------- | -------------------------------------------------------------------- | -------------------------- |
+| UC-G01 | trainer / trainee | 目標タスクを登録（名前、開始日、終了日。トレーナーは担当新卒指定可） | ガントにバー表示（連動）   |
+| UC-G02 | trainer / trainee | 進捗率（0〜100%）・ステータス・タイトル・期間を更新                  | バー表示が更新（連動）     |
+| UC-G03 | trainee / trainer | ガントチャートで全体スケジュールを閲覧・バー移動・期間変更           | 期間横軸 + タスクバー      |
+| UC-G04 | trainer           | 目標を削除                                                           | 双方の一覧・ガントから消失 |
+| UC-G05 | trainer           | タスク間の依存関係を設定（Phase 2）                                  | 先行タスク完了後に着手可能 |
 
 #### 7.6.3 ガントチャート UI
 
-| 項目           | 方針                                                                                                                       |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| ライブラリ候補 | [frappe-gantt](https://github.com/frappe/gantt)（軽量）、[gantt-task-react](https://github.com/MaTeMaTuK/gantt-task-react) |
-| 初版スコープ   | 読み取り専用ガント + 別画面で CRUD。ドラッグによる期間変更は Phase 2                                                       |
-| 表示単位       | 週 / 月切替（Phase 2）                                                                                                     |
+| 項目         | 方針                                                                                           |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| 実装         | 自前ガント（CSS + ポインタ操作）。外部ガントライブラリは未使用                                 |
+| 初版スコープ | `/goals` で閲覧・バー移動・端ドラッグ期間変更。`/goals/manage` で CRUD（削除はトレーナーのみ） |
+| 横軸         | **日単位**。軸ラベル「日付（日）」と `M/D` 目盛りを表示（期間が長い場合は間引き）              |
+| 表示単位切替 | 週 / 月切替（Phase 2）                                                                         |
 
 #### 7.6.4 ドメインモデル
 
@@ -833,7 +836,7 @@ interface GanttViewModel {
 
 #### 7.6.5 テスト仕様
 
-→ `docs/test-specs/goal-feature.md`（新規作成予定）
+→ [`docs/test-specs/goal-feature.md`](./test-specs/goal-feature.md)
 
 ---
 
@@ -1031,12 +1034,12 @@ interface LearningPost {
 
 #### 8.6.3 目標・ガント
 
-| メソッド | パス             | ロール           | 説明                              |
-| -------- | ---------------- | ---------------- | --------------------------------- |
-| GET      | `/api/goals`     | trainee, trainer | ガント用目標一覧（`?traineeId=`） |
-| POST     | `/api/goals`     | trainer          | 目標作成                          |
-| PUT      | `/api/goals/:id` | trainer, trainee | 目標更新（進捗含む）              |
-| DELETE   | `/api/goals/:id` | trainer          | 目標削除                          |
+| メソッド | パス             | ロール           | 説明                                                  |
+| -------- | ---------------- | ---------------- | ----------------------------------------------------- |
+| GET      | `/api/goals`     | trainee, trainer | ガント用目標一覧（`?traineeId=`。新卒は省略時に自身） |
+| POST     | `/api/goals`     | trainee, trainer | 目標作成（双方。連動）                                |
+| PUT      | `/api/goals/:id` | trainee, trainer | 目標更新（タイトル・期間・進捗・ステータス等）        |
+| DELETE   | `/api/goals/:id` | trainer          | 目標削除（新卒は 403）                                |
 
 #### 8.6.4 学び共有
 
@@ -1221,7 +1224,7 @@ flowchart TB
 | `chatMessages`     | auto            | conversationKey, senderId, receiverId, content, type, createdAt | **実装済**         |
 | `assignments`      | auto            | traineeId, title, ...                                           | **実装済**（§7.4） |
 | `reports`          | auto            | traineeId, type, periodKey, content, status, comments           | 一部実装（§7.5）   |
-| `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 未実装（§7.6）     |
+| `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 実装済（§7.6）     |
 | `learningPosts`    | auto            | authorId, date, title, body, links                              | 未実装（§7.7）     |
 
 **複合インデックス**（`firestore.indexes.json`）:
@@ -1240,7 +1243,7 @@ flowchart TB
 | **Phase 2** | 課題管理（§7.4）                     | Assignment CRUD + 既存申請フロー接続             | **未着手** |
 | **Phase 3** | 報告書（§7.5）                       | 日次・週次 API + 画面                            | 未着手     |
 | **Phase 4** | 学び共有（§7.7）                     | タイムライン API + 画面                          | 未着手     |
-| **Phase 5** | ガント（§7.6）                       | Goal CRUD + Gantt UI                             | 未着手     |
+| **Phase 5** | ガント（§7.6）                       | Goal CRUD + Gantt UI                             | 実装済     |
 | **Phase 6** | BigQuery エクスポート（任意）        | 週次バッチ、分析ダッシュボード                   | 計画のみ   |
 
 ---

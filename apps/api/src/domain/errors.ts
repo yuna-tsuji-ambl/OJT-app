@@ -141,3 +141,19 @@ export class ReportNotFoundError extends Error {
     this.name = 'ReportNotFoundError';
   }
 }
+
+export const INVALID_GOAL_INPUT_MESSAGE = 'Invalid goal input' as const;
+
+export class GoalInvalidInputError extends Error {
+  constructor(message: string = INVALID_GOAL_INPUT_MESSAGE) {
+    super(message);
+    this.name = 'GoalInvalidInputError';
+  }
+}
+
+export class GoalNotFoundError extends Error {
+  constructor(goalId: string) {
+    super(`Goal not found: ${goalId}`);
+    this.name = 'GoalNotFoundError';
+  }
+}

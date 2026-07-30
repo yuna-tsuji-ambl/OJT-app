@@ -10,6 +10,8 @@ import {
   MessageTemplateRequiredError,
   MessageThreadNotFoundError,
   QuestNotFoundError,
+  GoalInvalidInputError,
+  GoalNotFoundError,
   ReportInvalidInputError,
   ReportNotFoundError,
   TrainerStatusNotFoundError,
@@ -104,6 +106,27 @@ export function sendStatusErrorResponse(
   error: unknown,
 ): void {
   if (error instanceof TrainerStatusNotFoundError) {
+    response.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (sendSharedAuthErrors(response, error)) {
+    return;
+  }
+
+  response.status(401).json({ error: 'Unauthorized' });
+}
+
+export function sendGoalErrorResponse(
+  response: Response,
+  error: unknown,
+): void {
+  if (error instanceof GoalInvalidInputError) {
+    response.status(400).json({ error: error.message });
+    return;
+  }
+
+  if (error instanceof GoalNotFoundError) {
     response.status(404).json({ error: 'Not found' });
     return;
   }

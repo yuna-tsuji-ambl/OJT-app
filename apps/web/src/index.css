@@ -583,3 +583,211 @@ dd {
     min-width: 5.5rem;
   }
 }
+
+.page-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.goal-form {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  background: var(--bg-card);
+}
+
+.goal-form__field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.goal-form__actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.goal-form__error {
+  color: #ff6b6b;
+  margin: 0;
+}
+
+.goal-feedback {
+  margin: 0 0 1rem;
+}
+
+.goal-feedback--success {
+  color: #7bed9f;
+}
+
+.goal-feedback--error {
+  color: #ff6b6b;
+}
+
+.goal-manage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.goal-manage-list__item {
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  background: var(--bg-card);
+}
+
+.goal-manage-list__summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.goal-manage-list__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.gantt-chart {
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+.gantt-chart--dragging {
+  overflow-x: hidden;
+  user-select: none;
+  cursor: grabbing;
+}
+
+.gantt-chart__timeline {
+  min-width: max-content;
+  width: 100%;
+}
+
+.gantt-chart__axis {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.gantt-chart__axis-unit {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+}
+
+.gantt-chart__axis-track {
+  position: relative;
+  height: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.gantt-chart__axis-tick {
+  position: absolute;
+  bottom: 0.15rem;
+  box-sizing: border-box;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.gantt-chart__row {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.gantt-chart__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.gantt-chart__track {
+  position: relative;
+  height: 2.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gantt-chart__bar {
+  position: absolute;
+  top: 0.25rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  border-radius: 0.25rem;
+  background: rgba(229, 9, 20, 0.35);
+  border: 1px solid var(--netflix-red);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.gantt-chart__bar:active {
+  cursor: grabbing;
+}
+
+.gantt-chart__progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(229, 9, 20, 0.75);
+  border-radius: 0.25rem 0 0 0.25rem;
+  pointer-events: none;
+}
+
+.gantt-chart__bar-label {
+  position: relative;
+  z-index: 1;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.gantt-chart__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.75rem;
+  cursor: ew-resize;
+  z-index: 2;
+  touch-action: none;
+}
+
+.gantt-chart__handle--start {
+  left: 0;
+  border-radius: 0.25rem 0 0 0.25rem;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gantt-chart__handle--end {
+  right: 0;
+  border-radius: 0 0.25rem 0.25rem 0;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gantt-chart__handle:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.goal-page__nav-hint {
+  margin-top: 1.5rem;
+}
