@@ -10,7 +10,7 @@
     "dev": "npm run dev -w @ojt-app/web",
     "dev:api": "npm run dev -w @ojt-app/api",
     "dev:api:firestore": "DB_PROVIDER=firestore GCP_PROJECT_ID=ojt-app FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 npm run dev -w @ojt-app/api",
-    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev\"",
+    "dev:all": "npm run build -w @ojt-app/shared && concurrently \"npm run dev:api\" \"npm run dev\"",
     "dev:all:firestore": "concurrently \"npm run emulators:firestore\" \"npm run dev:api:firestore\" \"npm run dev\"",
     "emulators:firestore": "firebase emulators:start --only firestore",
     "build": "npm run build -w @ojt-app/shared && npm run build -w @ojt-app/api && npm run build -w @ojt-app/web",

@@ -48,10 +48,6 @@ function trainerStatusRegion(page: Page) {
   return page.getByRole('region', { name: '先輩のステータス' });
 }
 
-async function sendQuickQuestion(page: Page): Promise<void> {
-  await sendFreeTextMessage(page, E_S01_QUESTION_CONTENT);
-}
-
 async function replyWithStampInThread(
   page: Page,
   stampLabel: string,
@@ -106,7 +102,7 @@ test.describe('E-S01 ステータス確認と質問のEnd-to-End', () => {
     await loginAsTrainee(page);
     await openTraineeHome(page);
     await expect(trainerStatusRegion(page)).toHaveText(TRAINER_STATUS_QUEST_OK);
-    await sendQuickQuestion(page);
+    await sendFreeTextMessage(page, E_S01_QUESTION_CONTENT);
 
     await logout(page);
     await loginAsTrainer(page);

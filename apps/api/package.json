@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
+    "predev": "npm run build --workspace=@ojt-app/shared",
     "dev": "npm run build && node --watch dist/server.js",
     "pretest": "npm run build --workspace=@ojt-app/shared",
     "test": "vitest run"
