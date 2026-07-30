@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import { UnauthorizedError } from '../domain/errors.js';
 import { toUserContext } from '../domain/userContext.js';
 import type { UserContext, UserRole } from '../domain/types.js';
 
@@ -15,7 +16,7 @@ export function readExpressUserContext(request: Request): UserContext {
   const role = parseRole(request.header('x-user-role') ?? undefined);
 
   if (!userId || !role) {
-    throw new Error('Unauthorized');
+    throw new UnauthorizedError();
   }
 
   return toUserContext(userId, role);

@@ -10,6 +10,7 @@ import { createAssignmentRouter } from '../routes/assignmentRoutes.js';
 import { createConditionRouter } from '../routes/conditionRoutes.js';
 import { createMessageRouter } from '../routes/messageRoutes.js';
 import { createQuestRouter } from '../routes/questRoutes.js';
+import { createReportRouter } from '../routes/reportRoutes.js';
 import { createStatusRouter } from '../routes/statusRoutes.js';
 
 export async function createApiApp(
@@ -24,6 +25,7 @@ export async function createApiApp(
   const {
     conditionRecordStore,
     assignmentRepository,
+    reportRepository,
     trainerStatusStore,
     chatMessageStore,
     threadStore,
@@ -45,6 +47,7 @@ export async function createApiApp(
   apiRouter.use(createConditionRouter(conditionRecordStore));
   apiRouter.use(createQuestRouter(assignmentRepository));
   apiRouter.use(createAssignmentRouter(assignmentRepository));
+  apiRouter.use(createReportRouter(reportRepository));
   apiRouter.use(createStatusRouter(trainerStatusStore));
   apiRouter.use(
     createMessageRouter(chatMessageStore, threadStore, threadChatMessageStore),

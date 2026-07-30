@@ -12,6 +12,13 @@ export class ForbiddenError extends Error {
   }
 }
 
+export class UnauthorizedError extends Error {
+  constructor(message = 'Unauthorized') {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
 export class TrainerStatusNotFoundError extends Error {
   constructor(trainerId: string) {
     super(`Trainer status not found: ${trainerId}`);
@@ -116,5 +123,21 @@ export class LegacyQuickReplyNotSupportedError extends Error {
   constructor() {
     super('Legacy quick reply is not supported');
     this.name = 'LegacyQuickReplyNotSupportedError';
+  }
+}
+
+export const INVALID_REPORT_INPUT_MESSAGE = 'Invalid report input' as const;
+
+export class ReportInvalidInputError extends Error {
+  constructor(message: string = INVALID_REPORT_INPUT_MESSAGE) {
+    super(message);
+    this.name = 'ReportInvalidInputError';
+  }
+}
+
+export class ReportNotFoundError extends Error {
+  constructor(periodKey: string) {
+    super(`Report not found: ${periodKey}`);
+    this.name = 'ReportNotFoundError';
   }
 }

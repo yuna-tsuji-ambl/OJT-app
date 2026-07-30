@@ -3,6 +3,7 @@ import { SEED_ASSIGNMENTS } from '../domain/assignmentConstants.js';
 import { TRAINER_STATUS } from '../domain/statusConstants.js';
 import { DEFAULT_TRAINER_ID } from '../domain/userIds.js';
 import { FIRESTORE_COLLECTIONS } from '../firestore/collections.js';
+import { toAssignmentDocument } from '../repositories/firestore/assignmentFirestoreMappers.js';
 
 export async function seedAssignmentsIfEmpty(db: Firestore): Promise<void> {
   const snapshot = await db
@@ -20,7 +21,7 @@ export async function seedAssignmentsIfEmpty(db: Firestore): Promise<void> {
     const reference = db
       .collection(FIRESTORE_COLLECTIONS.ASSIGNMENTS)
       .doc(assignment.id);
-    batch.set(reference, assignment);
+    batch.set(reference, toAssignmentDocument(assignment));
   }
 
   await batch.commit();

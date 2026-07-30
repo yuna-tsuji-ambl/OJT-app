@@ -14,6 +14,10 @@ import type {
 import type { QuestStatus } from '../../domain/types.js';
 import { FIRESTORE_COLLECTIONS } from '../../firestore/collections.js';
 import type { AssignmentRepository } from '../assignmentRepository.js';
+import {
+  fromAssignmentDocument,
+  toAssignmentDocument,
+} from './assignmentFirestoreMappers.js';
 
 export class FirestoreAssignmentRepository implements AssignmentRepository {
   constructor(private readonly db: Firestore) {}
@@ -27,12 +31,14 @@ export class FirestoreAssignmentRepository implements AssignmentRepository {
       .where('traineeId', '==', traineeId)
       .get();
 
-    return snapshot.docs.map((document) => document.data() as Assignment);
+    return snapshot.docs.map((document) =>
+      fromAssignmentDocument(document.data()),
+    );
   }
 
   async findById(id: string): Promise<Assignment | null> {
     const document = await this.assignmentsCollection().doc(id).get();
-    return document.exists ? (document.data() as Assignment) : null;
+    return document.exists ? fromAssignmentDocument(document.data()) : null;
   }
 
   async listByTrainer(trainerId: string): Promise<Assignment[]> {
@@ -40,7 +46,9 @@ export class FirestoreAssignmentRepository implements AssignmentRepository {
       .where('createdBy', '==', trainerId)
       .get();
 
-    return snapshot.docs.map((document) => document.data() as Assignment);
+    return snapshot.docs.map((document) =>
+      fromAssignmentDocument(document.data()),
+    );
   }
 
   async listPending(): Promise<Assignment[]> {
@@ -48,7 +56,9 @@ export class FirestoreAssignmentRepository implements AssignmentRepository {
       .where('status', '==', QUEST_STATUS.PENDING)
       .get();
 
-    return snapshot.docs.map((document) => document.data() as Assignment);
+    return snapshot.docs.map((document) =>
+      fromAssignmentDocument(document.data()),
+    );
   }
 
   async create(
@@ -56,7 +66,9 @@ export class FirestoreAssignmentRepository implements AssignmentRepository {
     createdBy: string,
   ): Promise<Assignment> {
     const assignment = createAssignmentFromInput(input, createdBy);
-    await this.assignmentsCollection().doc(assignment.id).set(assignment);
+    await this.assignmentsCollection()
+      .doc(assignment.id)
+      .set(toAssignmentDocument(assignment));
     return assignment;
   }
 
@@ -79,7 +91,9 @@ export class FirestoreAssignmentRepository implements AssignmentRepository {
       updatedAt: new Date().toISOString(),
     };
 
-    await this.assignmentsCollection().doc(id).set(updated);
+    await this.assignmentsCollection()
+      .doc(id)
+      .set(toAssignmentDocument(updated));
     return updated;
   }
 
@@ -121,7 +135,9 @@ export class FirestoreAssignmentRepository implements AssignmentRepository {
       updatedAt: new Date().toISOString(),
     };
 
-    await this.assignmentsCollection().doc(id).set(updated);
+    await this.assignmentsCollection()
+      .doc(id)
+      .set(toAssignmentDocument(updated));
     return updated;
   }
 }

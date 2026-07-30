@@ -5,12 +5,24 @@ import { AssignmentListPage } from './pages/AssignmentListPage';
 import { AssignmentManagePage } from './pages/AssignmentManagePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import {
+  DAILY_REPORT_LIST_PATH,
+  DAILY_REPORT_PATH,
+  REPORT_DETAIL_ROUTE_PATH,
+  REPORT_PAGE_PATH,
+  WEEKLY_REPORT_LIST_PATH,
+  WEEKLY_REPORT_PATH,
+} from './domain/reportForm';
+import { DailyReportListPage } from './pages/DailyReportListPage';
+import { ReportDetailPage } from './pages/ReportDetailPage';
+import { ReportsRoutePage } from './pages/ReportsRoutePage';
 import { TraineeHomePage } from './pages/TraineeHomePage';
 import { TrainerConditionPage } from './pages/TrainerConditionPage';
 import { TrainerMessagesPage } from './pages/TrainerMessagesPage';
 import { TrainerStatusSettingsPage } from './pages/TrainerStatusSettingsPage';
 import { TraineeDetailPage } from './pages/TraineeDetailPage';
 import { WeeklyConditionPage } from './pages/WeeklyConditionPage';
+import { WeeklyReportListPage } from './pages/WeeklyReportListPage';
 
 export default function App() {
   return (
@@ -21,6 +33,27 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/condition/weekly" element={<WeeklyConditionPage />} />
             <Route path="/home" element={<TraineeHomePage />} />
+            <Route
+              path={DAILY_REPORT_PATH}
+              element={<Navigate to={REPORT_PAGE_PATH} replace />}
+            />
+            <Route
+              path={WEEKLY_REPORT_PATH}
+              element={<Navigate to={REPORT_PAGE_PATH} replace />}
+            />
+            <Route
+              path={DAILY_REPORT_LIST_PATH}
+              element={<DailyReportListPage />}
+            />
+            <Route
+              path={WEEKLY_REPORT_LIST_PATH}
+              element={<WeeklyReportListPage />}
+            />
+            <Route
+              path={REPORT_DETAIL_ROUTE_PATH}
+              element={<ReportDetailPage />}
+            />
+            <Route path={REPORT_PAGE_PATH} element={<ReportsRoutePage />} />
             <Route path="/assignments" element={<AssignmentListPage />} />
             <Route
               path="/assignments/manage"

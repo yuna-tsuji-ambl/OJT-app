@@ -20,5 +20,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    hookTimeout: 30_000,
+    env: {
+      FIRESTORE_EMULATOR_HOST:
+        process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8081',
+      GCP_PROJECT_ID: process.env.GCP_PROJECT_ID ?? 'ojt-app-dev',
+    },
   },
 });

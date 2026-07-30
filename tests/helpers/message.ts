@@ -1,4 +1,9 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import {
+  expect,
+  type Locator,
+  type Page,
+  type Response,
+} from '@playwright/test';
 import {
   formatThreadUpdatedAtLocal,
   MESSAGE_THREAD_LIST_PAGE_SIZE,
@@ -525,18 +530,23 @@ export async function selectQuestionTemplate(
     .selectOption({ label: templateLabel });
 }
 
-export async function sendSelectedMessage(page: Page): Promise<void> {
-  const sendResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/status/messages') &&
-      response.request().method() === 'POST' &&
-      response.ok(),
+function isSuccessfulMessagePost(response: Response): boolean {
+  return (
+    response.url().includes('/api/status/messages') &&
+    response.request().method() === 'POST' &&
+    response.ok()
   );
+}
 
+async function clickMessageSendAndWaitForThreads(page: Page): Promise<void> {
+  const sendResponse = page.waitForResponse(isSuccessfulMessagePost);
   await messageSendRegion(page).getByRole('button', { name: '送信' }).click();
-
   await sendResponse;
   await waitForMessageThreadsLoaded(page);
+}
+
+export async function sendSelectedMessage(page: Page): Promise<void> {
+  await clickMessageSendAndWaitForThreads(page);
 }
 
 async function closeOpenInlineMessageThread(page: Page): Promise<void> {
@@ -598,26 +608,14 @@ export async function sendFreeTextMessage(
   page: Page,
   content: string,
 ): Promise<void> {
-  const sendResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/status/messages') &&
-      response.request().method() === 'POST' &&
-      response.ok(),
-  );
-
   await freeTextInput(page).fill(content);
-  await messageSendRegion(page).getByRole('button', { name: '送信' }).click();
-
-  await sendResponse;
-  await waitForMessageThreadsLoaded(page);
-  await expect(
-    messageThreadList(page)
-      .getByRole('listitem')
-      .first()
-      .getByRole('article', { name: content, exact: true }),
-  ).toBeVisible();
+  await clickMessageSendAndWaitForThreads(page);
+  // 並列 E2E で共有 API に他スレッドが先行することがあるため、先頭行前提にしない
+  await expect(messageThreadListItem(page, content)).toBeVisible();
   await closeOpenInlineMessageThread(page);
 }
+
+export type MessageThreadRowPosition = 'first' | 'last';
 
 export function messageThreadListItem(
   page: Page,
@@ -636,8 +634,6 @@ export function messageThreadListItem(
 
   return matchingRows.last();
 }
-
-export type MessageThreadRowPosition = 'first' | 'last';
 
 export function messageThreadRowById(page: Page, threadId: string): Locator {
   return messageThreadList(page).locator(

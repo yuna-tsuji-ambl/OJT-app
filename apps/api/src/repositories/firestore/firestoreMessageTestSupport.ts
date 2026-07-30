@@ -6,8 +6,7 @@ import {
 import { MESSAGE_FIRESTORE_COLLECTIONS } from '../../firestore/collections.js';
 import { deleteAllDocumentsInCollection } from '../../firestore/deleteAllDocumentsInCollection.js';
 import { seedFirestoreDefaults } from '../../firestore/seed.js';
-
-const DEFAULT_TEST_GCP_PROJECT_ID = 'ojt-app-dev';
+import { ensureFirestoreEmulatorEnv } from '../../tests/firestoreEmulatorEnv.js';
 
 export async function clearFirestoreMessageCollections(
   db: Firestore,
@@ -20,8 +19,7 @@ export async function clearFirestoreMessageCollections(
 }
 
 export async function prepareFirestoreMessageTestEnvironment(): Promise<Firestore> {
-  process.env.GCP_PROJECT_ID =
-    process.env.GCP_PROJECT_ID ?? DEFAULT_TEST_GCP_PROJECT_ID;
+  ensureFirestoreEmulatorEnv();
   resetFirestoreForTests();
 
   const db = getFirestore();
