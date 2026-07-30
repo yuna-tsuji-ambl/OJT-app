@@ -56,8 +56,19 @@ jobs:
       - name: Build shared package
         run: npm run build -w @ojt-app/shared
 
+      - name: Setup Java (Firestore Emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # 報告書 API（U-R / I-R）は Firestore Emulator 必須（E-R11）
       - name: Run unit and integration tests
-        run: npm test
+        run: npx firebase emulators:exec --only firestore --project ojt-app-dev "npm test"
+
+      # 報告書 Web UI（U-R26〜 / E-R11）を含む Web Vitest
+      - name: Run web unit and integration tests
+        run: npm test -w @ojt-app/web
 
   e2e:
     name: E2E (Playwright)

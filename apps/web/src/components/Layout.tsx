@@ -1,5 +1,9 @@
 import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import {
+  REPORT_HEADER_NAV_LABEL,
+  REPORT_PAGE_PATH,
+} from '../domain/reportForm';
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -17,6 +21,7 @@ export function Layout() {
           {user.role === 'trainee' && (
             <>
               <Link to="/home">ホーム</Link>
+              <Link to={REPORT_PAGE_PATH}>{REPORT_HEADER_NAV_LABEL}</Link>
               <Link to="/condition/weekly">週次入力</Link>
               <Link to="/assignments">課題一覧</Link>
             </>
@@ -24,6 +29,7 @@ export function Layout() {
           {user.role === 'trainer' && (
             <>
               <Link to="/dashboard">ダッシュボード</Link>
+              <Link to={REPORT_PAGE_PATH}>{REPORT_HEADER_NAV_LABEL}</Link>
               <Link to="/assignments/manage">課題管理</Link>
               <Link to="/condition">コンディション</Link>
               <Link to="/status/settings">ステータス設定</Link>

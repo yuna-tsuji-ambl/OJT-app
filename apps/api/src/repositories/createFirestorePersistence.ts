@@ -7,15 +7,18 @@ import type { ConditionRecordStore } from './conditionRecordStore.js';
 import { FirestoreAssignmentRepository } from './firestore/firestoreAssignmentRepository.js';
 import { FirestoreChatMessageStore } from './firestore/firestoreChatMessageStore.js';
 import { FirestoreConditionRecordStore } from './firestore/firestoreConditionRecordStore.js';
+import { FirestoreReportRepository } from './firestore/firestoreReportRepository.js';
 import { FirestoreTrainerStatusStore } from './firestore/firestoreTrainerStatusStore.js';
 import { createFirestoreMessagePersistence } from './createFirestoreMessagePersistence.js';
 import type { MessageThreadStore } from './messageThreadStore.js';
+import type { ReportRepository } from './reportRepository.js';
 import type { ThreadChatMessageStore } from './threadChatMessageStore.js';
 import type { TrainerStatusStore } from './trainerStatusStore.js';
 
 export interface AppPersistence {
   conditionRecordStore: ConditionRecordStore;
   assignmentRepository: AssignmentRepository;
+  reportRepository: ReportRepository;
   trainerStatusStore: TrainerStatusStore;
   chatMessageStore: ChatMessageStore;
   threadStore: MessageThreadStore;
@@ -31,6 +34,7 @@ export async function createFirestorePersistence(): Promise<AppPersistence> {
     return {
       conditionRecordStore: new FirestoreConditionRecordStore(db),
       assignmentRepository: new FirestoreAssignmentRepository(db),
+      reportRepository: new FirestoreReportRepository(db),
       trainerStatusStore: new FirestoreTrainerStatusStore(db),
       chatMessageStore: new FirestoreChatMessageStore(db),
       threadStore: messagePersistence.threadStore,

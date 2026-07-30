@@ -1,0 +1,93 @@
+---
+description: テスト実行コマンド・未着手判定・1件ずつの TDD 進行ルール
+alwaysApply: true
+---
+
+# テスト実行・進行ルール
+
+テストの**作成規約**は `unit-test.mdc` / `integration-test.mdc` / `e2e-test.mdc` を参照する。  
+本書は**実行コマンド**と**進行手順**（範囲確認・1件ずつ TDD）を定める。  
+ドキュメント駆動 TDD の大枠は `01_tdd-workflow.mdc` に従う。
+
+## 1. ディレクトリ構造と環境の区別
+
+本プロジェクトはモノレポ構成（`apps/api`, `apps/web`, `packages/shared`）である。
+
+| 場所 | 役割 | ランナー |
+| ---- | ---- | -------- |
+| `apps/api` | API 単体・結合 | Vitest（Node） |
+| `apps/web` | Web UI 単体・結合 | Vitest（jsdom） |
+| `tests/*.spec.test.ts` 等 | E2E | Playwright |
+| `packages/shared` | 共有パッケージ | 必須対象外（`*.test.ts` がある場合のみ、そのファイルをピンポイント実行可） |
+
+- `tests/` 配下の E2E を **Vitest で実行してはならない**
+- ルートの `npm test` は **API のみ**（Web・E2E は含まない）。「全体テスト」と呼んで勝手に実行しない
+
+## 2. テスト実行コマンド（厳守）
+
+リポジトリルートをカレントとし、層ごとに次を使う。ピンポイントを基本とする。
+
+**API（Vitest）**
+
+```bash
+npm test -w @ojt-app/api -- src/path/to/file.test.ts
+```
+
+**Web（Vitest）**
+
+```bash
+npm test -w @ojt-app/web -- src/path/to/file.test.tsx
+```
+
+**E2E（Playwright）**
+
+```bash
+npx playwright test tests/path/to/file.spec.test.ts
+```
+
+テスト ID 単位で絞る場合（推奨）:
+
+```bash
+npx playwright test tests/report.spec.test.ts -g "E-R01"
+npm test -w @ojt-app/api -- src/tests/reports.test.ts -t "U-R01"
+```
+
+- ユーザーから明示指示がない限り、パッケージ全件やルート `npm test`、`npm run test:e2e` の一括実行は行わない
+- E2E は API / Web の起動を伴い重い。Firestore 利用テストはエミュレータ等の前提に注意する
+
+## 3. 着手前フロー（必須）
+
+実装・テスト作成の前に、次をこの順で行う。**ユーザー承認前に実装・テスト開始をしてはならない。**
+
+1. 対象のテスト仕様書（`docs/test-specs/[機能名].md`）を提示・確認する
+2. **未着手一覧**を提示する（定義は下記）
+3. ユーザーと**テスト実行範囲**（どのテスト ID から／どこまで）を確認し、承認を得る
+4. 承認後、範囲内で TDD を開始する
+
+### 未着手の定義
+
+- 対象仕様書に記載された**テスト ID**のうち、リポジトリに**対応するテストコードが無いもの**を未着手とする
+- 仕様書で明示的にスコープ外（例: Phase 2 予定のみ）とされた ID は未着手一覧から除く
+
+## 4. 1 件ずつの TDD サイクル（必須）
+
+- 進行単位は**テスト ID ひとつ**
+- **1 件が完了するまで次の ID に進まない**
+
+各 ID について、次の順を厳守する。
+
+1. **テスト作成**（仕様書の当該 ID に対応）
+2. **テスト実行** → 失敗（Red）を確認する（この失敗は想定どおりとして次へ進む）
+3. **実装**（通すための最小変更）
+4. **テスト実行** → 成功するまで実装をやり直す（Green）
+5. **リファクタリング**（必要なら）
+6. **テスト実行** → 成功するまでやり直す
+7. 当該 ID 完了 → 範囲内の次の ID へ
+
+## 5. 既存ルールとの役割分担
+
+| ルール | 役割 |
+| ------ | ---- |
+| `01_tdd-workflow.mdc` | 詳細設計・仕様書更新を含む TDD 全体 |
+| `05_test-execution.mdc`（本ファイル） | 実行コマンド・未着手判定・承認待ち・1 ID 進行 |
+| `unit-test.mdc` / `integration-test.mdc` / `e2e-test.mdc` | 各層のテスト作成・記述規約 |

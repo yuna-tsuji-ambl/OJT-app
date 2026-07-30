@@ -10,13 +10,21 @@ import {
   MessageTemplateRequiredError,
   MessageThreadNotFoundError,
   QuestNotFoundError,
+  ReportInvalidInputError,
+  ReportNotFoundError,
   TrainerStatusNotFoundError,
+  UnauthorizedError,
   UnknownQuestionTemplateError,
   UnknownReplyTemplateError,
   UnknownStampError,
 } from '../domain/errors.js';
 
 function sendSharedAuthErrors(response: Response, error: unknown): boolean {
+  if (error instanceof UnauthorizedError) {
+    response.status(401).json({ error: 'Unauthorized' });
+    return true;
+  }
+
   if (error instanceof ForbiddenError) {
     response.status(403).json({ error: 'Forbidden' });
     return true;
@@ -84,8 +92,7 @@ export function sendConditionErrorResponse(
     return;
   }
 
-  if (error instanceof ForbiddenError) {
-    response.status(403).json({ error: 'Forbidden' });
+  if (sendSharedAuthErrors(response, error)) {
     return;
   }
 
@@ -101,8 +108,28 @@ export function sendStatusErrorResponse(
     return;
   }
 
-  if (error instanceof ForbiddenError) {
-    response.status(403).json({ error: 'Forbidden' });
+  if (sendSharedAuthErrors(response, error)) {
+    return;
+  }
+
+  response.status(401).json({ error: 'Unauthorized' });
+}
+
+export function sendReportErrorResponse(
+  response: Response,
+  error: unknown,
+): void {
+  if (error instanceof ReportInvalidInputError) {
+    response.status(400).json({ error: error.message });
+    return;
+  }
+
+  if (error instanceof ReportNotFoundError) {
+    response.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (sendSharedAuthErrors(response, error)) {
     return;
   }
 
@@ -130,8 +157,7 @@ export function sendMessageErrorResponse(
     return;
   }
 
-  if (error instanceof ForbiddenError) {
-    response.status(403).json({ error: 'Forbidden' });
+  if (sendSharedAuthErrors(response, error)) {
     return;
   }
 

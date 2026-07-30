@@ -233,15 +233,15 @@ OJT-app-1/
 
 ### 4.1 開発・ビルドコマンド
 
-| コマンド           | 説明                            |
-| ------------------ | ------------------------------- |
-| `npm run dev`      | フロント開発サーバー（:5173）   |
-| `npm run dev:api`  | API サーバー（:8080）           |
-| `npm run dev:all`  | 両方同時起動                    |
-| `npm run build`    | shared → api → web の順でビルド |
-| `npm test`         | API 単体・結合テスト            |
-| `npm run test:e2e` | Playwright E2E                  |
-| `npm start`        | ビルド済み API 起動（本番相当） |
+| コマンド           | 説明                                                                    |
+| ------------------ | ----------------------------------------------------------------------- |
+| `npm run dev`      | フロント開発サーバー（:5173）                                           |
+| `npm run dev:api`  | API サーバー（:8080）                                                   |
+| `npm run dev:all`  | 両方同時起動                                                            |
+| `npm run build`    | shared → api → web の順でビルド                                         |
+| `npm test`         | API 単体・結合テスト（CI では続けて `npm test -w @ojt-app/web` も実行） |
+| `npm run test:e2e` | Playwright E2E                                                          |
+| `npm start`        | ビルド済み API 起動（本番相当）                                         |
 
 ### 4.2 ローカル開発時のプロキシ
 
@@ -301,27 +301,29 @@ Vite（`apps/web/vite.config.ts`）が `/api` および `/health` を `localhost
 
 ### 6.1 画面一覧・ルーティング
 
-| パス                   | ページ                             | ロール           | 概要                                                 |
-| ---------------------- | ---------------------------------- | ---------------- | ---------------------------------------------------- |
-| `/login`               | LoginPage                          | 未ログイン       | ロール選択ログイン                                   |
-| `/home`                | TraineeHomePage                    | trainee          | トレーナーステータス表示、クイック質問、チャット履歴 |
-| `/condition/weekly`    | WeeklyConditionPage                | trainee          | 週次コンディション入力                               |
-| `/quests`              | —（`/assignments` へリダイレクト） | trainee          | 旧 URL 互換                                          |
-| `/assignments`         | AssignmentListPage                 | trainee          | トレーナー登録課題の一覧・クリア申請                 |
-| `/assignments/manage`  | AssignmentManagePage               | trainer          | 課題の作成・編集・削除                               |
-| `/dashboard`           | DashboardPage                      | trainer          | 申請中課題承認、コンディションアラート               |
-| `/status/settings`     | TrainerStatusSettingsPage          | trainer          | トレーナーステータス変更                             |
-| `/messages`            | TrainerMessagesPage                | trainer          | 受信質問・簡易返信                                   |
-| `/trainees/:traineeId` | TraineeDetailPage                  | trainer（想定）  | 新卒の最新コンディション表示                         |
-| **（追加予定）**       |                                    |                  |                                                      |
-| `/reports/daily`       | DailyReportPage                    | trainee          | 日次報告書の作成・編集                               |
-| `/reports/weekly`      | WeeklyReportPage                   | trainee          | 週次報告書の作成・編集                               |
-| `/reports`             | ReportListPage                     | trainer          | 担当新卒の報告書一覧・閲覧                           |
-| `/goals`               | GoalGanttPage                      | trainee, trainer | 目標・タスクのガントチャート表示                     |
-| `/goals/manage`        | GoalManagePage                     | trainer          | 目標・タスクの登録・期間設定                         |
-| `/learnings`           | LearningFeedPage                   | trainee, trainer | 学び共有タイムライン                                 |
-| `/learnings/new`       | LearningCreatePage                 | trainee          | その日の学び + リンク投稿                            |
-| `*`                    | —                                  | —                | `/login` へリダイレクト                              |
+| パス                   | ページ                                            | ロール           | 概要                                                                                             |
+| ---------------------- | ------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------ |
+| `/login`               | LoginPage                                         | 未ログイン       | ロール選択ログイン                                                                               |
+| `/home`                | TraineeHomePage                                   | trainee          | トレーナーステータス表示、クイック質問、チャット履歴                                             |
+| `/condition/weekly`    | WeeklyConditionPage                               | trainee          | 週次コンディション入力                                                                           |
+| `/quests`              | —（`/assignments` へリダイレクト）                | trainee          | 旧 URL 互換                                                                                      |
+| `/assignments`         | AssignmentListPage                                | trainee          | トレーナー登録課題の一覧・クリア申請                                                             |
+| `/assignments/manage`  | AssignmentManagePage                              | trainer          | 課題の作成・編集・削除                                                                           |
+| `/dashboard`           | DashboardPage                                     | trainer          | 申請中課題承認、コンディションアラート                                                           |
+| `/status/settings`     | TrainerStatusSettingsPage                         | trainer          | トレーナーステータス変更                                                                         |
+| `/messages`            | TrainerMessagesPage                               | trainer          | 受信質問・簡易返信                                                                               |
+| `/trainees/:traineeId` | TraineeDetailPage                                 | trainer（想定）  | 新卒の最新コンディション表示                                                                     |
+| **（追加予定）**       |                                                   |                  |                                                                                                  |
+| `/reports`             | ReportPage（trainee） / ReportListPage（trainer） | trainee, trainer | 新卒: 日次・週次入力（同一ページ）。トレーナー: 担当新卒の報告書一覧。ヘッダー「報告書」から遷移 |
+| `/reports/daily/list`  | TraineeDailyReportListPage                        | trainee          | 過去日次一覧（本文検索、`from`/`to` または `date`。同時指定はエラー）                            |
+| `/reports/weekly/list` | TraineeWeeklyReportListPage                       | trainee          | 過去週次一覧（本文検索、`from`/`to` または `date`＝日付/週キー両可。同時指定はエラー）           |
+| `/reports/daily`       | —（`/reports` へリダイレクト）                    | trainee          | 旧日次入力 URL 互換                                                                              |
+| `/reports/weekly`      | —（`/reports` へリダイレクト）                    | trainee          | 旧週次入力 URL 互換                                                                              |
+| `/goals`               | GoalGanttPage                                     | trainee, trainer | 目標・タスクのガントチャート表示                                                                 |
+| `/goals/manage`        | GoalManagePage                                    | trainer          | 目標・タスクの登録・期間設定                                                                     |
+| `/learnings`           | LearningFeedPage                                  | trainee, trainer | 学び共有タイムライン                                                                             |
+| `/learnings/new`       | LearningCreatePage                                | trainee          | その日の学び + リンク投稿                                                                        |
+| `*`                    | —                                                 | —                | `/login` へリダイレクト                                                                          |
 
 **レイアウト**: ログイン後は `Layout` コンポーネント（ヘッダーナビ + ログアウト）でラップ。
 
@@ -338,9 +340,12 @@ flowchart LR
   Dashboard --> Detail["/trainees/:id"]
   Home --> Assignments["/assignments"]
   Dashboard --> AssignManage["/assignments/manage"]
-  Home --> DailyReport["/reports/daily"]
-  Home --> WeeklyReport["/reports/weekly"]
-  Dashboard --> ReportList["/reports"]
+  Home --> Reports["/reports"]
+  Dashboard --> Reports
+  Reports --> DailyList["/reports/daily/list"]
+  Reports --> WeeklyList["/reports/weekly/list"]
+  DailyOld["/reports/daily"] -->|redirect| Reports
+  WeeklyOld["/reports/weekly"] -->|redirect| Reports
   Home --> Goals["/goals"]
   Dashboard --> GoalManage["/goals/manage"]
   Home --> Learnings["/learnings"]
@@ -372,25 +377,27 @@ flowchart LR
 
 ### 6.4 画面別 API 利用
 
-| 画面                      | 呼び出し API                                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------------------------ |
-| TraineeHomePage           | `GET /api/status/trainer/:id`, `POST /api/status/messages`, `GET /api/status/messages`           |
-| WeeklyConditionPage       | `POST /api/condition`                                                                            |
-| QuestListPage             | `GET /api/assignments`, `POST /api/assignments/:id/request`（旧 `/api/quests` 互換あり）         |
-| AssignmentListPage        | `GET /api/assignments`, `POST /api/assignments/:id/request`                                      |
-| AssignmentManagePage      | `GET/POST/PUT/DELETE /api/assignments`                                                           |
-| DashboardPage             | `GET /api/assignments/pending`, `POST /api/assignments/:id/approve`, `GET /api/condition/alerts` |
-| TrainerStatusSettingsPage | `GET /api/status/trainer/:id`, `PUT /api/status`                                                 |
-| TrainerMessagesPage       | `GET /api/status/messages`, `POST /api/status/messages`                                          |
-| TraineeDetailPage         | `GET /api/condition/trainees/:id/latest`                                                         |
-| **（追加予定）**          |                                                                                                  |
-| DailyReportPage           | `GET/PUT /api/reports/daily/:date`                                                               |
-| WeeklyReportPage          | `GET/PUT /api/reports/weekly/:weekKey`                                                           |
-| ReportListPage            | `GET /api/reports?traineeId=`                                                                    |
-| GoalGanttPage             | `GET /api/goals`                                                                                 |
-| GoalManagePage            | `GET/POST/PUT/DELETE /api/goals`                                                                 |
-| LearningFeedPage          | `GET /api/learnings`                                                                             |
-| LearningCreatePage        | `POST /api/learnings`                                                                            |
+| 画面                                 | 呼び出し API                                                                                                                                                            |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TraineeHomePage                      | `GET /api/status/trainer/:id`, `POST /api/status/messages`, `GET /api/status/messages`                                                                                  |
+| WeeklyConditionPage                  | `POST /api/condition`                                                                                                                                                   |
+| QuestListPage                        | `GET /api/assignments`, `POST /api/assignments/:id/request`（旧 `/api/quests` 互換あり）                                                                                |
+| AssignmentListPage                   | `GET /api/assignments`, `POST /api/assignments/:id/request`                                                                                                             |
+| AssignmentManagePage                 | `GET/POST/PUT/DELETE /api/assignments`                                                                                                                                  |
+| DashboardPage                        | `GET /api/assignments/pending`, `POST /api/assignments/:id/approve`, `GET /api/condition/alerts`                                                                        |
+| TrainerStatusSettingsPage            | `GET /api/status/trainer/:id`, `PUT /api/status`                                                                                                                        |
+| TrainerMessagesPage                  | `GET /api/status/messages`, `POST /api/status/messages`                                                                                                                 |
+| TraineeDetailPage                    | `GET /api/condition/trainees/:id/latest`                                                                                                                                |
+| **（追加予定）**                     |                                                                                                                                                                         |
+| ReportPage（trainee `/reports`）     | `GET/PUT /api/reports/daily/:date`、`GET/PUT /api/reports/weekly/:weekKey`。日次入力欄直下リンク → `/reports/daily/list`、週次入力欄直下リンク → `/reports/weekly/list` |
+| TraineeDailyReportListPage           | `GET /api/reports/daily?q=&from=&to=` または `?date=`（排他。同時指定時は「期間の範囲指定と特定日は同時に使えません。どちらか一方だけを指定してください。」）           |
+| TraineeWeeklyReportListPage          | `GET /api/reports/weekly?q=&from=&to=` または `?date=`（日付/週キー両対応。同時指定時のエラー文言は日次と同様）                                                         |
+| ReportListPage（trainer `/reports`） | `GET /api/reports?traineeId=&type=`（`type` は任意）。導線はヘッダー「報告書」（ダッシュボードの「報告書一覧」リンクは置かない）                                        |
+| ReportDetailPage                     | `GET /api/reports/:id`、`POST/PUT /api/reports/:id/comments`（トレーナー）                                                                                              |
+| GoalGanttPage                        | `GET /api/goals`                                                                                                                                                        |
+| GoalManagePage                       | `GET/POST/PUT/DELETE /api/goals`                                                                                                                                        |
+| LearningFeedPage                     | `GET /api/learnings`                                                                                                                                                    |
+| LearningCreatePage                   | `POST /api/learnings`                                                                                                                                                   |
 
 ---
 
@@ -719,13 +726,13 @@ interface Assignment {
 
 #### 7.5.3 ユースケース
 
-| UC-ID  | アクター | 操作                             | 結果                       |
-| ------ | -------- | -------------------------------- | -------------------------- |
-| UC-R01 | trainee  | 日次報告を作成・下書き保存・提出 | 指定日の報告が DB に保存   |
-| UC-R02 | trainee  | 週次報告を作成・提出             | 指定週の報告が DB に保存   |
-| UC-R03 | trainee  | 過去の自分の報告を閲覧           | 日付/週で一覧・詳細表示    |
-| UC-R04 | trainer  | 担当新卒の報告一覧を閲覧         | 未読・最新順で表示         |
-| UC-R05 | trainer  | 報告にコメント（任意・Phase 2）  | 新卒がフィードバックを確認 |
+| UC-ID  | アクター | 操作                             | 結果                                                                                                                                                                                                                                                   |
+| ------ | -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| UC-R01 | trainee  | 日次報告を作成・下書き保存・提出 | 指定日の報告が DB に保存                                                                                                                                                                                                                               |
+| UC-R02 | trainee  | 週次報告を作成・提出             | 指定週の報告が DB に保存                                                                                                                                                                                                                               |
+| UC-R03 | trainee  | 過去の自分の報告を閲覧           | `/reports/daily/list`・`/reports/weekly/list` で一覧・詳細表示。本文全体検索。期間は `from`/`to` または `date`（排他。同時指定時は「期間の範囲指定と特定日は同時に使えません。どちらか一方だけを指定してください。」）。週次の値は日付と週キーの両方可 |
+| UC-R04 | trainer  | 担当新卒の報告一覧を閲覧         | 未読・最新順で表示                                                                                                                                                                                                                                     |
+| UC-R05 | trainer  | 報告にコメント（任意・Phase 2）  | 新卒がフィードバックを確認                                                                                                                                                                                                                             |
 
 #### 7.5.4 ドメインモデル
 
@@ -747,6 +754,13 @@ interface WeeklyReportContent {
   questionsForTrainer: string; // トレーナーへの相談
 }
 
+interface ReportComment {
+  id: string;
+  authorId: string;
+  content: string;
+  createdAt: string;
+}
+
 interface Report {
   id: string;
   traineeId: string;
@@ -754,6 +768,7 @@ interface Report {
   periodKey: string; // '2026-07-06' or '2026-W27'
   content: DailyReportContent | WeeklyReportContent;
   status: ReportStatus;
+  comments: ReportComment[]; // UC-R05（Phase 2）
   submittedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -762,7 +777,7 @@ interface Report {
 
 #### 7.5.5 テスト仕様
 
-→ `docs/test-specs/report-feature.md`（新規作成予定）
+→ `docs/test-specs/report-feature.md`
 
 ---
 
@@ -1000,14 +1015,19 @@ interface LearningPost {
 
 #### 8.6.2 報告書
 
-| メソッド | パス                           | ロール           | 説明                            |
-| -------- | ------------------------------ | ---------------- | ------------------------------- |
-| GET      | `/api/reports/daily/:date`     | trainee          | 指定日の日次報告取得            |
-| PUT      | `/api/reports/daily/:date`     | trainee          | 日次報告の保存・提出            |
-| GET      | `/api/reports/weekly/:weekKey` | trainee          | 指定週の週次報告取得            |
-| PUT      | `/api/reports/weekly/:weekKey` | trainee          | 週次報告の保存・提出            |
-| GET      | `/api/reports`                 | trainer          | 報告一覧（`?traineeId=&type=`） |
-| GET      | `/api/reports/:id`             | trainer, trainee | 報告詳細                        |
+| メソッド | パス                       | ロール  | 説明                                                                                                                                            |
+| -------- | -------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET      | `/api/reports/daily`       | trainee | 自分の過去日次報告一覧（UC-R03）。`q`=本文全体検索。期間は `from`/`to` または `date`（`YYYY-MM-DD`、同時指定は 400）                            |
+| GET      | `/api/reports/daily/:date` | trainee | 指定日の日次報告取得                                                                                                                            |
+| PUT      | `/api/reports/daily/:date` | trainee | 日次報告の保存・提出                                                                                                                            |
+| GET      | `/api/reports/weekly`      | trainee | 自分の過去週次報告一覧（UC-R03）。`q`=本文全体検索。期間は `from`/`to` または `date`（`YYYY-MM-DD`＝含む週、または `YYYY-Www`。同時指定は 400） |
+
+| GET | `/api/reports/weekly/:weekKey` | trainee | 指定週の週次報告取得 |
+| PUT | `/api/reports/weekly/:weekKey` | trainee | 週次報告の保存・提出 |
+| GET | `/api/reports` | trainer | 報告一覧（`?traineeId=&type=`） |
+| GET | `/api/reports/:id` | trainer, trainee | 報告詳細 |
+| POST | `/api/reports/:id/comments` | trainer | 報告コメント追加（UC-R05） |
+| PUT | `/api/reports/:id/comments/:commentId` | trainer | 報告コメント更新（UC-R05） |
 
 #### 8.6.3 目標・ガント
 
@@ -1200,7 +1220,7 @@ flowchart TB
 | `trainerStatuses`  | `{userId}`      | status                                                          | **実装済**         |
 | `chatMessages`     | auto            | conversationKey, senderId, receiverId, content, type, createdAt | **実装済**         |
 | `assignments`      | auto            | traineeId, title, ...                                           | **実装済**（§7.4） |
-| `reports`          | auto            | traineeId, type, periodKey, content, status                     | 未実装（§7.5）     |
+| `reports`          | auto            | traineeId, type, periodKey, content, status, comments           | 一部実装（§7.5）   |
 | `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 未実装（§7.6）     |
 | `learningPosts`    | auto            | authorId, date, title, body, links                              | 未実装（§7.7）     |
 
@@ -1254,10 +1274,10 @@ flowchart TB
 
 ### 11.2 テスト種別
 
-| 種別       | 配置                               | 実行               |
-| ---------- | ---------------------------------- | ------------------ |
-| 単体・結合 | `apps/api/src/__tests__/*.test.ts` | `npm test`         |
-| E2E        | `tests/*.spec.test.ts`             | `npm run test:e2e` |
+| 種別       | 配置                              | 実行                                    |
+| ---------- | --------------------------------- | --------------------------------------- |
+| 単体・結合 | `apps/api` / `apps/web` の Vitest | `npm test` / `npm test -w @ojt-app/web` |
+| E2E        | `tests/*.spec.test.ts`            | `npm run test:e2e`                      |
 
 ### 11.3 機能別テスト仕様書
 

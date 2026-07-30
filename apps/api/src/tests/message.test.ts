@@ -2823,10 +2823,6 @@ describe('U-M-RT04 ポーリング間隔の遵守', () => {
   });
 });
 
-const describeFirestore = process.env.FIRESTORE_EMULATOR_HOST
-  ? describe
-  : describe.skip;
-
 /**
  * I-M01: スレッド作成とメッセージ永続化
  *
@@ -2835,9 +2831,9 @@ const describeFirestore = process.env.FIRESTORE_EMULATOR_HOST
  * 期待結果: `chat_threads` と `chat_messages` にドキュメントが作成されること
  *
  * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
- * （Emulator 未起動時は skip。HTTP 層は対象外）
+ * （HTTP 層は対象外）
  */
-describeFirestore('Firestore Message 結合テスト', () => {
+describe('Firestore Message 結合テスト', () => {
   beforeEach(async () => {
     await prepareFirestoreMessageTestEnvironment();
   });
@@ -2962,7 +2958,7 @@ describeFirestore('Firestore Message 結合テスト', () => {
    * 期待結果: スレッドとメッセージ履歴が欠落なく取得できること
    *
    * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
-   * （Emulator 未起動時は skip。HTTP 層は対象外）
+   * （HTTP 層は対象外）
    */
   it('I-M03 restartPersistence_新卒トレーナー一覧取得_スレッドと履歴が欠落なく取得できる', async () => {
     const { threadStore, messageStore } = createFirestoreMessageTestStores();
@@ -3060,7 +3056,7 @@ describeFirestore('Firestore Message 結合テスト', () => {
    * 期待結果: 2 つのスレッドが区別され、それぞれに先頭メッセージが紐づくこと
    *
    * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
-   * （Emulator 未起動時は skip。HTTP 層は対象外）
+   * （HTTP 層は対象外）
    */
   it('I-M04 listMessageThreads_新卒2回新規送信_2スレッドが区別され先頭メッセージが紐づく', async () => {
     const { db, threadStore, messageStore } =
@@ -3132,7 +3128,7 @@ describeFirestore('Firestore Message 結合テスト', () => {
    * 期待結果: `updatedAt` 降順で並び、直近送信ルームが先頭であること
    *
    * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
-   * （Emulator 未起動時は skip。HTTP 層は対象外）
+   * （HTTP 層は対象外）
    *
    * 単体ケース U-M14・要件 R-M09 と重複するが、Firestore 永続化層での要件 ID 単位の網羅を目的とする。
    */
@@ -3150,7 +3146,7 @@ describeFirestore('Firestore Message 結合テスト', () => {
   ])(
     'I-M05 listMessageThreads_$labelで2回新規送信後_updatedAt降順で直近送信ルームが先頭',
     async ({ role, userId }) => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ toFake: ['Date'] });
       vi.setSystemTime(I_M05_FIRST_SENT_AT);
 
       try {
@@ -3234,5 +3230,6 @@ describeFirestore('Firestore Message 結合テスト', () => {
         vi.useRealTimers();
       }
     },
+    15_000,
   );
 });

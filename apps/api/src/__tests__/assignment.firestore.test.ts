@@ -7,26 +7,26 @@ import {
 } from '../assignment.js';
 import { SEED_ASSIGNMENTS } from '../domain/assignmentConstants.js';
 import { resetFirestoreForTests } from '../firestore/client.js';
+import { FIRESTORE_COLLECTIONS } from '../firestore/collections.js';
+import { deleteAllDocumentsInCollection } from '../firestore/deleteAllDocumentsInCollection.js';
 import { FirestoreAssignmentRepository } from '../repositories/firestore/firestoreAssignmentRepository.js';
 import { getFirestore } from '../firestore/client.js';
 import { seedFirestoreDefaults } from '../firestore/seed.js';
+import { ensureFirestoreEmulatorEnv } from '../tests/firestoreEmulatorEnv.js';
 import {
   CREATE_ASSIGNMENT_INPUT,
   TRAINEE_USER_ID,
   TRAINER_USER_ID,
 } from './questTestFixtures.js';
 
-const describeFirestore = process.env.FIRESTORE_EMULATOR_HOST
-  ? describe
-  : describe.skip;
-
-describeFirestore('Firestore AssignmentRepository', () => {
+describe('Firestore AssignmentRepository', () => {
   let repository: FirestoreAssignmentRepository;
 
   beforeEach(async () => {
-    process.env.GCP_PROJECT_ID = process.env.GCP_PROJECT_ID ?? 'ojt-app-dev';
+    ensureFirestoreEmulatorEnv();
     resetFirestoreForTests();
     const db = getFirestore();
+    await deleteAllDocumentsInCollection(db, FIRESTORE_COLLECTIONS.ASSIGNMENTS);
     await seedFirestoreDefaults(db);
     repository = new FirestoreAssignmentRepository(db);
   });
