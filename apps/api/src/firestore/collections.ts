@@ -7,6 +7,7 @@ export const FIRESTORE_COLLECTIONS = {
   CHAT_THREADS: 'chat_threads',
   THREAD_CHAT_MESSAGES: 'chat_messages',
   REPORTS: 'reports',
+  GOALS: 'goals',
 } as const;
 
 export const MESSAGE_FIRESTORE_COLLECTIONS = [
