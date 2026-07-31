@@ -157,3 +157,12 @@ export class GoalNotFoundError extends Error {
     this.name = 'GoalNotFoundError';
   }
 }
+
+export const INVALID_LEARNING_INPUT_MESSAGE = 'Invalid learning input' as const;
+
+export class LearningInvalidInputError extends Error {
+  constructor(message: string = INVALID_LEARNING_INPUT_MESSAGE) {
+    super(message);
+    this.name = 'LearningInvalidInputError';
+  }
+}

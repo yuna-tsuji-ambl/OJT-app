@@ -8,12 +8,12 @@
 
 ## 1. ドキュメント管理
 
-| 項目           | 内容                                                                                                                                                                           |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 関連文書       | [README.md](../README.md)、[docs/test-specs/](./test-specs/)、[api.md](./api.md)、[db.md](./db.md)、[reliability.md](./reliability.md)、[observability.md](./observability.md) |
-| テスト仕様書   | 機能ごとのテストシナリオの正（TDD ワークフロー）                                                                                                                               |
-| 本書の位置づけ | **アーキテクチャ・API・画面・データモデル・開発範囲の正**。実装前に §2.5 のステータスを確認する                                                                                |
-| ステータス凡例 | 本書 §2.5 を参照（`実装済` / `一部実装` / `設計済・未着手` / `計画のみ`）                                                                                                      |
+| 項目           | 内容                                                                                                                                                                                                                                            |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 関連文書       | [README.md](../README.md)、[docs/test-specs/](./test-specs/)（学び: [learning-feature.md](./test-specs/learning-feature.md)）、[api.md](./api.md)、[db.md](./db.md)、[reliability.md](./reliability.md)、[observability.md](./observability.md) |
+| テスト仕様書   | 機能ごとのテストシナリオの正（TDD ワークフロー）                                                                                                                                                                                                |
+| 本書の位置づけ | **アーキテクチャ・API・画面・データモデル・開発範囲の正**。実装前に §2.5 のステータスを確認する                                                                                                                                                 |
+| ステータス凡例 | 本書 §2.5 を参照（`実装済` / `一部実装` / `設計済・未着手` / `計画のみ`）                                                                                                                                                                       |
 
 ### 1.1 改訂履歴
 
@@ -76,7 +76,7 @@
 | F-06 | 課題管理（トレーナー入力・スプシ代替） | **実装済**         | P1   | §7.4       | [quest-feature.md](./test-specs/quest-feature.md)（F-01 移行節）                                           |
 | F-07 | 日次・週次報告書                       | **設計済・未着手** | P1   | §7.5       | 未作成                                                                                                     |
 | F-08 | 目標・タスク管理（ガントチャート）     | **実装済**         | P2   | §7.6       | [goal-feature.md](./test-specs/goal-feature.md)                                                            |
-| F-09 | 学び共有（デイリーログ + リンク）      | **設計済・未着手** | P2   | §7.7       | 未作成                                                                                                     |
+| F-09 | 学び共有（デイリーログ + リンク）      | **実装済**         | P2   | §7.7       | [learning-feature.md](./test-specs/learning-feature.md)                                                    |
 | F-10 | 本番認証（Identity Platform 等）       | **計画のみ**       | —    | §5.4       | —                                                                                                          |
 | F-11 | 複数新卒・複数トレーナー               | **計画のみ**       | —    | §13        | —                                                                                                          |
 | F-12 | Google Sheets 連携                     | **廃止予定**       | —    | §7.1（旧） | —                                                                                                          |
@@ -99,7 +99,7 @@
 | Phase 1  | 既存機能の Firestore 移行 | **完了**   |
 | Phase 2  | 課題管理（§7.4）          | **完了**   |
 | Phase 3  | 日次・週次報告（§7.5）    | 未着手     |
-| Phase 4  | 学び共有（§7.7）          | 未着手     |
+| Phase 4  | 学び共有（§7.7）          | 実装済     |
 | Phase 5  | ガント（§7.6）            | 実装済     |
 | Phase 6  | BigQuery 分析（任意）     | 計画のみ   |
 
@@ -107,7 +107,6 @@
 
 以下は **設計済・未着手** または **計画のみ** のため、明示的な依頼がない限り実装しない。
 
-- F-07〜F-09（新機能 3 件）
 - F-10 本番認証
 - F-11 マルチユーザー
 - F-12 Google Sheets 連携（新規実装）
@@ -840,7 +839,7 @@ interface GanttViewModel {
 
 ---
 
-### 7.7 学び共有（デイリーログ + リンク） `設計済・未着手（F-09）`
+### 7.7 学び共有（デイリーログ + リンク） `実装済（F-09）`
 
 #### 7.7.1 概要
 
@@ -884,7 +883,7 @@ interface LearningPost {
 
 #### 7.7.5 テスト仕様
 
-→ `docs/test-specs/learning-feature.md`（新規作成予定）
+→ [`docs/test-specs/learning-feature.md`](./test-specs/learning-feature.md)
 
 ---
 
@@ -1043,12 +1042,12 @@ interface LearningPost {
 
 #### 8.6.4 学び共有
 
-| メソッド | パス                 | ロール           | 説明                                   |
-| -------- | -------------------- | ---------------- | -------------------------------------- |
-| GET      | `/api/learnings`     | trainee, trainer | タイムライン（`?authorId=&from=&to=`） |
-| POST     | `/api/learnings`     | trainee          | 学び投稿                               |
-| PUT      | `/api/learnings/:id` | trainee          | 投稿更新（Phase 2）                    |
-| DELETE   | `/api/learnings/:id` | trainee          | 投稿削除（Phase 2）                    |
+| メソッド | パス                 | ロール           | 説明                                                            |
+| -------- | -------------------- | ---------------- | --------------------------------------------------------------- |
+| GET      | `/api/learnings`     | trainee, trainer | タイムライン（`?authorId=&from=&to=`。`date`/`createdAt` 降順） |
+| POST     | `/api/learnings`     | trainee          | 学び投稿（201。トレーナーは 403）                               |
+| PUT      | `/api/learnings/:id` | trainee          | 投稿更新（Phase 2）                                             |
+| DELETE   | `/api/learnings/:id` | trainee          | 投稿削除（Phase 2）                                             |
 
 #### 8.6.5 その他（既存拡張）
 
@@ -1225,7 +1224,7 @@ flowchart TB
 | `assignments`      | auto            | traineeId, title, ...                                           | **実装済**（§7.4） |
 | `reports`          | auto            | traineeId, type, periodKey, content, status, comments           | 一部実装（§7.5）   |
 | `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 実装済（§7.6）     |
-| `learningPosts`    | auto            | authorId, date, title, body, links                              | 未実装（§7.7）     |
+| `learningPosts`    | auto            | authorId, date, title, body, links                              | 実装済（§7.7）     |
 
 **複合インデックス**（`firestore.indexes.json`）:
 
@@ -1242,7 +1241,7 @@ flowchart TB
 | **Phase 1** | 既存機能の Firestore 移行            | condition, status, chat, quest の Firestore repo | **完了**   |
 | **Phase 2** | 課題管理（§7.4）                     | Assignment CRUD + 既存申請フロー接続             | **未着手** |
 | **Phase 3** | 報告書（§7.5）                       | 日次・週次 API + 画面                            | 未着手     |
-| **Phase 4** | 学び共有（§7.7）                     | タイムライン API + 画面                          | 未着手     |
+| **Phase 4** | 学び共有（§7.7）                     | タイムライン API + 画面                          | 実装済     |
 | **Phase 5** | ガント（§7.6）                       | Goal CRUD + Gantt UI                             | 実装済     |
 | **Phase 6** | BigQuery エクスポート（任意）        | 週次バッチ、分析ダッシュボード                   | 計画のみ   |
 
