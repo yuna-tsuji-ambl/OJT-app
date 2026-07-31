@@ -1,0 +1,31 @@
+---
+description: ルールと仕様書の役割分担（メタルール）
+alwaysApply: true
+---
+
+# ルールと仕様書の範囲
+
+## 正本の優先順位
+
+1. ユーザー明示依頼
+2. `docs/detailed-design.md` と `docs/test-specs/`
+3. `docs/api.md` / `docs/db.md` / `docs/reliability.md` / `docs/observability.md`
+4. `.cursor/rules/*.mdc`
+5. 既存コードの慣習
+
+## 書いてよい場所
+
+| 内容 | 置き場 |
+|------|--------|
+| 機能仕様・画面・UC・テスト ID | `docs/detailed-design.md` / `docs/test-specs/` |
+| API 契約の詳細表 | `docs/api.md`（概要は詳細設計 §8） |
+| ID・null・コレクション定義 | `docs/db.md`（概要は詳細設計 §9） |
+| タイムアウト・接続 | `docs/reliability.md` |
+| ログ・トレーシング | `docs/observability.md` |
+| AI が守る短い制約 | `.cursor/rules/`（目安 50 行前後） |
+
+## 禁止
+
+- 機能仕様を `.cursor/rules` に複製しない
+- docs 未更新のまま API/DB 形状だけ変更しない
+- §2.5 で未着手の機能を依頼なく実装しない

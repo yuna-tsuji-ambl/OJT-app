@@ -1,0 +1,27 @@
+---
+description: データ永続化のグランドルール（ID・null・命名）
+globs: apps/api/**/*
+alwaysApply: false
+---
+
+# データ永続化グランドルール
+
+正本: `docs/db.md` および `docs/detailed-design.md` §9
+
+## ID
+
+- 新規エンティティの ID はサーバ側で `crypto.randomUUID()` を基本とする（既存機能に合わせる）
+- ドキュメント ID 戦略（auto / 業務キー）はコレクションごとに §9.5 / `docs/db.md` に従う
+- クライアント任意 ID の受け入れは原則禁止（仕様で明示された場合のみ）
+
+## null / 省略
+
+- 必須フィールドの欠落・空（仕様上空不可）は 400
+- 任意フィールドのみ `undefined` 省略または `null` を許可。意味の差は `docs/db.md` に従う
+- API レスポンスで未設定任意項目をどう返すかは既存リソースの慣習に合わせ、混在させない
+
+## 命名・モデル
+
+- Firestore フィールドは camelCase。コレクション名は §9.5 の表記を維持
+- RDB 第3正規形を Firestore に無理適用しない。冗長と整合の方針は `docs/db.md`
+- 新コレクション追加時は §9.5・`docs/db.md`・テスト仕様を同時更新
