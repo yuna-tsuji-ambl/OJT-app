@@ -24,8 +24,14 @@ import { TraineeDetailPage } from './pages/TraineeDetailPage';
 import { WeeklyConditionPage } from './pages/WeeklyConditionPage';
 import { WeeklyReportListPage } from './pages/WeeklyReportListPage';
 import { GOAL_GANTT_PATH, GOAL_MANAGE_PATH } from './domain/goalForm';
+import {
+  LEARNING_CREATE_PATH,
+  LEARNING_FEED_PATH,
+} from './domain/learningForm';
 import { GoalGanttPage } from './pages/GoalGanttPage';
 import { GoalManagePage } from './pages/GoalManagePage';
+import { LearningCreatePage } from './pages/LearningCreatePage';
+import { LearningFeedPage } from './pages/LearningFeedPage';
 
 export default function App() {
   return (
@@ -59,6 +65,11 @@ export default function App() {
             <Route path={REPORT_PAGE_PATH} element={<ReportsRoutePage />} />
             <Route path={GOAL_GANTT_PATH} element={<GoalGanttPage />} />
             <Route path={GOAL_MANAGE_PATH} element={<GoalManagePage />} />
+            <Route path={LEARNING_FEED_PATH} element={<LearningFeedPage />} />
+            <Route
+              path={LEARNING_CREATE_PATH}
+              element={<LearningCreatePage />}
+            />
             <Route path="/assignments" element={<AssignmentListPage />} />
             <Route
               path="/assignments/manage"

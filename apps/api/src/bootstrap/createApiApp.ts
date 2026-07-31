@@ -11,6 +11,7 @@ import { createConditionRouter } from '../routes/conditionRoutes.js';
 import { createMessageRouter } from '../routes/messageRoutes.js';
 import { createQuestRouter } from '../routes/questRoutes.js';
 import { createGoalRouter } from '../routes/goalRoutes.js';
+import { createLearningRouter } from '../routes/learningRoutes.js';
 import { createReportRouter } from '../routes/reportRoutes.js';
 import { createStatusRouter } from '../routes/statusRoutes.js';
 
@@ -27,6 +28,7 @@ export async function createApiApp(
     conditionRecordStore,
     assignmentRepository,
     goalRepository,
+    learningRepository,
     reportRepository,
     trainerStatusStore,
     chatMessageStore,
@@ -50,6 +52,7 @@ export async function createApiApp(
   apiRouter.use(createQuestRouter(assignmentRepository));
   apiRouter.use(createAssignmentRouter(assignmentRepository));
   apiRouter.use(createGoalRouter(goalRepository));
+  apiRouter.use(createLearningRouter(learningRepository));
   apiRouter.use(createReportRouter(reportRepository));
   apiRouter.use(createStatusRouter(trainerStatusStore));
   apiRouter.use(

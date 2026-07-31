@@ -12,6 +12,7 @@ import {
   QuestNotFoundError,
   GoalInvalidInputError,
   GoalNotFoundError,
+  LearningInvalidInputError,
   ReportInvalidInputError,
   ReportNotFoundError,
   TrainerStatusNotFoundError,
@@ -107,6 +108,22 @@ export function sendStatusErrorResponse(
 ): void {
   if (error instanceof TrainerStatusNotFoundError) {
     response.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (sendSharedAuthErrors(response, error)) {
+    return;
+  }
+
+  response.status(401).json({ error: 'Unauthorized' });
+}
+
+export function sendLearningErrorResponse(
+  response: Response,
+  error: unknown,
+): void {
+  if (error instanceof LearningInvalidInputError) {
+    response.status(400).json({ error: error.message });
     return;
   }
 
