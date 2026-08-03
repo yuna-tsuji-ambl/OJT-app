@@ -7,7 +7,6 @@ import { useMessageThreadRooms } from './useMessageThreadRooms';
 
 export function useTraineeHomeMessaging(user: AuthUser | null) {
   const {
-    messages,
     selectedTemplateId,
     freeTextContent,
     setSelectedTemplateId,
@@ -79,7 +78,6 @@ export function useTraineeHomeMessaging(user: AuthUser | null) {
   ]);
 
   return {
-    messages,
     threadMessages,
     threads,
     visibleThreads,

@@ -12,6 +12,7 @@ export const REPLY_TEMPLATE_COMBOBOX_LABEL = '返信テンプレート' as const
 export const NEW_MESSAGE_TEMPLATE_FIELD_ID = 'new-message-template' as const;
 export const NEW_MESSAGE_FREE_TEXT_FIELD_ID = 'new-message-free-text' as const;
 export const REPLY_TEMPLATE_FIELD_ID = 'reply-template' as const;
+export const REPLY_FREE_TEXT_FIELD_ID = 'reply-free-text' as const;
 
 export const canSendTrainerTemplate = canSendMessageWithTemplateOnly;
 export const canSendTrainerMessage = canSendMessageWithTemplateOrText;

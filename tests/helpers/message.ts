@@ -641,28 +641,29 @@ export function messageThreadRowById(page: Page, threadId: string): Locator {
   );
 }
 
+/** 右ペインのトーク詳細（スプリットビュー）。旧インライン直下展開の locator 名は互換のため維持 */
 export function inlineMessageThreadDetailAfterThreadId(
   page: Page,
   threadId: string,
 ): Locator {
-  return messageThreadRowById(page, threadId).locator(
-    `xpath=following-sibling::*[1][@role="region"][@aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"]`,
+  return page.locator(
+    `[role="region"][aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"][data-thread-id="${threadId}"]`,
   );
 }
 
 export function inlineMessageThreadDetailAfterRow(
   page: Page,
   previewText: string,
-  position: MessageThreadRowPosition = 'first',
+  _position: MessageThreadRowPosition = 'first',
   threadId?: string,
 ): Locator {
   if (threadId) {
     return inlineMessageThreadDetailAfterThreadId(page, threadId);
   }
 
-  return messageThreadListItem(page, previewText, position).locator(
-    `xpath=following-sibling::*[1][@role="region"][@aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"]`,
-  );
+  return openInlineMessageThreadDetails(page).filter({
+    has: page.getByText(previewText, { exact: false }),
+  });
 }
 
 export function openInlineMessageThreadDetails(page: Page): Locator {
@@ -902,6 +903,7 @@ export async function mockMessageThreadHistoryFailure(
   });
 }
 
+/** スプリットビュー: 再クリックでも選択維持、別ルームへ切替 */
 export async function assertInlineOpenCloseAndSwitchBehavior(
   page: Page,
   threadA: string,
@@ -912,10 +914,9 @@ export async function assertInlineOpenCloseAndSwitchBehavior(
   await expectMessageThreadRowSelected(page, threadA);
 
   await clickMessageThreadRow(page, threadA);
-  await expectInlineDetailClosedAfterRow(page, threadA);
-
-  await clickMessageThreadRowAndWaitForHistory(page, threadA);
   await expectInlineDetailOpenAfterRow(page, threadA);
+  await expectMessageThreadRowSelected(page, threadA);
+  await expectOpenInlineDetailsCount(page, 1);
 
   await expectInlineDetailSwitchBetweenRows(page, threadA, threadB);
 }

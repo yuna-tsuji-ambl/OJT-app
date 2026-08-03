@@ -2,48 +2,64 @@ import { useCallback, useState } from 'react';
 import {
   sendTraineeTemplateMessage,
   sendTraineeTextMessage,
+  sendTraineeThreadTextMessage,
 } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
+import {
+  hasDualSendPayload,
+  resolveDualSendParts,
+} from '../domain/messageDualSend';
 import { DEFAULT_TRAINER_ID } from '../domain/participantConstants';
+import { createTraineeThreadTextReplyPayload } from '../domain/traineeThreadReply';
 import type { SendMessageResult } from '@ojt-app/shared';
-import { useConversationMessages } from './useConversationMessages';
 
-export function useTraineeMessageSend(user: AuthUser | null) {
+export function useTraineeMessageSend(_user: AuthUser | null) {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [freeTextContent, setFreeTextContent] = useState('');
-  const { messages, reloadMessages } = useConversationMessages(user);
 
   const sendMessage = useCallback(
     async (authUser: AuthUser): Promise<SendMessageResult | undefined> => {
-      let result: SendMessageResult | undefined;
+      const parts = resolveDualSendParts(selectedTemplateId, freeTextContent);
 
-      if (selectedTemplateId) {
-        result = await sendTraineeTemplateMessage(
-          DEFAULT_TRAINER_ID,
-          selectedTemplateId,
-          authUser,
-        );
-        setSelectedTemplateId('');
-      } else if (freeTextContent.trim()) {
-        result = await sendTraineeTextMessage(
-          DEFAULT_TRAINER_ID,
-          freeTextContent.trim(),
-          authUser,
-        );
-        setFreeTextContent('');
-      } else {
+      if (!hasDualSendPayload(parts)) {
         return undefined;
       }
 
-      await reloadMessages(authUser);
+      let result: SendMessageResult | undefined;
+
+      if (parts.templateId) {
+        result = await sendTraineeTemplateMessage(
+          DEFAULT_TRAINER_ID,
+          parts.templateId,
+          authUser,
+        );
+        setSelectedTemplateId('');
+
+        if (parts.freeText) {
+          result = await sendTraineeThreadTextMessage(
+            createTraineeThreadTextReplyPayload(
+              result.thread.id,
+              parts.freeText,
+            ),
+            authUser,
+          );
+          setFreeTextContent('');
+        }
+      } else if (parts.freeText) {
+        result = await sendTraineeTextMessage(
+          DEFAULT_TRAINER_ID,
+          parts.freeText,
+          authUser,
+        );
+        setFreeTextContent('');
+      }
 
       return result;
     },
-    [freeTextContent, reloadMessages, selectedTemplateId],
+    [freeTextContent, selectedTemplateId],
   );
 
   return {
-    messages,
     selectedTemplateId,
     freeTextContent,
     setSelectedTemplateId,

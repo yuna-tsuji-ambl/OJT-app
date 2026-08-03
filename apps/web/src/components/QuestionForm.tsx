@@ -36,34 +36,38 @@ export function QuestionForm({
       role="region"
       aria-label={MESSAGE_SEND_REGION_LABEL}
     >
-      <label htmlFor={templateFieldId}>質問テンプレート</label>
-      <select
-        id={templateFieldId}
-        className="form-select"
-        aria-label={QUESTION_TEMPLATE_COMBOBOX_LABEL}
-        value={selectedTemplateId}
-        onChange={(event) => onSelectTemplate(event.target.value)}
-      >
-        <option value="">選択してください</option>
-        {QUESTION_TEMPLATES.map((template) => (
-          <option key={template.id} value={template.id}>
-            {template.label}
-          </option>
-        ))}
-      </select>
+      <div className="message-form-field">
+        <label htmlFor={templateFieldId}>質問テンプレート</label>
+        <select
+          id={templateFieldId}
+          className="form-select"
+          aria-label={QUESTION_TEMPLATE_COMBOBOX_LABEL}
+          value={selectedTemplateId}
+          onChange={(event) => onSelectTemplate(event.target.value)}
+        >
+          <option value="">選択してください</option>
+          {QUESTION_TEMPLATES.map((template) => (
+            <option key={template.id} value={template.id}>
+              {template.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <MessageFreeTextField
         fieldId={freeTextFieldId}
         value={freeTextContent}
         onChange={onFreeTextChange}
       />
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={onSend}
-        disabled={!canSend}
-      >
-        {MESSAGE_SEND_BUTTON_LABEL}
-      </button>
+      <div className="message-form-actions">
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={onSend}
+          disabled={!canSend}
+        >
+          {MESSAGE_SEND_BUTTON_LABEL}
+        </button>
+      </div>
     </section>
   );
 }

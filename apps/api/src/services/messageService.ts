@@ -2,13 +2,18 @@ import {
   ensureConversationParticipant,
   ensureTrainer,
 } from '../domain/authorization.js';
-import { buildTrainerTemplateMessage } from '../domain/buildTrainerMessage.js';
+import {
+  buildTrainerTemplateMessage,
+  buildTrainerTextMessage,
+} from '../domain/buildTrainerMessage.js';
+import { validateTrainerTextMessageInput } from '../domain/messageValidation.js';
 import {
   sendTraineeTemplateNewMessage,
   sendTraineeTextNewMessage,
 } from './traineeNewMessageDelivery.js';
 import {
   sendTraineeStampReplyInRoom,
+  sendTraineeTemplateReplyInRoom,
   sendTraineeTextReplyInRoom,
 } from './traineeThreadReplyDelivery.js';
 import { rejectTrainerLegacyFlatReply } from './trainerLegacyFlatReplyRejection.js';
@@ -31,19 +36,23 @@ import type {
   SendTraineeTemplateMessageInput,
   SendTraineeTextMessageInput,
   SendTraineeTextReplyInput,
+  SendTraineeTemplateReplyInput,
   SendTraineeStampReplyInput,
   SendTrainerLegacyFlatReplyInput,
   SendTrainerTemplateReplyInput,
   SendTrainerTemplateMessageInput,
+  SendTrainerTextMessageInput,
   SendTrainerTextReplyInput,
   SendTrainerStampReplyInput,
   SendMessageResult,
   SendTemplateMessageResult,
   SendTextMessageResult,
   SendTraineeTextReplyResult,
+  SendTraineeTemplateReplyResult,
   SendTraineeStampReplyResult,
   SendTrainerTemplateReplyResult,
   SendTrainerTemplateMessageResult,
+  SendTrainerTextMessageResult,
   SendTrainerTextReplyResult,
   SendTrainerStampReplyResult,
   SyncMissedMessageUpdatesInput,
@@ -108,6 +117,18 @@ export class MessageService {
     );
   }
 
+  async sendTraineeTemplateReply(
+    input: SendTraineeTemplateReplyInput,
+    context: UserContext,
+    threadStore: MessageThreadStore,
+    messageStore: ThreadChatMessageStore,
+  ): Promise<SendTraineeTemplateReplyResult> {
+    return sendTraineeTemplateReplyInRoom(
+      input,
+      createMessagePersistenceContext(context, threadStore, messageStore),
+    );
+  }
+
   async sendTraineeStampReply(
     input: SendTraineeStampReplyInput,
     context: UserContext,
@@ -141,6 +162,24 @@ export class MessageService {
       createMessagePersistenceStores(threadStore, messageStore),
       (threadId, senderId, receiverId) =>
         buildTrainerTemplateMessage(threadId, senderId, receiverId, templateId),
+    );
+  }
+
+  async sendTrainerTextMessage(
+    input: SendTrainerTextMessageInput,
+    context: UserContext,
+    threadStore: MessageThreadStore,
+    messageStore: ThreadChatMessageStore,
+  ): Promise<SendTrainerTextMessageResult> {
+    validateTrainerTextMessageInput(input);
+    const { traineeId, content } = input;
+
+    return this.deliverTrainerNewThreadMessage(
+      traineeId,
+      context,
+      createMessagePersistenceStores(threadStore, messageStore),
+      (threadId, senderId, receiverId) =>
+        buildTrainerTextMessage(threadId, senderId, receiverId, content),
     );
   }
 

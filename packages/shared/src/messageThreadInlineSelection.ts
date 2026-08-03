@@ -15,14 +15,12 @@ export function isInlineThreadDetailOpen(
   return selectedThreadId !== null;
 }
 
+/** @deprecated スプリットビューでは再クリック解除しない（常に false） */
 export function shouldCloseInlineThreadSelection(
-  selectedThreadId: MessageThreadSelection,
-  clickedThreadId: MessageThreadId,
+  _selectedThreadId: MessageThreadSelection,
+  _clickedThreadId: MessageThreadId,
 ): boolean {
-  return (
-    isInlineThreadDetailOpen(selectedThreadId) &&
-    isSameMessageThreadSelection(selectedThreadId, clickedThreadId)
-  );
+  return false;
 }
 
 export function shouldSwitchInlineThreadSelection(
@@ -35,13 +33,10 @@ export function shouldSwitchInlineThreadSelection(
   );
 }
 
+/** 再クリックでも選択を維持する（BR-SV09） */
 export function resolveInlineThreadSelection(
-  selectedThreadId: MessageThreadSelection,
+  _selectedThreadId: MessageThreadSelection,
   clickedThreadId: MessageThreadId,
 ): MessageThreadSelection {
-  if (shouldCloseInlineThreadSelection(selectedThreadId, clickedThreadId)) {
-    return null;
-  }
-
   return clickedThreadId;
 }

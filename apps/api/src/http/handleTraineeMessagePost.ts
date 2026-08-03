@@ -1,6 +1,7 @@
 import {
   sendTraineeStampReply,
   sendTraineeTemplateMessage,
+  sendTraineeTemplateReply,
   sendTraineeTextMessage,
   sendTraineeTextReply,
 } from '../message.js';
@@ -20,6 +21,20 @@ export async function handleTraineeMessagePost(
       {
         threadId: body.threadId,
         stampId: body.stampId,
+      },
+      context.userId,
+      context.role,
+      threadStore,
+      threadChatMessageStore,
+    );
+  }
+
+  if (body.threadId && body.templateId) {
+    return sendTraineeTemplateReply(
+      {
+        threadId: body.threadId,
+        templateId: body.templateId,
+        trainerId: body.trainerId,
       },
       context.userId,
       context.role,

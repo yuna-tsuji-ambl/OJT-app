@@ -4,10 +4,12 @@ import {
   listThreadChatMessages,
   sendTrainerStampReply,
   sendTrainerTemplateMessage,
+  sendTrainerTextMessage,
   sendTrainerTemplateReply,
   sendTrainerTextReply,
   sendTraineeStampReply,
   sendTraineeTemplateMessage,
+  sendTraineeTemplateReply,
   sendTraineeTextMessage,
   sendTrainerLegacyFlatReply,
   ForbiddenError,
@@ -32,9 +34,11 @@ import {
   type SendTextMessageResult,
   type SendTrainerStampReplyResult,
   type SendTrainerTemplateMessageResult,
+  type SendTrainerTextMessageResult,
   type SendTrainerTemplateReplyResult,
   type SendTrainerTextReplyResult,
   type SendTraineeStampReplyResult,
+  type SendTraineeTemplateReplyResult,
   type ThreadChatMessage,
   type ThreadChatMessageStore,
   createMessageRealtimeHub,
@@ -713,7 +717,7 @@ describe('R-M10 LINE風チャットルームでのやり取り', () => {
 /**
  * R-M11: スタンプは Slack 風（入力欄直下または近傍への横並びボタン列）に配置する
  *
- * 機能要件として、Slack 風スタンプバーで提供するトレーナー向けスタンプ ST1〜ST5 が
+ * 機能要件として、Slack 風スタンプバーで提供するトレーナー向けスタンプ ST1〜ST10 が
  * API 層で同一ルームへ送信できることを検証する。
  *
  * UI 要件（横並び配置・role="region"・レガシー「後で話そう」非表示）は E-M12 で検証。
@@ -730,6 +734,11 @@ describe('R-M11 Slack風スタンプバーからのスタンプ送信', () => {
     { stampId: 'ST3', content: '✅ 了解' },
     { stampId: 'ST4', content: '⏰ あとで' },
     { stampId: 'ST5', content: '❓ 詳しく' },
+    { stampId: 'ST6', content: '👀 確認中' },
+    { stampId: 'ST7', content: '💬 話そう' },
+    { stampId: 'ST8', content: '📝 メモした' },
+    { stampId: 'ST9', content: '🙌 ナイス' },
+    { stampId: 'ST10', content: '🚧 ちょっと待って' },
   ] as const;
 
   let threadStore: MessageThreadStore;
@@ -1019,6 +1028,61 @@ describe('U-M04 トレーナーがスレッドにテンプレートで返信', (
 });
 
 /**
+ * U-M04b: 新卒がスレッドにテンプレートで返信
+ *
+ * 前提条件: U-M01 でスレッド存在、新卒コンテキスト
+ * アクション: `threadId` を指定しテンプレート TQ1 で返信
+ * 期待結果: 同一 `threadId` に `type: template` が追加され、新規スレッドは作成されないこと
+ */
+describe('U-M04b 新卒がスレッドにテンプレートで返信', () => {
+  let threadStore: MessageThreadStore;
+  let messageStore: ThreadChatMessageStore;
+
+  beforeEach(() => {
+    threadStore = createMockMessageThreadStore({
+      create: vi.fn(),
+      listByParticipants: vi.fn(),
+    });
+    messageStore = {
+      append: vi.fn().mockResolvedValue(undefined),
+      listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
+    };
+  });
+
+  it('sendTraineeTemplateReply_新卒TQ1返信_同一スレッドにtemplateメッセージが追加される', async () => {
+    const result: SendTraineeTemplateReplyResult =
+      await sendTraineeTemplateReply(
+        {
+          threadId: CREATED_THREAD.id,
+          templateId: QUESTION_TEMPLATE_TQ1_ID,
+          trainerId: TRAINER_USER_ID,
+        },
+        TRAINEE_USER_ID,
+        'trainee',
+        threadStore,
+        messageStore,
+      );
+
+    expect(threadStore.getById).toHaveBeenCalledWith(CREATED_THREAD.id);
+    expect(threadStore.create).not.toHaveBeenCalled();
+
+    const expectedMessageFields = {
+      threadId: CREATED_THREAD.id,
+      senderId: TRAINEE_USER_ID,
+      receiverId: TRAINER_USER_ID,
+      content: QUESTION_TEMPLATE_TQ1_CONTENT,
+      type: 'template' as const,
+      templateId: QUESTION_TEMPLATE_TQ1_ID,
+    };
+
+    expect(messageStore.append).toHaveBeenCalledWith(
+      expect.objectContaining(expectedMessageFields),
+    );
+    expect(result.message).toMatchObject(expectedMessageFields);
+  });
+});
+
+/**
  * U-M05: トレーナーがスレッドに自由記述で返信
  *
  * 前提条件: U-M01 でスレッド存在、トレーナーコンテキスト
@@ -1284,6 +1348,40 @@ describe('U-M08 トレーナーが新規メッセージでスレッド開始', (
     expect(result.message.threadId).toBe(CREATED_THREAD.id);
     expect(result.message.type).toBe('template');
     expect(result.message.templateId).toBe(REPLY_TEMPLATE_TT4_ID);
+  });
+
+  it('sendTrainerTextMessage_トレーナー自由記述新規送信_新規スレッドとtextメッセージが保存される', async () => {
+    const freeTextContent = '進捗共有の時間をください';
+    const result: SendTrainerTextMessageResult = await sendTrainerTextMessage(
+      {
+        content: freeTextContent,
+        traineeId: TRAINEE_USER_ID,
+      },
+      TRAINER_USER_ID,
+      'trainer',
+      threadStore,
+      messageStore,
+    );
+
+    expect(threadStore.create).toHaveBeenCalledWith({
+      traineeId: TRAINEE_USER_ID,
+      trainerId: TRAINER_USER_ID,
+    });
+
+    const expectedMessageFields = {
+      threadId: CREATED_THREAD.id,
+      senderId: TRAINER_USER_ID,
+      receiverId: TRAINEE_USER_ID,
+      content: freeTextContent,
+      type: 'text' as const,
+    };
+
+    expect(messageStore.append).toHaveBeenCalledWith(
+      expect.objectContaining(expectedMessageFields),
+    );
+    expectThreadWithLatestActivity(result.thread, result.message);
+    expect(result.message).toMatchObject(expectedMessageFields);
+    expect(result.message.templateId).toBeUndefined();
   });
 });
 
@@ -2137,15 +2235,16 @@ describe('U-M19 未選択からルームを選択', () => {
 });
 
 /**
- * U-M20: 同一ルーム再クリックで閉じる
+ * U-M20 → BR-SV09: 同一ルーム再クリックでも選択維持（スプリットビュー）
  *
  * 前提条件: `selectedId = 'a'`
  * アクション: 再度 `threadId = 'a'` で選択（`resolveInlineThreadSelection`）
- * 期待結果: `null` が返る（閉状態）
+ * 期待結果: 同一 `threadId` が返る（選択解除しない）
  *
  * 結合境界: messageThreadInlineSelection（純関数 / `@ojt-app/shared`）
+ * 上書き: message-split-view-feature.md BR-SV09（旧 R-M17 トグル閉じは廃止）
  */
-describe('U-M20 同一ルーム再クリックで閉じる', () => {
+describe('U-M20 / BR-SV09 同一ルーム再クリックで選択維持', () => {
   it.each([
     {
       label: 'thread-a',
@@ -2160,14 +2259,14 @@ describe('U-M20 同一ルーム再クリックで閉じる', () => {
       threadId: U_M21_THREAD_B,
     },
   ])(
-    'resolveInlineThreadSelection_選択中の$labelを再クリック_閉状態になる',
+    'resolveInlineThreadSelection_選択中の$labelを再クリック_選択を維持する',
     ({ threadId }) => {
-      expect(shouldCloseInlineThreadSelection(threadId, threadId)).toBe(true);
+      expect(shouldCloseInlineThreadSelection(threadId, threadId)).toBe(false);
 
       const result = resolveInlineThreadSelection(threadId, threadId);
 
-      expect(result).toBeNull();
-      expect(isInlineThreadDetailOpen(result)).toBe(false);
+      expect(result).toBe(threadId);
+      expect(isInlineThreadDetailOpen(result)).toBe(true);
     },
   );
 });
@@ -2242,7 +2341,7 @@ describe('R-M17 インライン詳細パネル状態', () => {
     ).toBe(true);
   });
 
-  it('resolveInlineMessageThreadDetailState_同一ルーム再クリック_閉状態の詳細になる', () => {
+  it('resolveInlineMessageThreadDetailState_同一ルーム再クリック_選択を維持する', () => {
     const result = resolveInlineMessageThreadDetailState(
       U_M19_THREAD_A,
       U_M19_THREAD_A,
@@ -2250,8 +2349,8 @@ describe('R-M17 インライン詳細パネル状態', () => {
 
     expect(result).toEqual({
       inlineDetailThreadId: U_M19_THREAD_A,
-      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-      selectedThreadId: null,
+      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+      selectedThreadId: U_M19_THREAD_A,
     });
     expect(
       isInlineMessageThreadRowSelected(
@@ -2259,7 +2358,7 @@ describe('R-M17 インライン詳細パネル状態', () => {
         result.selectedThreadId,
         result.inlineDetailState,
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('shouldClearInlineMessageThreadDetailOnThreadCountIncrease_未選択時のみクリアする', () => {
@@ -2286,7 +2385,7 @@ describe('R-M17 インライン詳細パネル状態', () => {
  * `resolveInlineMessageThreadDetailState` の結果を apply コールバックへ渡す。
  */
 describe('R-M17 インライン詳細パネル選択アクション', () => {
-  it('applyInlineMessageThreadDetailSelection_同一ルーム再クリック_閉状態を適用する', () => {
+  it('applyInlineMessageThreadDetailSelection_同一ルーム再クリック_開状態を維持する', () => {
     const applyDetailState = vi.fn();
 
     const result = applyInlineMessageThreadDetailSelection(
@@ -2297,8 +2396,8 @@ describe('R-M17 インライン詳細パネル選択アクション', () => {
 
     expect(result).toEqual({
       inlineDetailThreadId: U_M19_THREAD_A,
-      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-      selectedThreadId: null,
+      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+      selectedThreadId: U_M19_THREAD_A,
     });
     expect(applyDetailState).toHaveBeenCalledTimes(1);
     expect(applyDetailState).toHaveBeenCalledWith(result);
@@ -2308,7 +2407,7 @@ describe('R-M17 インライン詳細パネル選択アクション', () => {
         result.selectedThreadId,
         result.inlineDetailState,
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -2468,18 +2567,17 @@ describe('U-M23 ルーム選択で履歴取得が走る', () => {
 });
 
 /**
- * U-M24: 選択解除でインライン詳細が非表示状態になる
+ * U-M24 → BR-SV09: 再クリックでも選択維持（スプリットビュー）
  *
  * 前提条件: ルーム A 選択済み（表示中）
- * アクション: 同一ルーム再選択（トグル / `selectInlineMessageThread` 相当）
- * 期待結果: `selectedThreadId` が `null` になり、詳細表示用の派生状態が falsy になること
+ * アクション: 同一ルーム再選択（`selectInlineMessageThread`）
+ * 期待結果: `selectedThreadId` は維持され、詳細は開いたまま
  *
  * 結合境界: messageThreadInlineSelection → messageThreadSelectionAction
- *           → setSelectedThreadId / reloadThreadHistory
- * （React hook・HTTP 層・E2E は対象外）
+ * 上書き: message-split-view-feature.md BR-SV09
  */
-describe('U-M24 選択解除でインライン詳細が非表示状態になる', () => {
-  it('selectInlineMessageThread_選択中ルーム再クリック_選択解除し履歴取得しない', async () => {
+describe('U-M24 / BR-SV09 再クリックでも選択維持', () => {
+  it('selectInlineMessageThread_選択中ルーム再クリック_選択を維持する', async () => {
     const { setSelectedThreadId, reloadThreadHistory } =
       createMessageThreadSelectionMocks();
 
@@ -2491,14 +2589,17 @@ describe('U-M24 選択解除でインライン詳細が非表示状態になる'
       reloadThreadHistory,
     );
 
-    expect(result).toBeNull();
+    expect(result).toBe(U_M19_THREAD_A);
     expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
-    expect(setSelectedThreadId).toHaveBeenCalledWith(null);
-    expect(isInlineThreadDetailOpen(result)).toBe(false);
-    expect(reloadThreadHistory).not.toHaveBeenCalled();
+    expect(setSelectedThreadId).toHaveBeenCalledWith(U_M19_THREAD_A);
+    expect(isInlineThreadDetailOpen(result)).toBe(true);
+    expect(reloadThreadHistory).toHaveBeenCalledWith(
+      U_M23_TRAINEE_USER,
+      U_M19_THREAD_A,
+    );
   });
 
-  it('selectInlineMessageThread_未ログインで再クリック_選択解除のみ行う', async () => {
+  it('selectInlineMessageThread_未ログインで再クリック_選択を維持し履歴取得しない', async () => {
     const { setSelectedThreadId, reloadThreadHistory } =
       createMessageThreadSelectionMocks();
 
@@ -2510,15 +2611,15 @@ describe('U-M24 選択解除でインライン詳細が非表示状態になる'
       reloadThreadHistory,
     );
 
-    expect(result).toBeNull();
+    expect(result).toBe(U_M19_THREAD_A);
     expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
-    expect(setSelectedThreadId).toHaveBeenCalledWith(null);
-    expect(isInlineThreadDetailOpen(result)).toBe(false);
+    expect(setSelectedThreadId).toHaveBeenCalledWith(U_M19_THREAD_A);
+    expect(isInlineThreadDetailOpen(result)).toBe(true);
     expect(reloadThreadHistory).not.toHaveBeenCalled();
   });
 
   it.each(U_M24_INLINE_DESELECT_CASES)(
-    'selectInlineMessageThread_$labelで同一ルーム再選択_詳細非表示になる',
+    'selectInlineMessageThread_$labelで同一ルーム再選択_詳細を維持する',
     async ({ authUser, selectedThreadId, clickedThreadId }) => {
       const { setSelectedThreadId, reloadThreadHistory } =
         createMessageThreadSelectionMocks();
@@ -2531,10 +2632,9 @@ describe('U-M24 選択解除でインライン詳細が非表示状態になる'
         reloadThreadHistory,
       );
 
-      expect(result).toBeNull();
-      expect(setSelectedThreadId).toHaveBeenCalledWith(null);
-      expect(isInlineThreadDetailOpen(result)).toBe(false);
-      expect(reloadThreadHistory).not.toHaveBeenCalled();
+      expect(result).toBe(clickedThreadId);
+      expect(setSelectedThreadId).toHaveBeenCalledWith(clickedThreadId);
+      expect(isInlineThreadDetailOpen(result)).toBe(true);
     },
   );
 });

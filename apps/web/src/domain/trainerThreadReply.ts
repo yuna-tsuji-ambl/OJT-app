@@ -14,6 +14,13 @@ export function createTrainerNewMessagePayload(templateId: string) {
   };
 }
 
+export function createTrainerNewTextMessagePayload(content: string) {
+  return {
+    content,
+    traineeId: DEFAULT_TRAINEE_ID,
+  };
+}
+
 export function createTrainerTemplateReplyPayload(
   threadId: string,
   templateId: string,
@@ -31,5 +38,15 @@ export function createTrainerStampReplyPayload(
   return {
     ...createTrainerThreadReplyBase(threadId),
     stampId,
+  };
+}
+
+export function createTrainerTextReplyPayload(
+  threadId: string,
+  content: string,
+) {
+  return {
+    ...createTrainerThreadReplyBase(threadId),
+    content,
   };
 }

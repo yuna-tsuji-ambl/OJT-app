@@ -25,18 +25,24 @@ export function useTrainerMessages(user: AuthUser | null) {
     freeTextContent: newMessageFreeTextContent,
     setFreeTextContent: setNewMessageFreeTextContent,
     sendNewMessage,
+    sendError: newMessageSendError,
   } = useTrainerNewMessageSend(reloadThreadList);
   const {
     selectedReplyTemplateId,
     setSelectedReplyTemplateId,
+    replyFreeTextContent,
+    setReplyFreeTextContent,
     sendReply,
     sendStampReply,
+    sendError: replySendError,
   } = useTrainerThreadReply(inlineDetail.selectedThreadId, syncThreadViews);
 
   const threadReplyForm = useMemo((): TrainerThreadReplyFormState => {
     return {
       selectedReplyTemplateId,
+      replyFreeTextContent,
       onSelectTemplate: setSelectedReplyTemplateId,
+      onFreeTextChange: setReplyFreeTextContent,
       onSendTemplateReply: () => {
         if (user) {
           void sendReply(user);
@@ -49,9 +55,11 @@ export function useTrainerMessages(user: AuthUser | null) {
       },
     };
   }, [
+    replyFreeTextContent,
     selectedReplyTemplateId,
     sendReply,
     sendStampReply,
+    setReplyFreeTextContent,
     setSelectedReplyTemplateId,
     user,
   ]);
@@ -72,5 +80,6 @@ export function useTrainerMessages(user: AuthUser | null) {
     threadReplyForm,
     selectThread,
     sendNewMessage,
+    sendError: newMessageSendError || replySendError,
   };
 }

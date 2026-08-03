@@ -24,7 +24,9 @@ export function TrainerThreadDetailSection({
 
   const {
     selectedReplyTemplateId,
+    replyFreeTextContent,
     onSelectTemplate,
+    onFreeTextChange,
     onSendTemplateReply,
     onSendStampReply,
   } = threadReplyForm;
@@ -34,7 +36,9 @@ export function TrainerThreadDetailSection({
       <MessageThreadHistory messages={messages} viewer={viewer} />
       <TrainerThreadReplyPanel
         selectedReplyTemplateId={selectedReplyTemplateId}
+        replyFreeTextContent={replyFreeTextContent}
         onSelectTemplate={onSelectTemplate}
+        onFreeTextChange={onFreeTextChange}
         onSendTemplateReply={onSendTemplateReply}
         onSendStampReply={onSendStampReply}
       />

@@ -1,12 +1,17 @@
 import {
   buildTraineeStampMessage,
+  buildTraineeTemplateMessage,
   buildTraineeTextMessage,
 } from '../domain/buildTraineeMessage.js';
 import { ensureTraineeCanSendMessage } from '../domain/messageAssignment.js';
-import { validateTraineeTextReplyInput } from '../domain/messageValidation.js';
+import {
+  validateTraineeTemplateReplyInput,
+  validateTraineeTextReplyInput,
+} from '../domain/messageValidation.js';
 import type {
   SendMessageResult,
   SendTraineeStampReplyInput,
+  SendTraineeTemplateReplyInput,
   SendTraineeTextReplyInput,
   ThreadMessageBuilder,
 } from '../domain/messageTypes.js';
@@ -19,6 +24,23 @@ function deliverTraineeThreadMessage(
   buildMessage: ThreadMessageBuilder,
 ): Promise<SendMessageResult> {
   return deliverThreadReply(threadId, operation, 'trainee', buildMessage);
+}
+
+export function sendTraineeTemplateReplyInRoom(
+  input: SendTraineeTemplateReplyInput,
+  operation: MessagePersistenceContext,
+): Promise<SendMessageResult> {
+  validateTraineeTemplateReplyInput(input);
+  ensureTraineeCanSendMessage(operation.context, input.trainerId);
+
+  const { threadId, templateId } = input;
+
+  return deliverTraineeThreadMessage(
+    threadId,
+    operation,
+    (id, senderId, receiverId) =>
+      buildTraineeTemplateMessage(id, senderId, receiverId, templateId),
+  );
 }
 
 export function sendTraineeTextReplyInRoom(

@@ -17,7 +17,11 @@
   --success: #16a34a;
   --radius: 0.625rem;
   --header-height: 4.5rem;
-  --max-content: 72rem;
+  --max-content: 110rem;
+  /* メッセージ画面はビューポート内に収め、ページ全体のスクロールを出さない */
+  --message-main-padding-y: 1.5rem;
+  --message-split-height: min(46rem, 76vh);
+  --message-split-min-height: 0;
   --font-sans:
     'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', 'Helvetica Neue', Helvetica,
     Arial, sans-serif;
@@ -30,7 +34,9 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -77,7 +83,11 @@ textarea:focus {
 }
 
 .app-shell {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   background:
     radial-gradient(
       circle at 12% 0%,
@@ -93,8 +103,7 @@ textarea:focus {
 }
 
 .app-header {
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -133,9 +142,23 @@ textarea:focus {
 }
 
 .app-main {
+  flex: 1 1 auto;
+  min-height: 0;
   max-width: var(--max-content);
   margin: 0 auto;
-  padding: 2rem 3rem 4rem;
+  padding: 2rem 1.5rem 4rem;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* メッセージ画面: ページ全体の縦スクロールを出さず、枠内だけスクロール */
+.app-main:has(.page-section--messaging) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--message-main-padding-y);
+  padding-bottom: var(--message-main-padding-y);
 }
 
 .page-section {
@@ -144,6 +167,55 @@ textarea:focus {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.page-section--wide {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1.75rem 2rem;
+}
+
+/* 新卒ホーム・トレーナーメッセージ: メイン領域いっぱい（同一サイズ・ページスライドなし） */
+.page-section--messaging {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.page-section--messaging > .page-section__title-row {
+  flex: 0 0 auto;
+}
+
+.page-section__title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  margin-bottom: 1rem;
+  /* ステータスの上方向オフセット分を確保し、overflow で欠けないようにする */
+  padding-top: 0.5rem;
+}
+
+.page-section__title-row > h1 {
+  margin: 0;
+  line-height: 1;
+}
+
+.page-section__title-row > .trainer-status-panel {
+  position: relative;
+  top: -0.5rem;
+}
+
+.page-section--messaging > .message-split-view {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: auto;
 }
 
 .page-section h1 {
@@ -376,32 +448,85 @@ textarea:focus {
   flex: 1 1 14rem;
 }
 
-[role='region'][aria-label='先輩のステータス'] {
-  margin: 1rem 0;
-  padding: 1rem;
-  border-left: 4px solid var(--primary);
+.trainer-status-panel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.55rem 1rem 0.55rem 0.85rem;
+  border: 1px solid rgba(59, 108, 237, 0.22);
+  border-left: 3px solid var(--primary);
+  border-radius: calc(var(--radius) * 0.9);
+  background: rgba(59, 108, 237, 0.08);
+  line-height: 1.2;
+}
+
+.trainer-status-panel__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 108, 237, 0.18);
+  flex: 0 0 auto;
+}
+
+.page-section .trainer-status-panel__text,
+.trainer-status-panel__text {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.trainer-status-panel__label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.page-section .trainer-status-panel__value,
+.trainer-status-panel__value {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.trainer-status-panel--ok {
+  border-left-color: var(--primary);
   background: rgba(59, 108, 237, 0.1);
 }
 
-[role='log'][aria-label='チャット履歴'] {
-  margin-top: 1rem;
-  padding: 1rem;
-  max-height: 16rem;
-  overflow-y: auto;
-  border-radius: calc(var(--radius) * 0.8);
-  background: var(--surface-muted);
-  border: 1px solid var(--border-subtle);
+.trainer-status-panel--ok .trainer-status-panel__dot {
+  background: var(--primary);
 }
 
-[role='log'][aria-label='チャット履歴'] p {
-  margin: 0.35rem 0;
+.trainer-status-panel--ok .trainer-status-panel__value {
+  color: #1d4ed8;
 }
 
-[role='log'][aria-label='スレッド履歴'] {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  max-height: 20rem;
+.trainer-status-panel--focus {
+  border-left-color: #2563eb;
+  background: rgba(37, 99, 235, 0.07);
+}
+
+.trainer-status-panel--focus .trainer-status-panel__dot {
+  background: #2563eb;
+  opacity: 0.9;
+}
+
+.trainer-status-panel--focus .trainer-status-panel__value {
+  color: #1e40af;
+}
+
+[role='log'][aria-label='スレッド履歴'],
+.message-thread-history {
+  margin: 0;
+  padding: 1.25rem;
+  height: 100%;
+  max-height: none;
   overflow-y: auto;
   border-radius: calc(var(--radius) * 0.8);
   background: var(--surface-muted);
@@ -441,34 +566,246 @@ textarea:focus {
 }
 
 .message-thread-detail {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
-  transition:
-    max-height 0.25s ease,
-    opacity 0.25s ease;
-}
-
-.message-thread-detail[data-state='open'] {
-  max-height: 60rem;
-  opacity: 1;
 }
 
 .message-thread-detail[data-state='closed'] {
-  max-height: 0;
-  opacity: 0;
-  margin-top: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  pointer-events: none;
+  display: none;
+}
+
+.message-thread-detail-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 0;
+}
+
+.message-thread-detail-pane__history {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-thread-detail-pane__history > .message-thread-history,
+.message-thread-detail-pane__history > [role='alert'] {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 右ペイン返信UIを低くし、履歴（__history）を広げる（外枠サイズは変更しない） */
+.message-thread-detail-pane__composer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+}
+
+.message-thread-detail-pane__composer .message-send-region,
+.message-thread-detail-pane__composer .message-reply-region {
+  gap: 0.4rem;
+}
+
+.message-thread-detail-pane__composer .message-form-field {
+  gap: 0.15rem;
+}
+
+.message-thread-detail-pane__composer .message-form-field > label {
+  font-size: 0.85rem;
+}
+
+.message-thread-detail-pane__composer .form-select,
+.message-thread-detail-pane__composer .form-textarea {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.message-thread-detail-pane__composer .form-textarea {
+  min-height: 2.5rem;
+  max-height: 4.25rem;
+}
+
+.message-thread-detail-pane__composer .message-form-actions .btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.message-thread-detail-pane__composer .stamp-reply-region .btn-group {
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.message-thread-detail-pane__composer .stamp-reply-region .btn {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.message-send-region,
+.message-reply-region,
+.message-new-region {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.message-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.message-form-field > label {
+  white-space: nowrap;
+}
+
+.message-form-field .form-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message-form-field .form-textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  resize: vertical;
+}
+
+.message-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+[role='list'][aria-label='メッセージスレッド一覧'] article {
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+[role='list'][aria-label='メッセージスレッド一覧'] article:hover {
+  border-color: rgba(59, 108, 237, 0.45);
 }
 
 .message-thread-list-item--selected {
-  background: rgba(59, 108, 237, 0.12);
+  background: rgba(59, 108, 237, 0.28);
+  border: 1px solid var(--primary);
+  border-left: 4px solid var(--primary);
   border-radius: calc(var(--radius) * 0.8);
+  box-shadow: 0 0 0 1px rgba(59, 108, 237, 0.2);
+}
+
+.message-thread-list-item--selected .message-thread-list-preview {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.message-thread-list-item--selected .message-thread-list-updated-at {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.message-split-view {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.25rem;
+  width: 100%;
+  height: var(--message-split-height);
+  min-height: var(--message-split-min-height);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.message-split-view__left {
+  flex: 0 0 36%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.message-split-view__composer {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.message-split-view__composer .form-textarea {
+  max-height: 7.5rem;
+}
+
+.message-split-view__thread-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.message-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.message-thread-list__next {
+  align-self: stretch;
+}
+
+.message-split-view__right {
+  flex: 1 1 64%;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.message-split-view__right > .message-thread-detail {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.message-split-view__empty {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.message-thread-list-empty {
+  margin: 0.75rem 0;
+  color: var(--text-muted);
 }
 
 [role='list'][aria-label='メッセージスレッド一覧'] {
   padding: 0;
-  margin: 1rem 0;
+  margin: 0;
 }
 
 [role='list'][aria-label='メッセージスレッド一覧'] > [role='listitem'] {

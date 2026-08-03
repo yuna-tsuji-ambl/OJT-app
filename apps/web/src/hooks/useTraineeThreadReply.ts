@@ -1,12 +1,18 @@
 import { useCallback, useState } from 'react';
 import {
   sendTraineeThreadStampMessage,
+  sendTraineeThreadTemplateMessage,
   sendTraineeThreadTextMessage,
 } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
+import {
+  hasDualSendPayload,
+  resolveDualSendParts,
+} from '../domain/messageDualSend';
 import type { SyncMessageThreadViews } from '../domain/messageThreadView';
 import {
   createTraineeThreadStampReplyPayload,
+  createTraineeThreadTemplateReplyPayload,
   createTraineeThreadTextReplyPayload,
 } from '../domain/traineeThreadReply';
 
@@ -19,21 +25,38 @@ export function useTraineeThreadReply(
 
   const sendThreadMessage = useCallback(
     async (authUser: AuthUser): Promise<void> => {
-      if (!selectedThreadId || !freeTextContent.trim()) {
+      if (!selectedThreadId) {
         return;
       }
 
-      await sendTraineeThreadTextMessage(
-        createTraineeThreadTextReplyPayload(
-          selectedThreadId,
-          freeTextContent.trim(),
-        ),
-        authUser,
-      );
-      setFreeTextContent('');
+      const parts = resolveDualSendParts(selectedTemplateId, freeTextContent);
+
+      if (!hasDualSendPayload(parts)) {
+        return;
+      }
+
+      if (parts.templateId) {
+        await sendTraineeThreadTemplateMessage(
+          createTraineeThreadTemplateReplyPayload(
+            selectedThreadId,
+            parts.templateId,
+          ),
+          authUser,
+        );
+        setSelectedTemplateId('');
+      }
+
+      if (parts.freeText) {
+        await sendTraineeThreadTextMessage(
+          createTraineeThreadTextReplyPayload(selectedThreadId, parts.freeText),
+          authUser,
+        );
+        setFreeTextContent('');
+      }
+
       await syncThreadViews(authUser, selectedThreadId);
     },
-    [freeTextContent, selectedThreadId, syncThreadViews],
+    [freeTextContent, selectedTemplateId, selectedThreadId, syncThreadViews],
   );
 
   const sendStampReply = useCallback(

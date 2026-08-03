@@ -10,9 +10,12 @@ import { parseJsonResponse } from './jsonResponse';
 import type {
   TrainerMessagePayload,
   TrainerNewMessagePayload,
+  TrainerNewTextMessagePayload,
   TrainerStampReplyPayload,
+  TrainerTextReplyPayload,
   TrainerThreadReplyPayload,
   TraineeMessagePayload,
+  TraineeThreadTemplateReplyPayload,
   TraineeThreadTextReplyPayload,
   TraineeThreadStampReplyPayload,
 } from './messageThreadApiTypes';
@@ -20,9 +23,12 @@ import type {
 export type {
   TrainerMessagePayload,
   TrainerNewMessagePayload,
+  TrainerNewTextMessagePayload,
   TrainerStampReplyPayload,
+  TrainerTextReplyPayload,
   TrainerThreadReplyPayload,
   TraineeMessagePayload,
+  TraineeThreadTemplateReplyPayload,
   TraineeThreadTextReplyPayload,
   TraineeThreadStampReplyPayload,
 } from './messageThreadApiTypes';
@@ -87,6 +93,13 @@ export async function sendTraineeThreadTextMessage(
   user: AuthUser,
 ): Promise<SendMessageResult> {
   return postMessage(payload, user, 'Failed to send thread text message');
+}
+
+export async function sendTraineeThreadTemplateMessage(
+  payload: TraineeThreadTemplateReplyPayload,
+  user: AuthUser,
+): Promise<SendMessageResult> {
+  return postMessage(payload, user, 'Failed to send thread template message');
 }
 
 export async function sendTraineeThreadStampMessage(
@@ -172,9 +185,23 @@ export async function sendTrainerStampReply(
   return postMessage(payload, user, 'Failed to send trainer stamp reply');
 }
 
+export async function sendTrainerTextReply(
+  payload: TrainerTextReplyPayload,
+  user: AuthUser,
+): Promise<SendMessageResult> {
+  return postMessage(payload, user, 'Failed to send trainer text reply');
+}
+
 export async function sendTrainerNewMessage(
   payload: TrainerNewMessagePayload,
   user: AuthUser,
 ): Promise<SendMessageResult> {
   return postMessage(payload, user, 'Failed to send trainer new message');
+}
+
+export async function sendTrainerTextMessage(
+  payload: TrainerNewTextMessagePayload,
+  user: AuthUser,
+): Promise<SendMessageResult> {
+  return postMessage(payload, user, 'Failed to send trainer text message');
 }

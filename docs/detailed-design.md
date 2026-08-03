@@ -83,13 +83,14 @@
 
 #### 一部実装の既知ギャップ（F-01〜F-03）
 
-| ID   | ギャップ                                                                             | 対応予定                                                  |
-| ---- | ------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| F-01 | ~~課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし~~ | **解消済**（`AssignmentRepository` + `/api/assignments`） |
-| F-02 | グラフ API はサービス層のみ。フロントに推移グラフなし                                | 別途 UI 実装                                              |
-| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                           | ドメイン層で追加                                          |
-| F-03 | メッセージ非リアルタイム（手動リロード）                                             | WebSocket / ポーリング（計画のみ）                        |
-| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                                  | F-11                                                      |
+| ID   | ギャップ                                                                             | 対応予定                                                                                              |
+| ---- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| F-01 | ~~課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし~~ | **解消済**（`AssignmentRepository` + `/api/assignments`）                                             |
+| F-02 | グラフ API はサービス層のみ。フロントに推移グラフなし                                | 別途 UI 実装                                                                                          |
+| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                           | ドメイン層で追加                                                                                      |
+| F-03 | メッセージ非リアルタイム（手動リロード）                                             | WebSocket / ポーリング（計画のみ）                                                                    |
+| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                                  | F-11                                                                                                  |
+| F-03 | トーク視認性・下展開レイアウト・テンプレと自由記述の同時送信・空トーク表示           | [message-split-view-feature.md](./test-specs/message-split-view-feature.md)（スプリットビュー実装済） |
 
 #### 実装フェーズとステータス
 
@@ -126,6 +127,8 @@
 | F-09             | [#10](https://github.com/yuna-tsuji-ambl/OJT-app/issues/10) | 学び共有（デイリーログ + リンク）                      |
 | F-08             | [#11](https://github.com/yuna-tsuji-ambl/OJT-app/issues/11) | 目標・ガントチャート管理                               |
 | F-11             | [#12](https://github.com/yuna-tsuji-ambl/OJT-app/issues/12) | 複数新卒・複数トレーナー対応                           |
+| F-03（UI 改善）  | [#27](https://github.com/yuna-tsuji-ambl/OJT-app/issues/27) | メッセージ画面のスプリットビューと送信改善             |
+| F-03（スタンプ） | [#28](https://github.com/yuna-tsuji-ambl/OJT-app/issues/28) | トレーナー返信スタンプの拡充（ST1〜ST10）              |
 | F-10             | [#13](https://github.com/yuna-tsuji-ambl/OJT-app/issues/13) | 本番認証（Identity Platform 等）                       |
 | —                | [#14](https://github.com/yuna-tsuji-ambl/OJT-app/issues/14) | E2E テストの本格運用                                   |
 | Phase 6          | [#15](https://github.com/yuna-tsuji-ambl/OJT-app/issues/15) | BigQuery 分析連携（任意）                              |
@@ -310,7 +313,7 @@ Vite（`apps/web/vite.config.ts`）が `/api` および `/health` を `localhost
 | `/assignments/manage`  | AssignmentManagePage                              | trainer          | 課題の作成・編集・削除                                                                           |
 | `/dashboard`           | DashboardPage                                     | trainer          | 申請中課題承認、コンディションアラート                                                           |
 | `/status/settings`     | TrainerStatusSettingsPage                         | trainer          | トレーナーステータス変更                                                                         |
-| `/messages`            | TrainerMessagesPage                               | trainer          | 受信質問・簡易返信                                                                               |
+| `/messages`            | TrainerMessagesPage                               | trainer          | 自身のステータス表示、受信質問・簡易返信                                                         |
 | `/trainees/:traineeId` | TraineeDetailPage                                 | trainer（想定）  | 新卒の最新コンディション表示                                                                     |
 | **（追加予定）**       |                                                   |                  |                                                                                                  |
 | `/reports`             | ReportPage（trainee） / ReportListPage（trainer） | trainee, trainer | 新卒: 日次・週次入力（同一ページ）。トレーナー: 担当新卒の報告書一覧。ヘッダー「報告書」から遷移 |
@@ -353,26 +356,26 @@ flowchart LR
 
 ### 6.3 主要 UI コンポーネント
 
-| コンポーネント            | 利用画面           | 役割                             |
-| ------------------------- | ------------------ | -------------------------------- |
-| `ConditionSlider`         | 週次入力           | 1〜5 のスライダー入力            |
-| `QuestCard`               | クエスト一覧       | クエスト表示・申請ボタン         |
-| `PendingQuestCard`        | ダッシュボード     | 申請中クエスト・承認ボタン       |
-| `ConditionAlertCard`      | ダッシュボード     | SOS アラート表示                 |
-| `TrainerStatusPanel`      | ホーム             | トレーナー現在ステータス         |
-| `TrainerStatusRadioGroup` | ステータス設定     | ステータス切替                   |
-| `QuestionForm`            | ホーム             | 質問テンプレ選択・送信           |
-| `ReplyStampBar`           | メッセージ         | 返信スタンプ送信                 |
-| `ChatHistory`             | ホーム、メッセージ | チャット履歴表示                 |
-| **（追加予定）**          |                    |                                  |
-| `AssignmentForm`          | 課題管理           | 課題 CRUD フォーム               |
-| `AssignmentCard`          | 課題一覧           | 課題表示・申請                   |
-| `ReportForm`              | 日次/週次報告      | テンプレート入力フォーム         |
-| `ReportCard`              | 報告一覧           | 報告サマリー表示                 |
-| `GanttChart`              | 目標管理           | 期間バー可視化（ライブラリ TBD） |
-| `GoalForm`                | 目標管理           | タスク名・期間・依存の入力       |
-| `LearningPostCard`        | 学び共有           | メモ + リンク一覧表示            |
-| `LinkInputList`           | 学び投稿           | 複数 URL 入力                    |
+| コンポーネント            | 利用画面           | 役割                                                           |
+| ------------------------- | ------------------ | -------------------------------------------------------------- |
+| `ConditionSlider`         | 週次入力           | 1〜5 のスライダー入力                                          |
+| `QuestCard`               | クエスト一覧       | クエスト表示・申請ボタン                                       |
+| `PendingQuestCard`        | ダッシュボード     | 申請中クエスト・承認ボタン                                     |
+| `ConditionAlertCard`      | ダッシュボード     | SOS アラート表示                                               |
+| `TrainerStatusPanel`      | ホーム・メッセージ | トレーナー現在ステータス                                       |
+| `TrainerStatusRadioGroup` | ステータス設定     | ステータス切替                                                 |
+| `QuestionForm`            | ホーム             | 質問テンプレ選択・送信                                         |
+| `ReplyStampBar`           | メッセージ         | 返信スタンプ送信                                               |
+| ~~`ChatHistory`~~         | —                  | スプリットビュー移行に伴い廃止（右ペインのスレッド履歴へ統合） |
+| **（追加予定）**          |                    |                                                                |
+| `AssignmentForm`          | 課題管理           | 課題 CRUD フォーム                                             |
+| `AssignmentCard`          | 課題一覧           | 課題表示・申請                                                 |
+| `ReportForm`              | 日次/週次報告      | テンプレート入力フォーム                                       |
+| `ReportCard`              | 報告一覧           | 報告サマリー表示                                               |
+| `GanttChart`              | 目標管理           | 期間バー可視化（ライブラリ TBD）                               |
+| `GoalForm`                | 目標管理           | タスク名・期間・依存の入力                                     |
+| `LearningPostCard`        | 学び共有           | メモ + リンク一覧表示                                          |
+| `LinkInputList`           | 学び投稿           | 複数 URL 入力                                                  |
 
 ### 6.4 画面別 API 利用
 
@@ -385,7 +388,7 @@ flowchart LR
 | AssignmentManagePage                 | `GET/POST/PUT/DELETE /api/assignments`                                                                                                                                  |
 | DashboardPage                        | `GET /api/assignments/pending`, `POST /api/assignments/:id/approve`, `GET /api/condition/alerts`                                                                        |
 | TrainerStatusSettingsPage            | `GET /api/status/trainer/:id`, `PUT /api/status`                                                                                                                        |
-| TrainerMessagesPage                  | `GET /api/status/messages`, `POST /api/status/messages`                                                                                                                 |
+| TrainerMessagesPage                  | `GET /api/status/trainer/:id`, `GET /api/status/messages`, `POST /api/status/messages`                                                                                  |
 | TraineeDetailPage                    | `GET /api/condition/trainees/:id/latest`                                                                                                                                |
 | **（追加予定）**                     |                                                                                                                                                                         |
 | ReportPage（trainee `/reports`）     | `GET/PUT /api/reports/daily/:date`、`GET/PUT /api/reports/weekly/:weekKey`。日次入力欄直下リンク → `/reports/daily/list`、週次入力欄直下リンク → `/reports/weekly/list` |
@@ -960,12 +963,12 @@ interface LearningPost {
 
 ### 8.5 ステータス・メッセージ API
 
-| メソッド | パス                             | ロール            | 説明             | 成功                      |
-| -------- | -------------------------------- | ----------------- | ---------------- | ------------------------- |
-| PUT      | `/api/status`                    | trainer           | ステータス更新   | 200 `TrainerStatusRecord` |
-| GET      | `/api/status/trainer/:trainerId` | trainee           | ステータス取得   | 200 `TrainerStatusRecord` |
-| GET      | `/api/status/messages`           | 参加者            | メッセージ一覧   | 200 `ChatMessage[]`       |
-| POST     | `/api/status/messages`           | trainee / trainer | 質問 or 返信送信 | 200 `ChatMessageResult`   |
+| メソッド | パス                             | ロール                        | 説明                                               | 成功                      |
+| -------- | -------------------------------- | ----------------------------- | -------------------------------------------------- | ------------------------- |
+| PUT      | `/api/status`                    | trainer                       | ステータス更新                                     | 200 `TrainerStatusRecord` |
+| GET      | `/api/status/trainer/:trainerId` | trainee / trainer（自身のみ） | ステータス取得。未登録時はデフォルト「集中モード」 | 200 `TrainerStatusRecord` |
+| GET      | `/api/status/messages`           | 参加者                        | メッセージ一覧                                     | 200 `ChatMessage[]`       |
+| POST     | `/api/status/messages`           | trainee / trainer             | 質問 or 返信送信                                   | 200 `ChatMessageResult`   |
 
 **PUT `/api/status` リクエストボディ**:
 
@@ -986,10 +989,20 @@ interface LearningPost {
 { "trainerId": "trainer-1", "content": "〇〇の件で3分いいですか？" }
 ```
 
-**POST `/api/status/messages` リクエスト（トレーナー・返信）**:
+**POST `/api/status/messages` リクエスト（トレーナー・新規自由記述）**:
 
 ```json
-{ "traineeId": "trainee-1", "content": "後で話そう" }
+{ "traineeId": "trainee-1", "content": "進捗共有の時間をください" }
+```
+
+**POST `/api/status/messages` リクエスト（トレーナー・ルーム返信・自由記述）**:
+
+```json
+{
+  "threadId": "thread-1",
+  "traineeId": "trainee-1",
+  "content": "15時に声をかけてください"
+}
 ```
 
 **エラー**:

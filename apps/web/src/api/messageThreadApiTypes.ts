@@ -10,6 +10,12 @@ export type TraineeThreadTextReplyPayload = {
   content: string;
 };
 
+export type TraineeThreadTemplateReplyPayload = {
+  trainerId: string;
+  threadId: string;
+  templateId: string;
+};
+
 export type TraineeThreadStampReplyPayload = {
   trainerId: string;
   threadId: string;
@@ -23,6 +29,7 @@ export type TraineeNewMessagePayload =
 export type TraineeMessagePayload =
   | TraineeNewMessagePayload
   | TraineeThreadTextReplyPayload
+  | TraineeThreadTemplateReplyPayload
   | TraineeThreadStampReplyPayload;
 
 export type TrainerStampReplyPayload = {
@@ -31,13 +38,28 @@ export type TrainerStampReplyPayload = {
   traineeId: string;
 };
 
+export type TrainerTextReplyPayload = {
+  threadId: string;
+  content: string;
+  traineeId: string;
+};
+
 export type TrainerNewMessagePayload = {
   templateId: string;
   traineeId: string;
 };
 
+export type TrainerNewTextMessagePayload = {
+  content: string;
+  traineeId: string;
+};
+
 export type TrainerThreadActionPayload =
-  TrainerThreadReplyPayload | TrainerStampReplyPayload;
+  | TrainerThreadReplyPayload
+  | TrainerStampReplyPayload
+  | TrainerTextReplyPayload;
 
 export type TrainerMessagePayload =
-  TrainerThreadActionPayload | TrainerNewMessagePayload;
+  | TrainerThreadActionPayload
+  | TrainerNewMessagePayload
+  | TrainerNewTextMessagePayload;

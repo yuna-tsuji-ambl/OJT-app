@@ -34,23 +34,15 @@ import {
   assertInlineOpenCloseAndSwitchBehavior,
   clickMessageThreadRow,
   clickMessageThreadRowAndWaitForHistory,
-  expectInlineDetailClosesWithCollapsingHeight,
-  expectInlineDetailClosedAfterRow,
   expectInlineDetailOpenAfterRow,
   expectInlineDetailOpensWithExpandingHeight,
-  expectInlineDetailSwitchBetweenRows,
   expectMessageThreadRowNotSelected,
   expectMessageThreadRowSelected,
   expectOpenInlineDetailsCount,
   goToMessageThreadListPageContaining,
   inlineMessageThreadDetailAfterRow,
-  inlineMessageThreadDetailAfterThreadId,
   messageThreadHistoryError,
-  messageThreadRowById,
   MESSAGE_THREAD_HISTORY_ERROR_PATTERN,
-  MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-  MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
-  MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
   MESSAGE_THREAD_LIST_PAGE_SIZE,
   mockEmptyMessageThreadList,
   mockMessageThreadHistoryFailure,
@@ -1067,23 +1059,10 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
   });
 
   /**
-   * E-M17-02: 同一ルーム再クリックで閉じる
-   * 観点: CUJ / 操作性
-   * 対応: TC-MSG-UI-008, TC-MSG-UI-013（開→閉）, TC-MSG-UI-023（開→閉）
-   *
-   * 手順:
-   * 1. 新卒でスレッド1件を用意しルームAを選択（チャット欄表示中）
-   * 2. ルームAを再クリック
-   *
-   * 期待結果（表示）:
-   * - 閉じアニメーション（高さ減少）後、チャット欄（`role="region"`）が非表示
-   * - `data-state="closed"`、選択行は非選択色（`aria-selected="false"`）
-   *
-   * 期待結果（データ）:
-   * - 同一ルームのトグル閉じのため、新規の履歴 API 呼び出しは不要
+   * E-M17-02 → E-SV06: 同一ルーム再クリックでも選択維持（BR-SV09）
    */
-  test.describe('E-M17-02 同一ルーム再クリックで閉じる', () => {
-    test('選択中ルーム再クリック_閉じアニメーション後に詳細が非表示になる', async ({
+  test.describe('E-SV06 同一ルーム再クリックで選択維持', () => {
+    test('選択中ルーム再クリック_詳細と選択状態を維持する', async ({
       page,
     }) => {
       await loginAsTrainee(page);
@@ -1101,63 +1080,20 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
       await expectInlineDetailOpenAfterRow(page, E_M17_THREAD_A_CONTENT);
       await expectMessageThreadRowSelected(page, E_M17_THREAD_A_CONTENT);
 
-      await expectInlineDetailClosesWithCollapsingHeight(
-        page,
-        E_M17_THREAD_A_CONTENT,
-      );
+      await clickMessageThreadRow(page, E_M17_THREAD_A_CONTENT);
 
-      await expectOpenInlineDetailsCount(page, 0);
-      await expectInlineDetailClosedAfterRow(page, E_M17_THREAD_A_CONTENT);
-      await expectMessageThreadRowNotSelected(page, E_M17_THREAD_A_CONTENT);
+      await expectOpenInlineDetailsCount(page, 1);
+      await expectInlineDetailOpenAfterRow(page, E_M17_THREAD_A_CONTENT);
+      await expectMessageThreadRowSelected(page, E_M17_THREAD_A_CONTENT);
     });
   });
 
   /**
-   * E-M17-03: 閉じた後に再オープンできる
-   * 観点: CUJ / 操作性
-   * 対応: TC-MSG-UI-009
+   * E-M17-03: トグル閉じは廃止（BR-SV09）。再クリック維持は E-SV06 で担保。
    */
   test.describe('E-M17-03 閉じた後に再オープンできる', () => {
-    test('閉状態から再クリック_開くアニメーションで履歴が再表示される', async ({
-      page,
-    }) => {
-      await loginAsTrainee(page);
-
-      const threadsLoaded = waitForMessageThreadsLoaded(page);
-      await openTraineeHome(page);
-      await threadsLoaded;
-
-      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
-      await clickMessageThreadRowAndWaitForHistory(
-        page,
-        E_M17_THREAD_A_CONTENT,
-      );
-
-      const openedDetail = openInlineMessageThreadDetails(page);
-      const threadId = await openedDetail.getAttribute('data-thread-id');
-
-      if (!threadId) {
-        throw new Error('Open inline detail thread id not found');
-      }
-
-      const detail = inlineMessageThreadDetailAfterThreadId(page, threadId);
-      const openedRow = messageThreadRowById(page, threadId);
-
-      await openedRow.getByRole('article').click();
-      await expect(detail).toHaveAttribute(
-        MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
-        MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-      );
-      await expect(detail).toBeHidden();
-
-      await openedRow.getByRole('article').click();
-      await expect(detail).toHaveAttribute(
-        MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
-        MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
-      );
-      await expect(
-        detail.getByRole('log', { name: 'スレッド履歴' }),
-      ).toBeVisible();
+    test.skip('閉状態から再クリック_開くアニメーションで履歴が再表示される', async () => {
+      // スプリットビューでは選択解除しないため不要
     });
   });
 
@@ -1207,6 +1143,9 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
       await expect(messageThreadList(page)).toBeVisible();
       await expect(messageThreadArticles(page)).toHaveCount(0);
       await expect(openInlineMessageThreadDetails(page)).toHaveCount(0);
+      await expect(
+        page.getByText('メッセージを送信してください'),
+      ).toBeVisible();
     });
   });
 
@@ -1321,7 +1260,7 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
       await expectInlineDetailOpenAfterRow(page, twentiethVisiblePreview);
 
       await clickMessageThreadRow(page, twentiethVisiblePreview);
-      await expectInlineDetailClosedAfterRow(page, twentiethVisiblePreview);
+      await expectInlineDetailOpenAfterRow(page, twentiethVisiblePreview);
 
       await goToMessageThreadListPageContaining(
         page,

@@ -11,6 +11,17 @@ export function createTraineeThreadTextReplyPayload(
   };
 }
 
+export function createTraineeThreadTemplateReplyPayload(
+  threadId: string,
+  templateId: string,
+) {
+  return {
+    trainerId: DEFAULT_TRAINER_ID,
+    threadId,
+    templateId,
+  };
+}
+
 export function createTraineeThreadStampReplyPayload(
   threadId: string,
   stampId: string,
