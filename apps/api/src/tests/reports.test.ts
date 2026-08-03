@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Firestore } from '@google-cloud/firestore';
+import { isFirestoreEmulatorReachable } from './firestoreEmulatorEnv.js';
 import type { ReportRepository } from '../repositories/reportRepository.js';
 import {
   TRAINEE_USER_ID,
@@ -154,11 +155,16 @@ import {
   REPORT_TYPE_WEEKLY,
 } from '../reports/reportConstants.js';
 
+const firestoreEmulatorAvailable = await isFirestoreEmulatorReachable();
+
 function setupReportFirestoreTests() {
   let db: Firestore;
   let repository: ReportRepository;
 
-  beforeEach(async () => {
+  beforeEach(async ({ skip }) => {
+    if (!firestoreEmulatorAvailable) {
+      skip();
+    }
     ({ db, repository } = createReportFirestoreTestContext());
     await clearReportsCollection(db);
   });

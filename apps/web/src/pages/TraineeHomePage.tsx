@@ -36,6 +36,7 @@ export function TraineeHomePage() {
     setFreeTextContent,
     selectThread,
     sendMessage,
+    sendError,
   } = useTraineeHomeMessaging(user);
 
   useEffect(() => {
@@ -72,6 +73,9 @@ export function TraineeHomePage() {
         <h1 id="home-heading">ホーム</h1>
         {trainerStatus ? <TrainerStatusPanel status={trainerStatus} /> : null}
       </div>
+
+      {sendError ? <div role="alert">{sendError}</div> : null}
+
       <MessageSplitView
         sendForm={
           <QuestionForm

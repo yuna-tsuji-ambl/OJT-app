@@ -6,8 +6,10 @@ import {
 } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
 import {
+  formatMessageSendError,
   hasDualSendPayload,
   resolveDualSendParts,
+  runDualSendSequence,
 } from '../domain/messageDualSend';
 import type { SyncMessageThreadViews } from '../domain/messageThreadView';
 import {
@@ -42,30 +44,27 @@ export function useTrainerThreadReply(
       setSendError(null);
 
       try {
-        if (parts.templateId) {
-          await sendTrainerTemplateReply(
-            createTrainerTemplateReplyPayload(
-              selectedThreadId,
-              parts.templateId,
-            ),
-            authUser,
-          );
-          setSelectedReplyTemplateId('');
-        }
-
-        if (parts.freeText) {
-          await sendTrainerTextReply(
-            createTrainerTextReplyPayload(selectedThreadId, parts.freeText),
-            authUser,
-          );
-          setReplyFreeTextContent('');
-        }
+        await runDualSendSequence(
+          parts,
+          async (templateId) => {
+            await sendTrainerTemplateReply(
+              createTrainerTemplateReplyPayload(selectedThreadId, templateId),
+              authUser,
+            );
+            setSelectedReplyTemplateId('');
+          },
+          async (freeText) => {
+            await sendTrainerTextReply(
+              createTrainerTextReplyPayload(selectedThreadId, freeText),
+              authUser,
+            );
+            setReplyFreeTextContent('');
+          },
+        );
 
         await syncThreadViews(authUser, selectedThreadId);
       } catch (error: unknown) {
-        setSendError(
-          error instanceof Error ? error.message : '返信の送信に失敗しました',
-        );
+        setSendError(formatMessageSendError(error, '返信の送信に失敗しました'));
       }
     },
     [
@@ -92,9 +91,7 @@ export function useTrainerThreadReply(
         await syncThreadViews(authUser, selectedThreadId);
       } catch (error: unknown) {
         setSendError(
-          error instanceof Error
-            ? error.message
-            : 'スタンプの送信に失敗しました',
+          formatMessageSendError(error, 'スタンプの送信に失敗しました'),
         );
       }
     },

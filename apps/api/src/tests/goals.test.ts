@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Firestore } from '@google-cloud/firestore';
+import { isFirestoreEmulatorReachable } from './firestoreEmulatorEnv.js';
 import type { GoalRepository } from '../repositories/goalRepository.js';
 import {
   GOAL_INITIAL_PROGRESS,
@@ -53,11 +54,16 @@ import {
   resetGoalFirestoreTestContext,
 } from './goalFirestoreTestHelpers.js';
 
+const firestoreEmulatorAvailable = await isFirestoreEmulatorReachable();
+
 function setupGoalFirestoreTests() {
   let db: Firestore;
   let repository: GoalRepository;
 
-  beforeEach(async () => {
+  beforeEach(async ({ skip }) => {
+    if (!firestoreEmulatorAvailable) {
+      skip();
+    }
     ({ db, repository } = createGoalFirestoreTestContext());
     await clearGoalsCollection(db);
   });

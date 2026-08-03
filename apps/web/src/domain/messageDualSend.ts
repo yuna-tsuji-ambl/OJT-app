@@ -9,6 +9,11 @@ export type DualSendParts = {
   freeText: string | null;
 };
 
+export type DualSendSequenceResult<TTemplate, TFreeText> = {
+  templateResult: TTemplate | undefined;
+  freeTextResult: TFreeText | undefined;
+};
+
 export function resolveDualSendParts(
   selectedTemplateId: string,
   freeTextContent: string,
@@ -22,4 +27,33 @@ export function resolveDualSendParts(
 
 export function hasDualSendPayload(parts: DualSendParts): boolean {
   return parts.templateId !== null || parts.freeText !== null;
+}
+
+export function formatMessageSendError(
+  error: unknown,
+  fallback: string,
+): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+/**
+ * テンプレ → 自由記述の順で送信する。各コールバックは該当パーツがあるときだけ呼ばれる。
+ */
+export async function runDualSendSequence<TTemplate, TFreeText>(
+  parts: DualSendParts,
+  sendTemplate: (templateId: string) => Promise<TTemplate>,
+  sendFreeText: (freeText: string) => Promise<TFreeText>,
+): Promise<DualSendSequenceResult<TTemplate, TFreeText>> {
+  let templateResult: TTemplate | undefined;
+  let freeTextResult: TFreeText | undefined;
+
+  if (parts.templateId) {
+    templateResult = await sendTemplate(parts.templateId);
+  }
+
+  if (parts.freeText) {
+    freeTextResult = await sendFreeText(parts.freeText);
+  }
+
+  return { templateResult, freeTextResult };
 }

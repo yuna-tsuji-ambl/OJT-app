@@ -148,7 +148,8 @@
 
 | レイヤー   | テスト ID                                                | 自動化     | 配置                                                                                              |
 | ---------- | -------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
-| Web        | U-SV06, U-SV09, U-SV10/14（dual send 純関数）            | Vitest     | `apps/web/src/hooks/useMessageThreadRooms.test.ts`, `apps/web/src/domain/messageDualSend.test.ts` |
+| Web        | U-SV06, U-SV09, U-SV10/14（dual send 純関数＋送信順序）  | Vitest     | `apps/web/src/hooks/useMessageThreadRooms.test.ts`, `apps/web/src/domain/messageDualSend.test.ts` |
+| API        | トレーナー/新卒 POST body 判別                           | Vitest     | `apps/api/src/http/messageRequestTypes.test.ts`                                                   |
 | 共有 / API | U-M20/U-M24 → BR-SV09                                    | Vitest     | `apps/api/src/tests/message.test.ts`                                                              |
 | E2E        | E-SV06（再クリック維持）、E-M17 系をスプリット向けに更新 | Playwright | `tests/message.spec.test.ts`, `tests/helpers/message.ts`                                          |
 

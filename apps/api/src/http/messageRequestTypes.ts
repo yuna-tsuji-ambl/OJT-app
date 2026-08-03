@@ -43,6 +43,16 @@ export function parseQuestionMessageBody(
     return null;
   }
 
+  // 同時送信はクライアントが 2 リクエストに分ける。1 body に複数種別は不正。
+  const presentKinds = [
+    Boolean(content),
+    Boolean(templateId),
+    Boolean(stampId),
+  ].filter(Boolean).length;
+  if (presentKinds > 1) {
+    return null;
+  }
+
   return {
     trainerId: body.trainerId,
     content,

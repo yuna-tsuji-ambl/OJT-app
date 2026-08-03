@@ -6,8 +6,10 @@ import {
 } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
 import {
+  formatMessageSendError,
   hasDualSendPayload,
   resolveDualSendParts,
+  runDualSendSequence,
 } from '../domain/messageDualSend';
 import {
   createTrainerNewMessagePayload,
@@ -33,35 +35,39 @@ export function useTrainerNewMessageSend(reloadThreads: ReloadThreads) {
       setSendError(null);
 
       try {
-        if (parts.templateId) {
-          const result = await sendTrainerNewMessage(
-            createTrainerNewMessagePayload(parts.templateId),
-            authUser,
-          );
-          setSelectedTemplateId('');
+        let createdThreadId: string | undefined;
 
-          if (parts.freeText) {
-            await sendTrainerTextReply(
-              createTrainerTextReplyPayload(result.thread.id, parts.freeText),
+        await runDualSendSequence(
+          parts,
+          async (templateId) => {
+            const result = await sendTrainerNewMessage(
+              createTrainerNewMessagePayload(templateId),
               authUser,
             );
-          }
-
-          setFreeTextContent('');
-        } else if (parts.freeText) {
-          await sendTrainerTextMessage(
-            createTrainerNewTextMessagePayload(parts.freeText),
-            authUser,
-          );
-          setFreeTextContent('');
-        }
+            createdThreadId = result.thread.id;
+            setSelectedTemplateId('');
+            return result;
+          },
+          async (freeText) => {
+            if (createdThreadId) {
+              await sendTrainerTextReply(
+                createTrainerTextReplyPayload(createdThreadId, freeText),
+                authUser,
+              );
+            } else {
+              await sendTrainerTextMessage(
+                createTrainerNewTextMessagePayload(freeText),
+                authUser,
+              );
+            }
+            setFreeTextContent('');
+          },
+        );
 
         await reloadThreads(authUser);
       } catch (error: unknown) {
         setSendError(
-          error instanceof Error
-            ? error.message
-            : 'メッセージの送信に失敗しました',
+          formatMessageSendError(error, 'メッセージの送信に失敗しました'),
         );
       }
     },

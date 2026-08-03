@@ -6,8 +6,10 @@ import {
 } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
 import {
+  formatMessageSendError,
   hasDualSendPayload,
   resolveDualSendParts,
+  runDualSendSequence,
 } from '../domain/messageDualSend';
 import type { SyncMessageThreadViews } from '../domain/messageThreadView';
 import {
@@ -22,6 +24,7 @@ export function useTraineeThreadReply(
 ) {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [freeTextContent, setFreeTextContent] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const sendThreadMessage = useCallback(
     async (authUser: AuthUser): Promise<void> => {
@@ -35,26 +38,34 @@ export function useTraineeThreadReply(
         return;
       }
 
-      if (parts.templateId) {
-        await sendTraineeThreadTemplateMessage(
-          createTraineeThreadTemplateReplyPayload(
-            selectedThreadId,
-            parts.templateId,
-          ),
-          authUser,
-        );
-        setSelectedTemplateId('');
-      }
+      setSendError(null);
 
-      if (parts.freeText) {
-        await sendTraineeThreadTextMessage(
-          createTraineeThreadTextReplyPayload(selectedThreadId, parts.freeText),
-          authUser,
+      try {
+        await runDualSendSequence(
+          parts,
+          async (templateId) => {
+            await sendTraineeThreadTemplateMessage(
+              createTraineeThreadTemplateReplyPayload(
+                selectedThreadId,
+                templateId,
+              ),
+              authUser,
+            );
+            setSelectedTemplateId('');
+          },
+          async (freeText) => {
+            await sendTraineeThreadTextMessage(
+              createTraineeThreadTextReplyPayload(selectedThreadId, freeText),
+              authUser,
+            );
+            setFreeTextContent('');
+          },
         );
-        setFreeTextContent('');
-      }
 
-      await syncThreadViews(authUser, selectedThreadId);
+        await syncThreadViews(authUser, selectedThreadId);
+      } catch (error: unknown) {
+        setSendError(formatMessageSendError(error, '返信の送信に失敗しました'));
+      }
     },
     [freeTextContent, selectedTemplateId, selectedThreadId, syncThreadViews],
   );
@@ -65,11 +76,19 @@ export function useTraineeThreadReply(
         return;
       }
 
-      await sendTraineeThreadStampMessage(
-        createTraineeThreadStampReplyPayload(selectedThreadId, stampId),
-        authUser,
-      );
-      await syncThreadViews(authUser, selectedThreadId);
+      setSendError(null);
+
+      try {
+        await sendTraineeThreadStampMessage(
+          createTraineeThreadStampReplyPayload(selectedThreadId, stampId),
+          authUser,
+        );
+        await syncThreadViews(authUser, selectedThreadId);
+      } catch (error: unknown) {
+        setSendError(
+          formatMessageSendError(error, 'スタンプの送信に失敗しました'),
+        );
+      }
     },
     [selectedThreadId, syncThreadViews],
   );
@@ -81,5 +100,6 @@ export function useTraineeThreadReply(
     setFreeTextContent,
     sendThreadMessage,
     sendStampReply,
+    sendError,
   };
 }
