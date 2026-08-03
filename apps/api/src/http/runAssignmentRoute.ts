@@ -20,7 +20,7 @@ export async function runAssignmentRoute(
   options: RunAssignmentRouteOptions = {},
 ): Promise<void> {
   try {
-    const context = readExpressUserContext(request);
+    const context = await readExpressUserContext(request);
     const result = await handler(context, request);
 
     if (options.emptyBody) {

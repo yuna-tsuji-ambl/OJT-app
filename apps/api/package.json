@@ -14,7 +14,8 @@
   "dependencies": {
     "@google-cloud/firestore": "^8.6.0",
     "@ojt-app/shared": "*",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "firebase-admin": "^14.2.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

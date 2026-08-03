@@ -36,6 +36,17 @@ function sendSharedAuthErrors(response: Response, error: unknown): boolean {
   return false;
 }
 
+export function sendSharedAuthErrorResponse(
+  response: Response,
+  error: unknown,
+): void {
+  if (sendSharedAuthErrors(response, error)) {
+    return;
+  }
+
+  response.status(500).json({ error: 'Internal server error' });
+}
+
 export function sendQuestErrorResponse(
   response: Response,
   error: unknown,

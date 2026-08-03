@@ -50,8 +50,9 @@ export function Layout() {
           type="button"
           className="btn btn-primary"
           onClick={() => {
-            logout();
-            navigate('/login');
+            void logout().then(() => {
+              navigate('/login');
+            });
           }}
         >
           ログアウト

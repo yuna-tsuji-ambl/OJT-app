@@ -19,7 +19,7 @@ export async function runGoalRoute(
   options: RunGoalRouteOptions = {},
 ): Promise<void> {
   try {
-    const context = readExpressUserContext(request);
+    const context = await readExpressUserContext(request);
     const result = await handler(context, request);
 
     if (options.successStatus === 204) {

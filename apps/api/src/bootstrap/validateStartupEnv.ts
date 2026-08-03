@@ -7,6 +7,18 @@ export function validateStartupEnv(): void {
     );
   }
 
+  if (isProduction && process.env.AUTH_MODE === 'mock') {
+    throw new Error(
+      'AUTH_MODE=mock is not allowed in production. Set AUTH_MODE=firebase.',
+    );
+  }
+
+  if (isProduction && process.env.AUTH_MODE !== 'firebase') {
+    console.warn(
+      'AUTH_MODE is not firebase in production. Set AUTH_MODE=firebase after F-10 cutover.',
+    );
+  }
+
   if (process.env.DB_PROVIDER === 'firestore' && !process.env.GCP_PROJECT_ID) {
     console.warn(
       'GCP_PROJECT_ID is not set. Firestore will use the SDK default project ID.',

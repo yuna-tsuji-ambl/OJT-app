@@ -13,6 +13,8 @@
     "dev:all": "npm run build -w @ojt-app/shared && concurrently \"npm run dev:api\" \"npm run dev\"",
     "dev:all:firestore": "concurrently \"npm run emulators:firestore\" \"npm run dev:api:firestore\" \"npm run dev\"",
     "emulators:firestore": "firebase emulators:start --only firestore",
+    "emulators:auth": "firebase emulators:start --only auth,firestore --project ojt-app",
+    "test:auth:emulator": "npm run test -w @ojt-app/api -- src/tests/auth.emulator.test.ts",
     "build": "npm run build -w @ojt-app/shared && npm run build -w @ojt-app/api && npm run build -w @ojt-app/web",
     "test": "npm run build -w @ojt-app/shared && npm run test -w @ojt-app/api",
     "test:e2e": "playwright test",

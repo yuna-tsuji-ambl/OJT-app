@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
+import { runApiVitestWithFirestoreEmulator } from './runApiVitestWithFirestore.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -79,9 +80,6 @@ const LEARNING_WEB_VITEST_SUITE: LearningVitestSuite = {
   ],
 };
 
-const API_LEARNINGS_VITEST_INNER_COMMAND =
-  'npm test -w @ojt-app/api -- src/tests/learnings.test.ts';
-
 function isExecFileFailure(error: unknown): error is ExecFileFailure {
   return typeof error === 'object' && error !== null;
 }
@@ -147,22 +145,10 @@ export async function expectCiWorkflowRunsLearningVitestAndPlaywright(): Promise
   }
 }
 
-async function runApiLearningsVitestWithFirestoreEmulator(): Promise<CommandResult> {
-  return runNpmCommand([
-    'exec',
-    '--',
-    'firebase',
-    'emulators:exec',
-    '--only',
-    'firestore',
-    '--project',
-    'ojt-app-dev',
-    API_LEARNINGS_VITEST_INNER_COMMAND,
-  ]);
-}
-
 export async function expectLearningFeatureVitestSuitesPass(): Promise<void> {
-  const apiResult = await runApiLearningsVitestWithFirestoreEmulator();
+  const apiResult = await runApiVitestWithFirestoreEmulator([
+    'src/tests/learnings.test.ts',
+  ]);
   expectCommandSucceeded(apiResult, 'API learnings (Firestore Emulator)');
 
   const webResult = await runNpmCommand(LEARNING_WEB_VITEST_SUITE.args);

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
+import { runApiVitestWithFirestoreEmulator } from './runApiVitestWithFirestore.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -87,10 +88,6 @@ const REPORT_WEB_VITEST_SUITE: ReportVitestSuite = {
   ],
 };
 
-/** Firestore Emulator 上で API 報告書 Vitest を実行する（U-R / I-R） */
-const API_REPORTS_VITEST_INNER_COMMAND =
-  'npm test -w @ojt-app/api -- src/tests/reports.test.ts src/tests/reportOwnListQuery.test.ts';
-
 function isExecFileFailure(error: unknown): error is ExecFileFailure {
   return typeof error === 'object' && error !== null;
 }
@@ -165,27 +162,14 @@ export async function expectCiWorkflowRunsVitestAndPlaywright(): Promise<void> {
 }
 
 /**
- * Firestore Emulator を起動したうえで API 報告書 Vitest を実行する。
- * （reports.test.ts は Emulator 必須。未起動だと hook timeout になる）
+ * Firestore Emulator 上で API 報告書 Vitest を実行する（U-R / I-R）。
+ * 既に Emulator が起動していれば再利用する。
  */
-async function runApiReportsVitestWithFirestoreEmulator(): Promise<CommandResult> {
-  // npm exec -- firebase emulators:exec --only firestore --project ojt-app-dev "<vitest>"
-  return runNpmCommand([
-    'exec',
-    '--',
-    'firebase',
-    'emulators:exec',
-    '--only',
-    'firestore',
-    '--project',
-    'ojt-app-dev',
-    API_REPORTS_VITEST_INNER_COMMAND,
-  ]);
-}
-
-/** 報告書仕様の自動化対象 Vitest（API・Web）が Pass することを検証する（E-R11） */
 export async function expectReportFeatureVitestSuitesPass(): Promise<void> {
-  const apiResult = await runApiReportsVitestWithFirestoreEmulator();
+  const apiResult = await runApiVitestWithFirestoreEmulator([
+    'src/tests/reports.test.ts',
+    'src/tests/reportOwnListQuery.test.ts',
+  ]);
   expectCommandSucceeded(apiResult, 'API reports (Firestore Emulator)');
 
   const webResult = await runNpmCommand(REPORT_WEB_VITEST_SUITE.args);

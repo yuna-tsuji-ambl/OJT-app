@@ -20,11 +20,16 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    hookTimeout: 30_000,
+    // Firestore Emulator を複数ファイルで共有するため並列実行するとデータが混線する
+    fileParallelism: false,
+    hookTimeout: 60_000,
+    testTimeout: 60_000,
     env: {
+      AUTH_MODE: process.env.AUTH_MODE ?? 'mock',
       FIRESTORE_EMULATOR_HOST:
         process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8081',
-      GCP_PROJECT_ID: process.env.GCP_PROJECT_ID ?? 'ojt-app-dev',
+      // emulators:auth の --project ojt-app と揃える
+      GCP_PROJECT_ID: process.env.GCP_PROJECT_ID ?? 'ojt-app',
     },
   },
 });
