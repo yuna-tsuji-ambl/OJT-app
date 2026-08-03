@@ -62,6 +62,7 @@ gh project item-add 1 --owner yuna-tsuji-ambl \
 
 ## 実装・PR 時
 
+- PR 本文は `11_pull-request.mdc` の必須項目（Why / What / Evidence / Checklist / Others）に従う
 - 対応する Issue 番号を PR 本文に `Closes #N` で記載し、マージ時に自動クローズする
 - 着手時は Project の Status を `In Progress`、完了時は `Done` に更新する（`gh project item-edit` または Web）
 
