@@ -23,6 +23,7 @@ alwaysApply: true
 | タイムアウト・接続 | `docs/reliability.md` |
 | ログ・トレーシング | `docs/observability.md` |
 | AI が守る短い制約 | `.cursor/rules/`（目安 50 行前後） |
+| PR 本文フォーマット | `.cursor/rules/11_pull-request.mdc` |
 
 ## 禁止
 

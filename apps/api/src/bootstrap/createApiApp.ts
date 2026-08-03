@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { validateStartupEnv } from './validateStartupEnv.js';
+import { resolveAuthMode } from '../auth/authMode.js';
 import {
   createPersistence,
   resolveDbProvider,
@@ -12,6 +13,7 @@ import { createMessageRouter } from '../routes/messageRoutes.js';
 import { createQuestRouter } from '../routes/questRoutes.js';
 import { createGoalRouter } from '../routes/goalRoutes.js';
 import { createLearningRouter } from '../routes/learningRoutes.js';
+import { createMeRouter } from '../routes/meRoutes.js';
 import { createReportRouter } from '../routes/reportRoutes.js';
 import { createStatusRouter } from '../routes/statusRoutes.js';
 
@@ -20,6 +22,14 @@ export async function createApiApp(
   publicDir: string,
 ): Promise<void> {
   validateStartupEnv();
+
+  const authMode = resolveAuthMode();
+  if (authMode === 'firebase') {
+    const { configureFirebaseAuthDependencies } =
+      await import('../auth/firebaseAuthAdmin.js');
+    configureFirebaseAuthDependencies();
+  }
+  console.log(`Initializing auth (AUTH_MODE=${authMode})...`);
 
   const dbProvider = resolveDbProvider();
   console.log(`Initializing persistence (DB_PROVIDER=${dbProvider})...`);
@@ -45,9 +55,11 @@ export async function createApiApp(
       status: 'ok',
       service: 'ojt-app-api',
       dbProvider,
+      authMode,
     });
   });
 
+  apiRouter.use(createMeRouter());
   apiRouter.use(createConditionRouter(conditionRecordStore));
   apiRouter.use(createQuestRouter(assignmentRepository));
   apiRouter.use(createAssignmentRouter(assignmentRepository));

@@ -20,5 +20,5 @@ alwaysApply: true
 ## Git・レビュー
 
 - コミットは論理単位で小さく分ける
-- PR には変更理由と確認手順を記載する
+- PR 本文は **Why / What / Evidence / Checklist / Others** を必須とする（詳細は `11_pull-request.mdc`）
 - レビューコメントは具体的な改善案を添える

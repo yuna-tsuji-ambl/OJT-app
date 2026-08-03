@@ -20,7 +20,7 @@ async function handleUpdateTrainerStatus(
   trainerStatusStore: TrainerStatusStore,
 ): Promise<void> {
   try {
-    const context = readExpressUserContext(request);
+    const context = await readExpressUserContext(request);
 
     const body = parseStatusUpdateBody(request.body);
 
@@ -54,7 +54,7 @@ async function handleGetTrainerStatus(
   trainerStatusStore: TrainerStatusStore,
 ): Promise<void> {
   try {
-    const context = readExpressUserContext(request);
+    const context = await readExpressUserContext(request);
 
     const record = await getTrainerStatus(
       readRouteParam(request.params.trainerId),

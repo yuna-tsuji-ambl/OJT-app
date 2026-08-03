@@ -6,12 +6,20 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import type { AuthUser, UserRole } from './types';
+import { resolveWebAuthMode } from './authMode';
+import { getFirebaseAuth } from './firebaseClient';
 
 interface AuthContextValue {
   user: AuthUser | null;
+  authMode: 'mock' | 'firebase';
   login: (role: UserRole) => void;
-  logout: () => void;
+  loginWithEmailPassword: (
+    email: string,
+    password: string,
+  ) => Promise<AuthUser>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -38,16 +46,61 @@ function readStoredUser(): AuthUser | null {
   }
 }
 
+async function fetchMe(idToken: string): Promise<AuthUser> {
+  const response = await fetch('/api/me', {
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      response.status === 403
+        ? 'App user not registered'
+        : 'Failed to resolve app user',
+    );
+  }
+
+  const body = (await response.json()) as { userId: string; role: UserRole };
+  return { userId: body.userId, role: body.role, idToken };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const authMode = resolveWebAuthMode();
   const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
 
   const login = useCallback((role: UserRole) => {
+    if (resolveWebAuthMode() === 'firebase') {
+      throw new Error(
+        'Use loginWithEmailPassword when VITE_AUTH_MODE=firebase',
+      );
+    }
+
     const authUser = { userId: USER_IDS[role], role };
     setUser(authUser);
     sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
   }, []);
 
-  const logout = useCallback(() => {
+  const loginWithEmailPassword = useCallback(
+    async (email: string, password: string): Promise<AuthUser> => {
+      const credential = await signInWithEmailAndPassword(
+        getFirebaseAuth(),
+        email,
+        password,
+      );
+      const idToken = await credential.user.getIdToken();
+      const authUser = await fetchMe(idToken);
+      setUser(authUser);
+      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+      return authUser;
+    },
+    [],
+  );
+
+  const logout = useCallback(async () => {
+    if (resolveWebAuthMode() === 'firebase') {
+      await signOut(getFirebaseAuth());
+    }
     setUser(null);
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
   }, []);
@@ -55,10 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      authMode,
       login,
+      loginWithEmailPassword,
       logout,
     }),
-    [login, logout, user],
+    [authMode, login, loginWithEmailPassword, logout, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -19,7 +19,7 @@ export async function runConditionRoute(
   options: RunConditionRouteOptions = {},
 ): Promise<void> {
   try {
-    const context = readExpressUserContext(request);
+    const context = await readExpressUserContext(request);
     const result = await handler(context, request);
     response.status(options.successStatus ?? 200).json(result);
   } catch (error) {

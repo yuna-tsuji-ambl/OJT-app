@@ -6,7 +6,10 @@
 ## 共通
 
 - Base: `/api`
-- 認証: 既存ヘッダ／コンテキスト方式に従う
+- 認証: `docs/detailed-design.md` §5.4 / §8.1 に従う
+  - 本番（`AUTH_MODE=firebase`）: `Authorization: Bearer <Firebase ID トークン>`
+  - モック（`AUTH_MODE=mock`）: `X-User-Id` / `X-User-Role`
+  - 詳細・テスト: [`docs/test-specs/auth-feature.md`](./test-specs/auth-feature.md)
 - 日付: 特記なき限り ISO 8601（`YYYY-MM-DD` / タイムスタンプは ISO 文字列）
 
 ## HTTP ステータス

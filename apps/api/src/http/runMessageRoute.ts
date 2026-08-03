@@ -20,7 +20,7 @@ export async function runMessageRoute(
   options: RunMessageRouteOptions = {},
 ): Promise<void> {
   try {
-    const context = readExpressUserContext(request);
+    const context = await readExpressUserContext(request);
     const result = await handler(context, request);
 
     if (response.headersSent) {

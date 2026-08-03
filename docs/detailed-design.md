@@ -47,7 +47,7 @@
 | 対象ユーザー | 新卒（trainee）、OJT トレーナー（trainer）                         | 実装済（固定 ID のみ）              |
 | 対象環境     | ローカル開発、Docker、Google Cloud Run                             | 実装済                              |
 | 永続化       | Firestore（`DB_PROVIDER=firestore`）。テスト・未設定時はインメモリ | **実装済**                          |
-| 認証         | モック（ロール選択式ログイン、HTTP ヘッダーによる擬似認可）        | 実装済                              |
+| 認証         | モック（`AUTH_MODE=mock`）／本番は Firebase Auth（F-10・設計済）   | モック実装済・本番は設計済・未着手  |
 | 外部連携     | Google Sheets API                                                  | **廃止予定**（§7.4 課題管理で代替） |
 
 ### 2.5 機能開発ステータス一覧
@@ -77,8 +77,8 @@
 | F-07 | 日次・週次報告書                       | **設計済・未着手** | P1   | §7.5       | 未作成                                                                                                     |
 | F-08 | 目標・タスク管理（ガントチャート）     | **実装済**         | P2   | §7.6       | [goal-feature.md](./test-specs/goal-feature.md)                                                            |
 | F-09 | 学び共有（デイリーログ + リンク）      | **実装済**         | P2   | §7.7       | [learning-feature.md](./test-specs/learning-feature.md)                                                    |
-| F-10 | 本番認証（Identity Platform 等）       | **計画のみ**       | —    | §5.4       | —                                                                                                          |
-| F-11 | 複数新卒・複数トレーナー               | **計画のみ**       | —    | §13        | —                                                                                                          |
+| F-10 | 本番認証（Firebase Auth）              | **一部実装**       | —    | §5.4       | [auth-feature.md](./test-specs/auth-feature.md)                                                            |
+| F-11 | 複数新卒・複数トレーナー               | **計画のみ**       | —    | §5 / §13   | [multi-user-feature.md](./test-specs/multi-user-feature.md)（方針確定・F-10 先行）                         |
 | F-12 | Google Sheets 連携                     | **廃止予定**       | —    | §7.1（旧） | —                                                                                                          |
 
 #### 一部実装の既知ギャップ（F-01〜F-03）
@@ -107,7 +107,7 @@
 
 以下は **設計済・未着手** または **計画のみ** のため、明示的な依頼がない限り実装しない。
 
-- F-10 本番認証
+- F-10 本番認証（**一部実装**。Emulator 結合 E2E・本番切替は残）
 - F-11 マルチユーザー
 - F-12 Google Sheets 連携（新規実装）
 
@@ -135,7 +135,7 @@ PR では `Closes #8` のように Issue 番号を記載して自動クローズ
 
 ### 2.6 将来拡張（その他・計画のみ）
 
-- [ ] 本番認証（Identity Platform / Firebase Auth 等）
+- [ ] 本番認証（Firebase Auth・F-10。§5.4 設計済・未着手）
 - [ ] E2E テスト本格運用（Playwright 設定済み、仕様書整備中）
 - [ ] 複数新卒・複数トレーナー対応
 - [ ] コンディション推移の折れ線グラフ表示（フロントエンド）
@@ -257,7 +257,9 @@ Vite（`apps/web/vite.config.ts`）が `/api` および `/health` を `localhost
 | 新卒       | `trainee` | `trainee-1`         | ホーム、週次入力、クエスト一覧             |
 | トレーナー | `trainer` | `trainer-1`         | ダッシュボード、ステータス設定、メッセージ |
 
-### 5.2 認証（現行：モック）
+### 5.2 認証（現行：モック / `AUTH_MODE=mock`）
+
+ローカル開発・既存テスト用。本番では使わない（§5.4）。
 
 **フロントエンド**（`AuthContext.tsx`）:
 
@@ -283,16 +285,77 @@ Vite（`apps/web/vite.config.ts`）が `/api` および `/health` を `localhost
 | `ensureTrainee` | trainee のみ |
 | `ensureTrainer` | trainer のみ |
 
-違反時は `ForbiddenError` → HTTP 403。
+違反時は `ForbiddenError` → HTTP 403。  
+ロールの**供給源**は認証モードに依存する（モック: ヘッダー／本番: Firestore `users.role`）。
 
-### 5.4 将来の認証設計（プレースホルダ）
+### 5.4 本番認証（F-10・Firebase Auth）
 
-<!-- TODO: 本番認証方式確定後に追記 -->
+**ステータス**: 一部実装（API Bearer 検証・`GET /api/me`・Web ログイン分岐・Rules 骨子。Emulator 結合 E2E は継続）。テスト仕様 → [`docs/test-specs/auth-feature.md`](./test-specs/auth-feature.md)  
+**Issue**: [#13](https://github.com/yuna-tsuji-ambl/OJT-app/issues/13)
 
-- 認証プロバイダ:
-- トークン形式:
-- ユーザー ID とロールの取得方法:
-- 既存 `X-User-*` ヘッダーからの移行方針:
+#### 5.4.1 確定事項
+
+| #   | 論点                   | 決定                                                                                          |
+| --- | ---------------------- | --------------------------------------------------------------------------------------------- |
+| 1   | 認証プロバイダ         | **Firebase Auth**（プロジェクト `ojt-app` と一体。GCP Identity Platform 表記は同系統）        |
+| 2   | API への認証情報       | 本番パスは **`Authorization: Bearer <Firebase ID トークン>` のみ**（`X-User-*` は受理しない） |
+| 3   | アプリ上の `userId`    | **Firebase UID をそのまま** `UserContext.userId` に使う                                       |
+| 4   | `role` の正本          | **Firestore `users/{uid}.role`**（`trainee` / `trainer`）。custom claims は必須としない       |
+| 5   | 認証済・`users` 未登録 | 保護 API は **403**。オンボーディング UI は後回し                                             |
+| 6   | ローカル開発           | **Auth Emulator** を主経路。必要なら **`AUTH_MODE=mock` でモックログイン残置**（§5.2）        |
+| 7   | Firestore Rules        | F-10 で **Auth 必須**を最低限入れる。担当 N:M の詳細ルールは F-11                             |
+| 8   | 初版ログイン手段       | **メール/パスワード**（または Emulator 上の同等ユーザー）。Google ログイン等は対象外          |
+
+#### 5.4.2 認証フロー（本番 / Emulator）
+
+```
+[Web] メール/パスワードで Firebase Auth ログイン
+  → ID トークン取得
+  → fetchWithAuth: Authorization: Bearer <idToken>
+[API] Admin SDK（または Emulator 向け検証）でトークン検証
+  → uid を取得
+  → Firestore users/{uid} を読取
+  → 未登録 → 403 / 登録済 → UserContext { userId: uid, role: users.role }
+  → 以降は既存の ensureTrainee / ensureTrainer 等
+```
+
+内部シーム（`UserContext` / `readExpressUserContext` / `fetchWithAuth`）は維持し、供給源だけ切り替える。
+
+#### 5.4.3 ユーザーマスタ（`users`）
+
+| 項目            | 内容                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------- |
+| コレクション    | `users`                                                                               |
+| ドキュメント ID | Firebase UID                                                                          |
+| 主要フィールド  | `role`（`trainee` \| `trainer`）, `displayName`, `createdAt` 等                       |
+| 投入            | 当面はシード／開発者手書き（管理 UI なし。F-11 方針と整合）                           |
+| 旧固定 ID       | `trainee-1` 等は**シード／表示用エイリアス**として F-11 で扱う。F-10 の正の ID は UID |
+
+#### 5.4.4 `AUTH_MODE` と移行
+
+| モード     | Web                                       | API                                                       |
+| ---------- | ----------------------------------------- | --------------------------------------------------------- |
+| `firebase` | Firebase Auth（本番または Auth Emulator） | Bearer ID トークン必須。`X-User-*` は無視／401            |
+| `mock`     | ロール選択モック（既存）                  | 既存どおり `X-User-Id` / `X-User-Role`（ローカル・CI 用） |
+
+- 本番デプロイは **`AUTH_MODE=firebase` 固定**
+- 移行期に同一リクエストでヘッダーと Bearer を混ぜて権限を昇格させない（Bearer 検証結果のみを信頼）
+- 既存 E2E／API テストは当面 `mock` で継続可能。F-10 自動化は Emulator または検証スタブで Bearer 経路をカバーする
+
+#### 5.4.5 Firestore セキュリティルール（F-10 範囲）
+
+- クライアント直アクセスは原則禁止を維持しつつ、**`request.auth != null` を前提としたルール骨子**を入れる
+- 担当範囲に基づく read/write の詳細は F-11
+- API サーバー（Admin SDK）経由が主経路である前提は変えない
+
+#### 5.4.6 F-11 との境界
+
+| 責務           | F-10                    | F-11                                  |
+| -------------- | ----------------------- | ------------------------------------- |
+| ID / role 供給 | Firebase Auth + `users` | 利用するだけ                          |
+| 担当 N:M・履歴 | 対象外                  | Firestore 正本                        |
+| 固定 ID 除去   | UID 体系への切替土台    | 業務コードの `trainee-1` 決め打ち除去 |
+| モック複数選択 | 対象外（mock 残置のみ） | `trainee-2` 等の選択 UI（mock 期間）  |
 
 ---
 
@@ -302,7 +365,7 @@ Vite（`apps/web/vite.config.ts`）が `/api` および `/health` を `localhost
 
 | パス                   | ページ                                            | ロール           | 概要                                                                                             |
 | ---------------------- | ------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------ |
-| `/login`               | LoginPage                                         | 未ログイン       | ロール選択ログイン                                                                               |
+| `/login`               | LoginPage                                         | 未ログイン       | モック: ロール選択。F-10: メール/パスワード（Firebase Auth）                                     |
 | `/home`                | TraineeHomePage                                   | trainee          | トレーナーステータス表示、クイック質問、チャット履歴                                             |
 | `/condition/weekly`    | WeeklyConditionPage                               | trainee          | 週次コンディション入力                                                                           |
 | `/quests`              | —（`/assignments` へリダイレクト）                | trainee          | 旧 URL 互換                                                                                      |
@@ -891,12 +954,21 @@ interface LearningPost {
 
 ### 8.1 共通仕様
 
-| 項目             | 内容                       |
-| ---------------- | -------------------------- |
-| ベースパス       | `/api`                     |
-| Content-Type     | `application/json`         |
-| 認証ヘッダー     | `X-User-Id`, `X-User-Role` |
-| エラーレスポンス | `{ "error": string }`      |
+| 項目             | 内容                                                                         |
+| ---------------- | ---------------------------------------------------------------------------- |
+| ベースパス       | `/api`                                                                       |
+| Content-Type     | `application/json`                                                           |
+| 認証（本番）     | `Authorization: Bearer <Firebase ID トークン>`（§5.4）。`users` 未登録は 403 |
+| 認証（モック）   | `X-User-Id`, `X-User-Role`（`AUTH_MODE=mock` のみ。§5.2）                    |
+| エラーレスポンス | `{ "error": string }`                                                        |
+
+#### 8.1.1 認証コンテキスト API（F-10）
+
+| メソッド | パス      | 認証 | 説明                                    | 成功                   |
+| -------- | --------- | ---- | --------------------------------------- | ---------------------- |
+| GET      | `/api/me` | 必須 | 解決済み `UserContext`（userId / role） | 200 `{ userId, role }` |
+
+**エラー**: 401（未認証・不正トークン）、403（`users` 未登録）
 
 ### 8.2 ヘルスチェック
 
@@ -1215,16 +1287,17 @@ flowchart TB
 
 ### 9.5 Firestore コレクション設計（確定）
 
-| コレクション       | ドキュメント ID | 主要フィールド                                                  | 状態               |
-| ------------------ | --------------- | --------------------------------------------------------------- | ------------------ |
-| `quests`           | `{questId}`     | majorItem, minorItem, achievementLevel, status                  | **実装済**         |
-| `conditionRecords` | auto            | traineeId, workload, comprehension, mental, recordedAt          | **実装済**         |
-| `trainerStatuses`  | `{userId}`      | status                                                          | **実装済**         |
-| `chatMessages`     | auto            | conversationKey, senderId, receiverId, content, type, createdAt | **実装済**         |
-| `assignments`      | auto            | traineeId, title, ...                                           | **実装済**（§7.4） |
-| `reports`          | auto            | traineeId, type, periodKey, content, status, comments           | 一部実装（§7.5）   |
-| `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 実装済（§7.6）     |
-| `learningPosts`    | auto            | authorId, date, title, body, links                              | 実装済（§7.7）     |
+| コレクション       | ドキュメント ID | 主要フィールド                                                  | 状態                                         |
+| ------------------ | --------------- | --------------------------------------------------------------- | -------------------------------------------- |
+| `quests`           | `{questId}`     | majorItem, minorItem, achievementLevel, status                  | **実装済**                                   |
+| `conditionRecords` | auto            | traineeId, workload, comprehension, mental, recordedAt          | **実装済**                                   |
+| `trainerStatuses`  | `{userId}`      | status                                                          | **実装済**                                   |
+| `chatMessages`     | auto            | conversationKey, senderId, receiverId, content, type, createdAt | **実装済**                                   |
+| `assignments`      | auto            | traineeId, title, ...                                           | **実装済**（§7.4）                           |
+| `reports`          | auto            | traineeId, type, periodKey, content, status, comments           | 一部実装（§7.5）                             |
+| `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 実装済（§7.6）                               |
+| `learningPosts`    | auto            | authorId, date, title, body, links                              | 実装済（§7.7）                               |
+| `users`            | `{firebaseUid}` | role, displayName, createdAt                                    | **一部実装**（読取・認可。投入はシード想定） |
 
 **複合インデックス**（`firestore.indexes.json`）:
 
@@ -1257,7 +1330,8 @@ flowchart TB
 | `ConditionRecordNotFoundError` | コンディション記録なし     | 404  |
 | `TrainerStatusNotFoundError`   | トレーナーステータスなし   | 404  |
 | `ForbiddenError`               | ロール不一致、会話参加者外 | 403  |
-| （汎用）                       | 認証ヘッダー不正           | 401  |
+| （汎用）                       | 未認証・トークン不正       | 401  |
+| （汎用）                       | 認証済だが `users` 未登録  | 403  |
 
 ### 10.2 エラーレスポンス処理
 
@@ -1320,18 +1394,18 @@ flowchart TB
 
 ## 13. 既知の制限・技術的負債
 
-| #   | 項目                             | 影響                             | 対応方針                       |
-| --- | -------------------------------- | -------------------------------- | ------------------------------ |
-| 1   | インメモリ永続化                 | 再起動でデータ消失               | Firestore 等への移行           |
-| 2   | モック認証                       | 本番利用不可                     | Identity Platform 等           |
-| 3   | 固定ユーザー ID                  | 1 新卒・1 トレーナーのみ         | ユーザー管理機能追加           |
-| 4   | ~~Sheets 未連携~~                | 実際の OJT 計画書と非連動        | **課題管理（§7.4）で代替**     |
-| 5   | グラフ API 未公開                | トレーナー詳細画面にグラフなし   | API 追加 + UI 実装             |
-| 6   | メッセージ非リアルタイム         | 手動リロードが必要               | WebSocket / ポーリング         |
-| 7   | TraineeDetailPage 認可           | ルートレベルのロールガードなし   | Layout または Route Guard 追加 |
-| 8   | コンディション入力バリデーション | 1〜5 以外の値を API が拒否しない | ドメインバリデーション追加     |
-| 9   | 報告書・ガント・学び共有         | 未実装                           | §9.6 フェーズ順に実装          |
-| 10  | ~~DB 未選定~~                    | —                                | **Firestore に確定（v0.3）**   |
+| #   | 項目                             | 影響                             | 対応方針                                                                                 |
+| --- | -------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
+| 1   | インメモリ永続化                 | 再起動でデータ消失               | Firestore 等への移行                                                                     |
+| 2   | モック認証                       | 本番利用不可                     | Identity Platform 等                                                                     |
+| 3   | 固定ユーザー ID                  | 1 新卒・1 トレーナーのみ         | F-10 で UID 供給（[auth-feature.md](./test-specs/auth-feature.md)）→ F-11 で固定 ID 除去 |
+| 4   | ~~Sheets 未連携~~                | 実際の OJT 計画書と非連動        | **課題管理（§7.4）で代替**                                                               |
+| 5   | グラフ API 未公開                | トレーナー詳細画面にグラフなし   | API 追加 + UI 実装                                                                       |
+| 6   | メッセージ非リアルタイム         | 手動リロードが必要               | WebSocket / ポーリング                                                                   |
+| 7   | TraineeDetailPage 認可           | ルートレベルのロールガードなし   | Layout または Route Guard 追加                                                           |
+| 8   | コンディション入力バリデーション | 1〜5 以外の値を API が拒否しない | ドメインバリデーション追加                                                               |
+| 9   | 報告書・ガント・学び共有         | 未実装                           | §9.6 フェーズ順に実装                                                                    |
+| 10  | ~~DB 未選定~~                    | —                                | **Firestore に確定（v0.3）**                                                             |
 
 ---
 

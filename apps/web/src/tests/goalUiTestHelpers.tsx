@@ -284,7 +284,7 @@ export async function submitGoalCreateForm(): Promise<void> {
 
 export async function clickGoalEditButton(title: string): Promise<void> {
   const item = screen.getByText(title).closest('.goal-manage-list__item');
-  if (!item) {
+  if (!(item instanceof HTMLElement)) {
     throw new Error(`Goal item not found: ${title}`);
   }
   fireEvent.click(within(item).getByRole('button', { name: '編集' }));
@@ -299,7 +299,7 @@ export async function submitGoalEditForm(): Promise<void> {
 
 export async function clickGoalDeleteButton(title: string): Promise<void> {
   const item = screen.getByText(title).closest('.goal-manage-list__item');
-  if (!item) {
+  if (!(item instanceof HTMLElement)) {
     throw new Error(`Goal item not found: ${title}`);
   }
   fireEvent.click(
