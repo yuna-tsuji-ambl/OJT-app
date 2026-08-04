@@ -17,6 +17,8 @@ interface MessageThreadListProps {
   onNextPage: () => void;
   inlineDetail: InlineMessageThreadDetailState;
   onSelectThread?: (threadId: string) => void;
+  bookmarkedThreadIds?: ReadonlySet<string>;
+  onToggleThreadBookmark?: (threadId: string) => void;
 }
 
 export function MessageThreadList({
@@ -26,6 +28,8 @@ export function MessageThreadList({
   onNextPage,
   inlineDetail,
   onSelectThread,
+  bookmarkedThreadIds,
+  onToggleThreadBookmark,
 }: MessageThreadListProps) {
   const { selectedThreadId, inlineDetailState } = inlineDetail;
 
@@ -50,7 +54,9 @@ export function MessageThreadList({
                 <MessageThreadListItemArticle
                   item={item}
                   isSelected={isSelected}
+                  bookmarked={bookmarkedThreadIds?.has(threadId) ?? false}
                   onSelect={onSelectThread}
+                  onToggleBookmark={onToggleThreadBookmark}
                 />
               </div>
             );

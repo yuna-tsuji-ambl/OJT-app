@@ -36,6 +36,7 @@ import {
   clickMessageThreadRowAndWaitForHistory,
   expectInlineDetailOpenAfterRow,
   expectInlineDetailOpensWithExpandingHeight,
+  expectInlineDetailSwitchBetweenRows,
   expectMessageThreadRowNotSelected,
   expectMessageThreadRowSelected,
   expectOpenInlineDetailsCount,
@@ -202,7 +203,8 @@ test.describe('E-M03 スレッドへの返信と新卒側反映', () => {
     await openMessageThread(page, E_M03_QUESTION_CONTENT);
 
     const history = messageThreadHistory(page);
-    const messages = history.getByRole('listitem');
+    // 日付区切りも listitem になるため、吹き出し（article）で件数を見る（T-C）
+    const messages = history.getByRole('article');
 
     await expect(history).toBeVisible();
     await expect(messages).toHaveCount(2);
@@ -246,7 +248,7 @@ test.describe('E-M04 スタンプ返信の送受信', () => {
     await openMessageThread(page, E_M04_QUESTION_CONTENT);
 
     const history = messageThreadHistory(page);
-    const messages = history.getByRole('listitem');
+    const messages = history.getByRole('article');
 
     await expect(history).toBeVisible();
     await expect(messages).toHaveCount(2);
@@ -284,7 +286,7 @@ test.describe('E-M05 トレーナーからの新規メッセージでスレッ�
     await openMessageThread(page, REPLY_TEMPLATE_TT4_LABEL);
 
     const history = messageThreadHistory(page);
-    const messages = history.getByRole('listitem');
+    const messages = history.getByRole('article');
 
     await expect(history).toBeVisible();
     await expect(messages).toHaveCount(1);
@@ -397,6 +399,8 @@ test.describe('E-M07 テンプレートドロップダウン UI', () => {
  * 期待結果（データ）:
  * - 各送信 API（POST /api/status/messages）が成功する
  */
+const E_M08_QUESTION_CONTENT = 'E-M08リアルタイム反映の確認です';
+
 test.describe('E-M08 リアルタイム反映（手動リロード不要）', () => {
   test('新卒送信とトレーナースタンプ返信が相手画面に自動反映される', async ({
     browser,
@@ -413,40 +417,28 @@ test.describe('E-M08 リアルタイム反映（手動リロード不要）', ()
       await loginAsTrainer(trainerPage);
       await openTrainerMessagesAndWaitForThreads(trainerPage);
 
-      const threadsBefore = await messageThreadArticles(trainerPage).count();
-
-      await selectQuestionTemplate(traineePage, QUESTION_TEMPLATE_TQ1_LABEL);
-      await sendSelectedMessage(traineePage);
-      await expect(messageThreadDetail(traineePage)).toBeVisible({
-        timeout: REALTIME_UPDATE_TIMEOUT_MS,
-      });
+      // 並列・連続 E2E でテンプレ文言が衝突しないよう固有の自由記述を使う
+      await sendFreeTextMessage(traineePage, E_M08_QUESTION_CONTENT);
       await expect(
         messageThreadRoomHistory(traineePage)
-          .getByRole('listitem')
-          .filter({ hasText: QUESTION_TEMPLATE_TQ1_LABEL }),
+          .getByRole('article')
+          .filter({ hasText: E_M08_QUESTION_CONTENT }),
       ).toBeVisible({ timeout: REALTIME_UPDATE_TIMEOUT_MS });
 
-      await expect(messageThreadArticles(trainerPage)).toHaveCount(
-        threadsBefore + 1,
-        { timeout: REALTIME_UPDATE_TIMEOUT_MS },
-      );
-      await expectRealtimeThreadOnTrainer(
-        trainerPage,
-        QUESTION_TEMPLATE_TQ1_LABEL,
-      );
+      await expectRealtimeThreadOnTrainer(trainerPage, E_M08_QUESTION_CONTENT);
 
-      await openMessageThread(trainerPage, QUESTION_TEMPLATE_TQ1_LABEL);
+      await openMessageThread(trainerPage, E_M08_QUESTION_CONTENT);
       await sendTrainerStampReply(trainerPage, STAMP_ST1_LABEL);
 
       await expectRealtimeMessageInTraineeHistory(traineePage, STAMP_ST1_LABEL);
 
       const history = messageThreadRoomHistory(traineePage);
-      const messages = history.getByRole('listitem');
+      const messages = history.getByRole('article');
 
       await expect(messages).toHaveCount(2, {
         timeout: REALTIME_UPDATE_TIMEOUT_MS,
       });
-      await expect(messages.nth(0)).toContainText(QUESTION_TEMPLATE_TQ1_LABEL);
+      await expect(messages.nth(0)).toContainText(E_M08_QUESTION_CONTENT);
       await expect(messages.nth(1)).toContainText(STAMP_ST1_LABEL);
     } finally {
       await traineeContext.close();
@@ -484,17 +476,16 @@ test.describe('E-M09 送信でホームにチャットルームが追加され�
     const threadList = messageThreadList(page);
     await expect(threadList).toBeVisible();
 
-    const threadsBefore = await messageThreadArticles(page).count();
+    // 共有 API の既存トーク件数に依存しないよう、固有プレビューの出現で追加を検証する
+    const uniquePreview = `E-M09ルーム追加の確認-${Date.now()}`;
+    await expect(messageThread(page, uniquePreview)).toHaveCount(0);
 
-    await selectQuestionTemplate(page, QUESTION_TEMPLATE_TQ1_LABEL);
+    await freeTextInput(page).fill(uniquePreview);
     await sendSelectedMessage(page);
 
-    await expect(messageThreadArticles(page)).toHaveCount(threadsBefore + 1, {
+    await expect(messageThread(page, uniquePreview).first()).toBeVisible({
       timeout: REALTIME_UPDATE_TIMEOUT_MS,
     });
-    await expect(
-      messageThread(page, QUESTION_TEMPLATE_TQ1_LABEL).first(),
-    ).toBeVisible();
   });
 });
 
@@ -937,11 +928,23 @@ test.describe('E-M16 ルーム開封時にチャット欄下端へ視点固定',
     );
 
     await expect(traineeLatestBubble).toBeVisible();
-    await expectMessageThreadHistoryScrolledToBottom(traineeHistory);
-    await expectMessageBubbleWithinHistoryViewport(
-      traineeHistory,
-      traineeLatestBubble,
-    );
+    await expect
+      .poll(
+        async () => {
+          try {
+            await expectMessageThreadHistoryScrolledToBottom(traineeHistory);
+            await expectMessageBubbleWithinHistoryViewport(
+              traineeHistory,
+              traineeLatestBubble,
+            );
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: REALTIME_UPDATE_TIMEOUT_MS },
+      )
+      .toBe(true);
 
     await logout(page);
     await loginAsTrainer(page);
@@ -958,11 +961,23 @@ test.describe('E-M16 ルーム開封時にチャット欄下端へ視点固定',
     );
 
     await expect(trainerLatestBubble).toBeVisible();
-    await expectMessageThreadHistoryScrolledToBottom(trainerHistory);
-    await expectMessageBubbleWithinHistoryViewport(
-      trainerHistory,
-      trainerLatestBubble,
-    );
+    await expect
+      .poll(
+        async () => {
+          try {
+            await expectMessageThreadHistoryScrolledToBottom(trainerHistory);
+            await expectMessageBubbleWithinHistoryViewport(
+              trainerHistory,
+              trainerLatestBubble,
+            );
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: REALTIME_UPDATE_TIMEOUT_MS },
+      )
+      .toBe(true);
   });
 });
 

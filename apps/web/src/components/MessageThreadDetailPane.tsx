@@ -13,6 +13,10 @@ interface MessageThreadDetailPaneProps {
   messages: ThreadChatMessage[];
   historyError: string | null;
   children?: ReactNode;
+  bookmarkedMessageIds?: ReadonlySet<string>;
+  onToggleMessageBookmark?: (messageId: string) => void;
+  announcedMessageIds?: ReadonlySet<string>;
+  onToggleMessageAnnouncement?: (messageId: string) => void;
 }
 
 export function MessageThreadDetailPane({
@@ -21,6 +25,10 @@ export function MessageThreadDetailPane({
   messages,
   historyError,
   children,
+  bookmarkedMessageIds,
+  onToggleMessageBookmark,
+  announcedMessageIds,
+  onToggleMessageAnnouncement,
 }: MessageThreadDetailPaneProps) {
   return (
     <MessageThreadDetail
@@ -31,7 +39,14 @@ export function MessageThreadDetailPane({
         <div className="message-thread-detail-pane__history">
           {historyError ? <div role="alert">{historyError}</div> : null}
           {!historyError ? (
-            <MessageThreadHistory messages={messages} viewer={viewer} />
+            <MessageThreadHistory
+              messages={messages}
+              viewer={viewer}
+              bookmarkedMessageIds={bookmarkedMessageIds}
+              onToggleMessageBookmark={onToggleMessageBookmark}
+              announcedMessageIds={announcedMessageIds}
+              onToggleMessageAnnouncement={onToggleMessageAnnouncement}
+            />
           ) : null}
         </div>
         {children ? (

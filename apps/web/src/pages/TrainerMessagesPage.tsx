@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchTrainerStatus } from '../api/statusApi';
 import { useAuth } from '../auth/AuthContext';
+import { MessageAnnouncementCountButton } from '../components/MessageAnnouncementCountButton';
+import { MessageBookmarkDetailSlot } from '../components/MessageBookmarkDetailSlot';
+import { MessageBookmarkThreadSidebar } from '../components/MessageBookmarkThreadSidebar';
 import { MessageSplitView } from '../components/MessageSplitView';
-import { MessageThreadDetailPane } from '../components/MessageThreadDetailPane';
-import { MessageThreadList } from '../components/MessageThreadList';
 import { TrainerNewMessageForm } from '../components/TrainerNewMessageForm';
 import { TrainerStatusPanel } from '../components/TrainerStatusPanel';
 import { TrainerThreadReplyPanel } from '../components/TrainerThreadReplyPanel';
@@ -11,6 +12,7 @@ import {
   TRAINER_STATUS,
   type TrainerStatusType,
 } from '../domain/statusConstants';
+import { useMessageBookmarkAnnouncementPanels } from '../hooks/useMessageBookmarkAnnouncementPanels';
 import { useTrainerMessages } from '../hooks/useTrainerMessages';
 
 export function TrainerMessagesPage() {
@@ -36,6 +38,44 @@ export function TrainerMessagesPage() {
     sendNewMessage,
     sendError,
   } = useTrainerMessages(user);
+
+  const {
+    messageBookmarks,
+    bookmarkedThreadIds,
+    bookmarkedMessageIds,
+    bookmarkedOnly,
+    setBookmarkedOnly,
+    threadSortOption,
+    setThreadSortOption,
+    messageSortOption,
+    setMessageSortOption,
+    showBookmarkedMessages,
+    viewThreads,
+    toggleThreadBookmark,
+    toggleMessageBookmark,
+    updateBookmarkMemo,
+    bookmarkError,
+    announcements,
+    announcedMessageIds,
+    announcementCount,
+    announcementSortOption,
+    setAnnouncementSortOption,
+    announcementRoleFilter,
+    setAnnouncementRoleFilter,
+    showAnnouncements,
+    toggleShowAnnouncements,
+    toggleShowBookmarkedMessages,
+    selectThreadFromSideUi,
+    selectThreadFromAnnouncementUi,
+    toggleMessageAnnouncement,
+    updateAnnouncementMemo,
+    announcementError,
+  } = useMessageBookmarkAnnouncementPanels(user);
+
+  const filteredThreads = useMemo(
+    () => viewThreads(visibleThreads),
+    [viewThreads, visibleThreads],
+  );
 
   useEffect(() => {
     if (!user) {
@@ -73,10 +113,19 @@ export function TrainerMessagesPage() {
     >
       <div className="page-section__title-row">
         <h1 id="messages-heading">メッセージ</h1>
-        <TrainerStatusPanel status={trainerStatus} />
+        <div className="page-section__title-meta">
+          <TrainerStatusPanel status={trainerStatus} />
+          <MessageAnnouncementCountButton
+            count={announcementCount}
+            pressed={showAnnouncements}
+            onClick={toggleShowAnnouncements}
+          />
+        </div>
       </div>
 
       {sendError ? <div role="alert">{sendError}</div> : null}
+      {bookmarkError ? <div role="alert">{bookmarkError}</div> : null}
+      {announcementError ? <div role="alert">{announcementError}</div> : null}
 
       <MessageSplitView
         sendForm={
@@ -89,22 +138,74 @@ export function TrainerMessagesPage() {
           />
         }
         threadList={
-          <MessageThreadList
-            threads={visibleThreads}
+          <MessageBookmarkThreadSidebar
+            bookmarkedOnly={bookmarkedOnly}
+            onBookmarkedOnlyChange={setBookmarkedOnly}
+            threadSortOption={threadSortOption}
+            onThreadSortOptionChange={setThreadSortOption}
+            showBookmarkedMessages={showBookmarkedMessages}
+            onToggleBookmarkedMessages={toggleShowBookmarkedMessages}
+            threads={filteredThreads}
             page={threadListPage}
             totalPages={threadListTotalPages}
             onNextPage={goToNextThreadListPage}
             inlineDetail={inlineDetail}
-            onSelectThread={selectThread}
+            onSelectThread={(threadId) =>
+              selectThreadFromSideUi(threadId, selectThread)
+            }
+            bookmarkedThreadIds={bookmarkedThreadIds}
+            onToggleThreadBookmark={(threadId) =>
+              void toggleThreadBookmark(threadId)
+            }
           />
         }
         detail={
-          selectedThreadId ? (
-            <MessageThreadDetailPane
-              threadId={selectedThreadId}
+          showAnnouncements || showBookmarkedMessages || selectedThreadId ? (
+            <MessageBookmarkDetailSlot
+              showAnnouncements={showAnnouncements}
+              announcements={announcements}
+              announcementSortOption={announcementSortOption}
+              onAnnouncementSortOptionChange={setAnnouncementSortOption}
+              announcementRoleFilter={announcementRoleFilter}
+              onAnnouncementRoleFilterChange={setAnnouncementRoleFilter}
+              onSelectAnnouncement={(threadId) =>
+                selectThreadFromAnnouncementUi(threadId, selectThread)
+              }
+              onRemoveAnnouncement={(threadId, messageId) =>
+                void toggleMessageAnnouncement(threadId, messageId)
+              }
+              onUpdateAnnouncementMemo={(announcementId, memo) =>
+                void updateAnnouncementMemo(announcementId, memo)
+              }
+              showBookmarkedMessages={showBookmarkedMessages}
+              messageBookmarks={messageBookmarks}
               viewer={user}
+              messageSortOption={messageSortOption}
+              onMessageSortOptionChange={setMessageSortOption}
+              onSelectBookmarkedMessage={(threadId) =>
+                selectThreadFromSideUi(threadId, selectThread)
+              }
+              onRemoveMessageBookmark={(threadId, messageId) =>
+                void toggleMessageBookmark(threadId, messageId)
+              }
+              onUpdateBookmarkMemo={(bookmarkId, memo) =>
+                void updateBookmarkMemo(bookmarkId, memo)
+              }
+              selectedThreadId={selectedThreadId}
               messages={threadMessages}
               historyError={historyError}
+              bookmarkedMessageIds={bookmarkedMessageIds}
+              onToggleMessageBookmark={(messageId) => {
+                if (selectedThreadId) {
+                  void toggleMessageBookmark(selectedThreadId, messageId);
+                }
+              }}
+              announcedMessageIds={announcedMessageIds}
+              onToggleMessageAnnouncement={(messageId) => {
+                if (selectedThreadId) {
+                  void toggleMessageAnnouncement(selectedThreadId, messageId);
+                }
+              }}
             >
               <TrainerThreadReplyPanel
                 selectedReplyTemplateId={selectedReplyTemplateId}
@@ -114,7 +215,7 @@ export function TrainerMessagesPage() {
                 onSendTemplateReply={onSendTemplateReply}
                 onSendStampReply={onSendStampReply}
               />
-            </MessageThreadDetailPane>
+            </MessageBookmarkDetailSlot>
           ) : null
         }
       />

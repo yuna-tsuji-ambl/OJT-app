@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ThreadChatMessage } from '@ojt-app/shared';
 import { fetchParticipantThreadHistory } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
@@ -9,18 +9,29 @@ import {
 import { MESSAGE_THREAD_HISTORY_LOAD_ERROR_TEXT } from '../domain/messageThreadList';
 import { useRealtimeParticipantResource } from './useRealtimeParticipantResource';
 
+type ThreadHistoryLoadResult = {
+  threadId: string | null;
+  messages: ThreadChatMessage[];
+};
+
+const EMPTY_HISTORY: ThreadHistoryLoadResult = {
+  threadId: null,
+  messages: [],
+};
+
 function createThreadHistoryFetcher(threadId: string | null) {
-  return async (authUser: AuthUser): Promise<ThreadChatMessage[]> => {
+  return async (authUser: AuthUser): Promise<ThreadHistoryLoadResult> => {
     if (!threadId) {
-      return [];
+      return EMPTY_HISTORY;
     }
 
-    return fetchParticipantThreadHistory(
+    const messages = await fetchParticipantThreadHistory(
       DEFAULT_TRAINER_ID,
       DEFAULT_TRAINEE_ID,
       threadId,
       authUser,
     );
+    return { threadId, messages };
   };
 }
 
@@ -31,10 +42,10 @@ export function useMessageThreadHistory(
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   const fetchHistory = useCallback(
-    async (authUser: AuthUser): Promise<ThreadChatMessage[]> => {
+    async (authUser: AuthUser): Promise<ThreadHistoryLoadResult> => {
       if (!threadId) {
         setHistoryError(null);
-        return [];
+        return EMPTY_HISTORY;
       }
 
       try {
@@ -42,16 +53,16 @@ export function useMessageThreadHistory(
         return await createThreadHistoryFetcher(threadId)(authUser);
       } catch {
         setHistoryError(MESSAGE_THREAD_HISTORY_LOAD_ERROR_TEXT);
-        return [];
+        return { threadId, messages: [] };
       }
     },
     [threadId],
   );
 
-  const { data: threadMessages, reload } = useRealtimeParticipantResource(
+  const { data: loadedHistory, reload } = useRealtimeParticipantResource(
     user,
     fetchHistory,
-    [] as ThreadChatMessage[],
+    EMPTY_HISTORY,
   );
 
   const reloadThreadHistory = useCallback(
@@ -66,10 +77,11 @@ export function useMessageThreadHistory(
 
       try {
         setHistoryError(null);
-        return await reload(
+        const result = await reload(
           authUser,
           createThreadHistoryFetcher(targetThreadId),
         );
+        return result.messages;
       } catch {
         setHistoryError(MESSAGE_THREAD_HISTORY_LOAD_ERROR_TEXT);
         return [];
@@ -77,6 +89,14 @@ export function useMessageThreadHistory(
     },
     [reload, threadId],
   );
+
+  // 選択中トークと紐づく結果だけを表示（古い in-flight 応答の混入を防ぐ）
+  const threadMessages = useMemo(() => {
+    if (!threadId || loadedHistory.threadId !== threadId) {
+      return [];
+    }
+    return loadedHistory.messages;
+  }, [loadedHistory, threadId]);
 
   return { threadMessages, reloadThreadHistory, historyError };
 }

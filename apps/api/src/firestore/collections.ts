@@ -9,6 +9,8 @@ export const FIRESTORE_COLLECTIONS = {
   REPORTS: 'reports',
   GOALS: 'goals',
   LEARNING_POSTS: 'learningPosts',
+  MESSAGE_BOOKMARKS: 'messageBookmarks',
+  MESSAGE_ANNOUNCEMENTS: 'messageAnnouncements',
 } as const;
 
 export const MESSAGE_FIRESTORE_COLLECTIONS = [

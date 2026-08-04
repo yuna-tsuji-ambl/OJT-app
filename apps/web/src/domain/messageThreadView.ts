@@ -26,6 +26,13 @@ export function createSyncMessageThreadViews(
     }
 
     await reloadThreadList(authUser);
+
+    if (!targetThreadId) {
+      return;
+    }
+
+    // 一覧更新後に再度選択を確定し、履歴を確実に取り直す
+    setSelectedThreadId(targetThreadId);
     await reloadThreadHistory(authUser, targetThreadId);
   };
 }

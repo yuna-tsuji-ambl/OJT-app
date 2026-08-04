@@ -98,6 +98,54 @@ export class MessageThreadNotFoundError extends Error {
   }
 }
 
+export class MessageBookmarkNotFoundError extends Error {
+  constructor(bookmarkId: string) {
+    super(`Message bookmark not found: ${bookmarkId}`);
+    this.name = 'MessageBookmarkNotFoundError';
+  }
+}
+
+export class MessageBookmarkInvalidInputError extends Error {
+  constructor(message = 'Invalid message bookmark input') {
+    super(message);
+    this.name = 'MessageBookmarkInvalidInputError';
+  }
+}
+
+export class MessageBookmarkTargetNotFoundError extends Error {
+  constructor(targetId: string) {
+    super(`Message bookmark target not found: ${targetId}`);
+    this.name = 'MessageBookmarkTargetNotFoundError';
+  }
+}
+
+export const INVALID_MESSAGE_BOOKMARK_INPUT_MESSAGE =
+  'Invalid message bookmark input' as const;
+
+export class MessageAnnouncementNotFoundError extends Error {
+  constructor(announcementId: string) {
+    super(`Message announcement not found: ${announcementId}`);
+    this.name = 'MessageAnnouncementNotFoundError';
+  }
+}
+
+export class MessageAnnouncementInvalidInputError extends Error {
+  constructor(message = 'Invalid message announcement input') {
+    super(message);
+    this.name = 'MessageAnnouncementInvalidInputError';
+  }
+}
+
+export class MessageAnnouncementTargetNotFoundError extends Error {
+  constructor(targetId: string) {
+    super(`Message announcement target not found: ${targetId}`);
+    this.name = 'MessageAnnouncementTargetNotFoundError';
+  }
+}
+
+export const INVALID_MESSAGE_ANNOUNCEMENT_INPUT_MESSAGE =
+  'Invalid message announcement input' as const;
+
 export class UnknownStampError extends Error {
   constructor(stampId: string) {
     super(`Unknown stamp: ${stampId}`);

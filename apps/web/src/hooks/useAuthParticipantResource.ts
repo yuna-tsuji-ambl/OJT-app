@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthUser } from '../auth/types';
 
 export function useAuthParticipantResource<T>(
@@ -7,14 +7,19 @@ export function useAuthParticipantResource<T>(
   initialValue: T,
 ) {
   const [data, setData] = useState(initialValue);
+  const requestIdRef = useRef(0);
 
   const reload = useCallback(
     async (
       authUser: AuthUser,
       fetchOverride?: (authUser: AuthUser) => Promise<T>,
     ): Promise<T> => {
+      const requestId = ++requestIdRef.current;
       const nextData = await (fetchOverride ?? fetcher)(authUser);
-      setData(nextData);
+      // 古い in-flight 応答で新しい履歴／一覧を上書きしない
+      if (requestId === requestIdRef.current) {
+        setData(nextData);
+      }
       return nextData;
     },
     [fetcher],

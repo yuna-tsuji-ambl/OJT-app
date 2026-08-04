@@ -1,6 +1,6 @@
 export const MESSAGE_THREAD_LIST_LABEL = 'メッセージスレッド一覧' as const;
 
-export const MESSAGE_THREAD_LIST_EMPTY_TEXT = 'ルームはありません' as const;
+export const MESSAGE_THREAD_LIST_EMPTY_TEXT = 'トークはありません' as const;
 
 export const MESSAGE_THREAD_LIST_NEXT_PAGE_LABEL = '次のページ' as const;
 

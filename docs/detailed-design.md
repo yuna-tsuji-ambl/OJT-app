@@ -66,31 +66,34 @@
 
 #### 機能一覧
 
-| ID   | 機能                                   | ステータス         | 優先 | 詳細       | テスト仕様書                                                                                               |
-| ---- | -------------------------------------- | ------------------ | ---- | ---------- | ---------------------------------------------------------------------------------------------------------- |
-| F-01 | クエスト管理（一覧・申請・承認）       | **実装済**         | —    | §7.1       | [quest-feature.md](./test-specs/quest-feature.md)                                                          |
-| F-02 | コンディション記録（モヤモヤ・温度計） | **一部実装**       | —    | §7.2       | [condition-feature.md](./test-specs/condition-feature.md)                                                  |
-| F-03 | トレーナーステータス・クイック質問     | **一部実装**       | —    | §7.3       | [status-feature.md](./test-specs/status-feature.md)、[message-feature.md](./test-specs/message-feature.md) |
-| F-04 | Firestore 永続化                       | **実装済**         | —    | §9         | —                                                                                                          |
-| F-05 | モック認証・ロール制御                 | **実装済**         | —    | §5         | —                                                                                                          |
-| F-06 | 課題管理（トレーナー入力・スプシ代替） | **実装済**         | P1   | §7.4       | [quest-feature.md](./test-specs/quest-feature.md)（F-01 移行節）                                           |
-| F-07 | 日次・週次報告書                       | **設計済・未着手** | P1   | §7.5       | 未作成                                                                                                     |
-| F-08 | 目標・タスク管理（ガントチャート）     | **実装済**         | P2   | §7.6       | [goal-feature.md](./test-specs/goal-feature.md)                                                            |
-| F-09 | 学び共有（デイリーログ + リンク）      | **実装済**         | P2   | §7.7       | [learning-feature.md](./test-specs/learning-feature.md)                                                    |
-| F-10 | 本番認証（Identity Platform 等）       | **計画のみ**       | —    | §5.4       | —                                                                                                          |
-| F-11 | 複数新卒・複数トレーナー               | **計画のみ**       | —    | §13        | —                                                                                                          |
-| F-12 | Google Sheets 連携                     | **廃止予定**       | —    | §7.1（旧） | —                                                                                                          |
+| ID   | 機能                                   | ステータス         | 優先 | 詳細       | テスト仕様書                                                                                                                                                                                                                                                                             |
+| ---- | -------------------------------------- | ------------------ | ---- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01 | クエスト管理（一覧・申請・承認）       | **実装済**         | —    | §7.1       | [quest-feature.md](./test-specs/quest-feature.md)                                                                                                                                                                                                                                        |
+| F-02 | コンディション記録（モヤモヤ・温度計） | **一部実装**       | —    | §7.2       | [condition-feature.md](./test-specs/condition-feature.md)                                                                                                                                                                                                                                |
+| F-03 | トレーナーステータス・クイック質問     | **一部実装**       | —    | §7.3       | [status-feature.md](./test-specs/status-feature.md)、[message-feature.md](./test-specs/message-feature.md)、[message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)、[message-announcement-feature.md](./test-specs/message-announcement-feature.md) |
+| F-04 | Firestore 永続化                       | **実装済**         | —    | §9         | —                                                                                                                                                                                                                                                                                        |
+| F-05 | モック認証・ロール制御                 | **実装済**         | —    | §5         | —                                                                                                                                                                                                                                                                                        |
+| F-06 | 課題管理（トレーナー入力・スプシ代替） | **実装済**         | P1   | §7.4       | [quest-feature.md](./test-specs/quest-feature.md)（F-01 移行節）                                                                                                                                                                                                                         |
+| F-07 | 日次・週次報告書                       | **設計済・未着手** | P1   | §7.5       | 未作成                                                                                                                                                                                                                                                                                   |
+| F-08 | 目標・タスク管理（ガントチャート）     | **実装済**         | P2   | §7.6       | [goal-feature.md](./test-specs/goal-feature.md)                                                                                                                                                                                                                                          |
+| F-09 | 学び共有（デイリーログ + リンク）      | **実装済**         | P2   | §7.7       | [learning-feature.md](./test-specs/learning-feature.md)                                                                                                                                                                                                                                  |
+| F-10 | 本番認証（Identity Platform 等）       | **計画のみ**       | —    | §5.4       | —                                                                                                                                                                                                                                                                                        |
+| F-11 | 複数新卒・複数トレーナー               | **計画のみ**       | —    | §13        | —                                                                                                                                                                                                                                                                                        |
+| F-12 | Google Sheets 連携                     | **廃止予定**       | —    | §7.1（旧） | —                                                                                                                                                                                                                                                                                        |
 
 #### 一部実装の既知ギャップ（F-01〜F-03）
 
-| ID   | ギャップ                                                                             | 対応予定                                                                                              |
-| ---- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| F-01 | ~~課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし~~ | **解消済**（`AssignmentRepository` + `/api/assignments`）                                             |
-| F-02 | グラフ API はサービス層のみ。フロントに推移グラフなし                                | 別途 UI 実装                                                                                          |
-| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                           | ドメイン層で追加                                                                                      |
-| F-03 | メッセージ非リアルタイム（手動リロード）                                             | WebSocket / ポーリング（計画のみ）                                                                    |
-| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                                  | F-11                                                                                                  |
-| F-03 | トーク視認性・下展開レイアウト・テンプレと自由記述の同時送信・空トーク表示           | [message-split-view-feature.md](./test-specs/message-split-view-feature.md)（スプリットビュー実装済） |
+| ID   | ギャップ                                                                                    | 対応予定                                                                                                                                                                                                                                    |
+| ---- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01 | ~~課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし~~        | **解消済**（`AssignmentRepository` + `/api/assignments`）                                                                                                                                                                                   |
+| F-02 | グラフ API はサービス層のみ。フロントに推移グラフなし                                       | 別途 UI 実装                                                                                                                                                                                                                                |
+| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                                  | ドメイン層で追加                                                                                                                                                                                                                            |
+| F-03 | メッセージ非リアルタイム（手動リロード）                                                    | WebSocket / ポーリング（計画のみ）                                                                                                                                                                                                          |
+| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                                         | F-11                                                                                                                                                                                                                                        |
+| F-03 | トーク視認性・下展開レイアウト・テンプレと自由記述の同時送信・空トーク表示                  | [message-split-view-feature.md](./test-specs/message-split-view-feature.md)（スプリットビュー実装済）                                                                                                                                       |
+| F-03 | メッセージ送信時刻（T-C: 日付区切り＋`H:mm`）・トーク／メッセージのブックマーク             | [message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)（API・Web 実装済。E2E 未着手）                                                                                                                  |
+| F-03 | メッセージアナウンス（共有一覧・ステータス横導線）・トークプレビュー1行・BM取得エラー非表示 | [message-announcement-feature.md](./test-specs/message-announcement-feature.md)（API・Web 実装済 / [#30](https://github.com/yuna-tsuji-ambl/OJT-app/issues/30)）                                                                            |
+| F-03 | アナウンス／BM メッセージ一覧のメモ（各件）                                                 | [message-announcement-feature.md](./test-specs/message-announcement-feature.md)、[message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)（[#31](https://github.com/yuna-tsuji-ambl/OJT-app/issues/31)） |
 
 #### 実装フェーズとステータス
 
@@ -116,23 +119,26 @@
 
 進捗管理は GitHub Issues を正とする。仕様の正は引き続き本書。
 
-| 設計 ID          | GitHub Issue                                                | タイトル                                               |
-| ---------------- | ----------------------------------------------------------- | ------------------------------------------------------ |
-| F-01（ギャップ） | [#4](https://github.com/yuna-tsuji-ambl/OJT-app/issues/4)   | クエスト: SheetRepository 廃止と課題データへの移行     |
-| F-02（ギャップ） | [#5](https://github.com/yuna-tsuji-ambl/OJT-app/issues/5)   | コンディション: 推移グラフのフロントエンド表示         |
-| F-02（ギャップ） | [#6](https://github.com/yuna-tsuji-ambl/OJT-app/issues/6)   | コンディション: 入力値 1〜5 のサーバー側バリデーション |
-| F-03（ギャップ） | [#7](https://github.com/yuna-tsuji-ambl/OJT-app/issues/7)   | クイック質問: メッセージのリアルタイム更新             |
-| F-06             | [#8](https://github.com/yuna-tsuji-ambl/OJT-app/issues/8)   | 課題管理（トレーナー入力・スプシ代替）                 |
-| F-07             | [#9](https://github.com/yuna-tsuji-ambl/OJT-app/issues/9)   | 日次・週次報告書                                       |
-| F-09             | [#10](https://github.com/yuna-tsuji-ambl/OJT-app/issues/10) | 学び共有（デイリーログ + リンク）                      |
-| F-08             | [#11](https://github.com/yuna-tsuji-ambl/OJT-app/issues/11) | 目標・ガントチャート管理                               |
-| F-11             | [#12](https://github.com/yuna-tsuji-ambl/OJT-app/issues/12) | 複数新卒・複数トレーナー対応                           |
-| F-03（UI 改善）  | [#27](https://github.com/yuna-tsuji-ambl/OJT-app/issues/27) | メッセージ画面のスプリットビューと送信改善             |
-| F-03（スタンプ） | [#28](https://github.com/yuna-tsuji-ambl/OJT-app/issues/28) | トレーナー返信スタンプの拡充（ST1〜ST10）              |
-| F-10             | [#13](https://github.com/yuna-tsuji-ambl/OJT-app/issues/13) | 本番認証（Identity Platform 等）                       |
-| —                | [#14](https://github.com/yuna-tsuji-ambl/OJT-app/issues/14) | E2E テストの本格運用                                   |
-| Phase 6          | [#15](https://github.com/yuna-tsuji-ambl/OJT-app/issues/15) | BigQuery 分析連携（任意）                              |
-| F-12             | [#16](https://github.com/yuna-tsuji-ambl/OJT-app/issues/16) | SheetRepository の段階的廃止・削除                     |
+| 設計 ID            | GitHub Issue                                                | タイトル                                               |
+| ------------------ | ----------------------------------------------------------- | ------------------------------------------------------ |
+| F-01（ギャップ）   | [#4](https://github.com/yuna-tsuji-ambl/OJT-app/issues/4)   | クエスト: SheetRepository 廃止と課題データへの移行     |
+| F-02（ギャップ）   | [#5](https://github.com/yuna-tsuji-ambl/OJT-app/issues/5)   | コンディション: 推移グラフのフロントエンド表示         |
+| F-02（ギャップ）   | [#6](https://github.com/yuna-tsuji-ambl/OJT-app/issues/6)   | コンディション: 入力値 1〜5 のサーバー側バリデーション |
+| F-03（ギャップ）   | [#7](https://github.com/yuna-tsuji-ambl/OJT-app/issues/7)   | クイック質問: メッセージのリアルタイム更新             |
+| F-06               | [#8](https://github.com/yuna-tsuji-ambl/OJT-app/issues/8)   | 課題管理（トレーナー入力・スプシ代替）                 |
+| F-07               | [#9](https://github.com/yuna-tsuji-ambl/OJT-app/issues/9)   | 日次・週次報告書                                       |
+| F-09               | [#10](https://github.com/yuna-tsuji-ambl/OJT-app/issues/10) | 学び共有（デイリーログ + リンク）                      |
+| F-08               | [#11](https://github.com/yuna-tsuji-ambl/OJT-app/issues/11) | 目標・ガントチャート管理                               |
+| F-11               | [#12](https://github.com/yuna-tsuji-ambl/OJT-app/issues/12) | 複数新卒・複数トレーナー対応                           |
+| F-03（UI 改善）    | [#27](https://github.com/yuna-tsuji-ambl/OJT-app/issues/27) | メッセージ画面のスプリットビューと送信改善             |
+| F-03（スタンプ）   | [#28](https://github.com/yuna-tsuji-ambl/OJT-app/issues/28) | トレーナー返信スタンプの拡充（ST1〜ST10）              |
+| F-03（時刻・BM）   | [#29](https://github.com/yuna-tsuji-ambl/OJT-app/issues/29) | メッセージ送信時刻表示（T-C）とブックマーク            |
+| F-03（アナウンス） | [#30](https://github.com/yuna-tsuji-ambl/OJT-app/issues/30) | メッセージアナウンス: 共有一覧とステータス横導線       |
+| F-03（メモ）       | [#31](https://github.com/yuna-tsuji-ambl/OJT-app/issues/31) | アナウンス・BMメッセージ一覧のメモ                     |
+| F-10               | [#13](https://github.com/yuna-tsuji-ambl/OJT-app/issues/13) | 本番認証（Identity Platform 等）                       |
+| —                  | [#14](https://github.com/yuna-tsuji-ambl/OJT-app/issues/14) | E2E テストの本格運用                                   |
+| Phase 6            | [#15](https://github.com/yuna-tsuji-ambl/OJT-app/issues/15) | BigQuery 分析連携（任意）                              |
+| F-12               | [#16](https://github.com/yuna-tsuji-ambl/OJT-app/issues/16) | SheetRepository の段階的廃止・削除                     |
 
 PR では `Closes #8` のように Issue 番号を記載して自動クローズする。
 
@@ -627,6 +633,37 @@ type ConditionGraphTableRow = ConditionHistoryRecord;
 1. 参加者（trainerId または traineeId）のみ閲覧可
 2. それ以外は 403
 
+**送信時刻表示（T-C・着手中）**:
+
+1. 右ペイン履歴で、メッセージがあるローカル日付ごとに日付区切りを表示する
+2. 各吹き出し近傍に `H:mm`（クライアントローカル）を表示する
+3. 当該トークにメッセージが無い日の日付区切りは出さない
+4. トーク一覧の最終やり取り日時（`updatedAt`）は既存仕様を維持
+
+**ブックマーク（確定・[#29](https://github.com/yuna-tsuji-ambl/OJT-app/issues/29)）**:
+
+- 個人所有。新卒・トレーナー双方。自分・相手どちらのメッセージも BM 可
+- UI: トーク行 ♥・吹き出し ♥・BM トークフィルタ・BM メッセージ一覧
+- 永続化: Firestore `messageBookmarks`、API `/api/message-bookmarks`
+- 本体削除時はカスケード削除。件数上限なし
+- 取得失敗時は画面にエラーを出さず空一覧として扱う（更新失敗のアラートは可）
+- メッセージ BM 各件に **個人メモ**（`memo`、最大 500 文字）。PATCH `/api/message-bookmarks/:id`（所有者のみ）
+- 詳細: [message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)
+
+**メッセージアナウンス（確定・[#30](https://github.com/yuna-tsuji-ambl/OJT-app/issues/30)）**:
+
+- **ペア共有所有**。新卒・トレーナー双方が、自分／相手メッセージをアナウンス可・解除可（参加者ならどちらでも解除可）
+- 1 メッセージにつき最大 1 件（`messageId` で幂等）
+- UI: 吹き出し横のトグル（♥ とは別）・タイトル行ステータス横の「アナウンスメッセージ〇件」・右ペイン一覧（BM メッセージ一覧と同型）
+- 並び替え: 送信時刻／アナウンス追加 × 昇降順。追加フィルタ: すべて／新卒アナウンスのみ／トレーナーアナウンスのみ（アナウンスした人のロール）
+- 各件に **ペア共有メモ**（`memo`、最大 500 文字）。PATCH `/api/message-announcements/:id`（参加者なら可）
+- 永続化: Firestore `messageAnnouncements`、API `/api/message-announcements`
+- 詳細: [message-announcement-feature.md](./test-specs/message-announcement-feature.md)
+
+**トーク一覧プレビュー**:
+
+- 先頭メッセージ表示は CSS で **1 行まで**（省略記号）
+
 #### 7.3.5 ドメインモデル
 
 ```typescript
@@ -645,11 +682,13 @@ interface ChatMessage {
 
 #### 7.3.6 テスト仕様
 
-| 対象                        | 仕様書                                                                |
-| --------------------------- | --------------------------------------------------------------------- |
-| トレーナーステータス        | [status-feature.md](./test-specs/status-feature.md)（U-S01〜U-S02）   |
-| 質問・メッセージ・スレッド  | [message-feature.md](./test-specs/message-feature.md)（U-M / E-M 系） |
-| ステータス＋質問の E2E 統合 | [status-feature.md](./test-specs/status-feature.md)（E-S01）          |
+| 対象                        | 仕様書                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| トレーナーステータス        | [status-feature.md](./test-specs/status-feature.md)（U-S01〜U-S02）                                           |
+| 質問・メッセージ・スレッド  | [message-feature.md](./test-specs/message-feature.md)（U-M / E-M 系）                                         |
+| 送信時刻・ブックマーク      | [message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)（U-TB / U-BM 系） |
+| メッセージアナウンス        | [message-announcement-feature.md](./test-specs/message-announcement-feature.md)（U-AN / I-AN 系）             |
+| ステータス＋質問の E2E 統合 | [status-feature.md](./test-specs/status-feature.md)（E-S01）                                                  |
 
 ---
 
@@ -963,12 +1002,20 @@ interface LearningPost {
 
 ### 8.5 ステータス・メッセージ API
 
-| メソッド | パス                             | ロール                        | 説明                                               | 成功                      |
-| -------- | -------------------------------- | ----------------------------- | -------------------------------------------------- | ------------------------- |
-| PUT      | `/api/status`                    | trainer                       | ステータス更新                                     | 200 `TrainerStatusRecord` |
-| GET      | `/api/status/trainer/:trainerId` | trainee / trainer（自身のみ） | ステータス取得。未登録時はデフォルト「集中モード」 | 200 `TrainerStatusRecord` |
-| GET      | `/api/status/messages`           | 参加者                        | メッセージ一覧                                     | 200 `ChatMessage[]`       |
-| POST     | `/api/status/messages`           | trainee / trainer             | 質問 or 返信送信                                   | 200 `ChatMessageResult`   |
+| メソッド | パス                             | ロール                        | 説明                                               | 成功                        |
+| -------- | -------------------------------- | ----------------------------- | -------------------------------------------------- | --------------------------- |
+| PUT      | `/api/status`                    | trainer                       | ステータス更新                                     | 200 `TrainerStatusRecord`   |
+| GET      | `/api/status/trainer/:trainerId` | trainee / trainer（自身のみ） | ステータス取得。未登録時はデフォルト「集中モード」 | 200 `TrainerStatusRecord`   |
+| GET      | `/api/status/messages`           | 参加者                        | メッセージ一覧                                     | 200 `ChatMessage[]`         |
+| POST     | `/api/status/messages`           | trainee / trainer             | 質問 or 返信送信                                   | 200 `ChatMessageResult`     |
+| GET      | `/api/message-bookmarks`         | trainee / trainer             | 自分のブックマーク一覧（`?targetType=` 任意）      | 200 `MessageBookmark[]`     |
+| POST     | `/api/message-bookmarks`         | trainee / trainer             | ブックマーク追加（幂等）                           | 201 `MessageBookmark`       |
+| DELETE   | `/api/message-bookmarks/:id`     | trainee / trainer（所有者）   | ブックマーク解除                                   | 204                         |
+| PATCH    | `/api/message-bookmarks/:id`     | trainee / trainer（所有者）   | メモ更新（`{ memo }`）                             | 200 `MessageBookmark`       |
+| GET      | `/api/message-announcements`     | trainee / trainer（参加者）   | ペア共有のアナウンス一覧                           | 200 `MessageAnnouncement[]` |
+| POST     | `/api/message-announcements`     | trainee / trainer（参加者）   | アナウンス追加（幂等。既存なら既存返却）           | 201 `MessageAnnouncement`   |
+| DELETE   | `/api/message-announcements/:id` | trainee / trainer（参加者）   | アナウンス解除（参加者なら誰でも可）               | 204                         |
+| PATCH    | `/api/message-announcements/:id` | trainee / trainer（参加者）   | 共有メモ更新（`{ memo }`）                         | 200 `MessageAnnouncement`   |
 
 **PUT `/api/status` リクエストボディ**:
 
@@ -1228,16 +1275,18 @@ flowchart TB
 
 ### 9.5 Firestore コレクション設計（確定）
 
-| コレクション       | ドキュメント ID | 主要フィールド                                                  | 状態               |
-| ------------------ | --------------- | --------------------------------------------------------------- | ------------------ |
-| `quests`           | `{questId}`     | majorItem, minorItem, achievementLevel, status                  | **実装済**         |
-| `conditionRecords` | auto            | traineeId, workload, comprehension, mental, recordedAt          | **実装済**         |
-| `trainerStatuses`  | `{userId}`      | status                                                          | **実装済**         |
-| `chatMessages`     | auto            | conversationKey, senderId, receiverId, content, type, createdAt | **実装済**         |
-| `assignments`      | auto            | traineeId, title, ...                                           | **実装済**（§7.4） |
-| `reports`          | auto            | traineeId, type, periodKey, content, status, comments           | 一部実装（§7.5）   |
-| `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 実装済（§7.6）     |
-| `learningPosts`    | auto            | authorId, date, title, body, links                              | 実装済（§7.7）     |
+| コレクション           | ドキュメント ID          | 主要フィールド                                                                                                    | 状態                       |
+| ---------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `quests`               | `{questId}`              | majorItem, minorItem, achievementLevel, status                                                                    | **実装済**                 |
+| `conditionRecords`     | auto                     | traineeId, workload, comprehension, mental, recordedAt                                                            | **実装済**                 |
+| `trainerStatuses`      | `{userId}`               | status                                                                                                            | **実装済**                 |
+| `chatMessages`         | auto                     | conversationKey, senderId, receiverId, content, type, createdAt                                                   | **実装済**                 |
+| `assignments`          | auto                     | traineeId, title, ...                                                                                             | **実装済**（§7.4）         |
+| `reports`              | auto                     | traineeId, type, periodKey, content, status, comments                                                             | 一部実装（§7.5）           |
+| `goals`                | auto                     | traineeId, startDate, endDate, progress, status                                                                   | 実装済（§7.6）             |
+| `learningPosts`        | auto                     | authorId, date, title, body, links                                                                                | 実装済（§7.7）             |
+| `messageBookmarks`     | 所有者+ターゲット複合 ID | ownerUserId, targetType, threadId, messageId?, memo?, createdAt                                                   | 実装済（§7.3 / #29 / #31） |
+| `messageAnnouncements` | `{messageId}`            | threadId, messageId, announcedByUserId, announcedByRole, senderId?, content?, messageCreatedAt?, memo?, createdAt | 実装済（§7.3 / #30 / #31） |
 
 **複合インデックス**（`firestore.indexes.json`）:
 
