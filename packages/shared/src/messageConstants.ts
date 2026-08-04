@@ -77,6 +77,11 @@ export const STAMPS = [
   { id: 'ST3', label: '✅ 了解' },
   { id: 'ST4', label: '⏰ あとで' },
   { id: 'ST5', label: '❓ 詳しく' },
+  { id: 'ST6', label: '👀 確認中' },
+  { id: 'ST7', label: '💬 話そう' },
+  { id: 'ST8', label: '📝 メモした' },
+  { id: 'ST9', label: '🙌 ナイス' },
+  { id: 'ST10', label: '🚧 ちょっと待って' },
 ] as const;
 
 export type StampId = (typeof STAMPS)[number]['id'];

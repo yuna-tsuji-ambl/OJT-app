@@ -4,10 +4,12 @@ import {
   listThreadChatMessages,
   sendTrainerStampReply,
   sendTrainerTemplateMessage,
+  sendTrainerTextMessage,
   sendTrainerTemplateReply,
   sendTrainerTextReply,
   sendTraineeStampReply,
   sendTraineeTemplateMessage,
+  sendTraineeTemplateReply,
   sendTraineeTextMessage,
   sendTrainerLegacyFlatReply,
   ForbiddenError,
@@ -32,9 +34,11 @@ import {
   type SendTextMessageResult,
   type SendTrainerStampReplyResult,
   type SendTrainerTemplateMessageResult,
+  type SendTrainerTextMessageResult,
   type SendTrainerTemplateReplyResult,
   type SendTrainerTextReplyResult,
   type SendTraineeStampReplyResult,
+  type SendTraineeTemplateReplyResult,
   type ThreadChatMessage,
   type ThreadChatMessageStore,
   createMessageRealtimeHub,
@@ -79,6 +83,7 @@ import {
 } from '@ojt-app/shared';
 import { resetFirestoreForTests } from '../firestore/client.js';
 import { prepareFirestoreMessageTestEnvironment } from '../repositories/firestore/firestoreMessageTestSupport.js';
+import { isFirestoreEmulatorReachable } from './firestoreEmulatorEnv.js';
 import { reconnectFirestoreMessagePersistence } from '../repositories/reconnectFirestoreMessagePersistence.js';
 import { InMemoryMessageThreadStore } from '../repositories/inMemoryMessageThreadStore.js';
 import { InMemoryThreadChatMessageStore } from '../repositories/inMemoryThreadChatMessageStore.js';
@@ -713,7 +718,7 @@ describe('R-M10 LINE風チャットルームでのやり取り', () => {
 /**
  * R-M11: スタンプは Slack 風（入力欄直下または近傍への横並びボタン列）に配置する
  *
- * 機能要件として、Slack 風スタンプバーで提供するトレーナー向けスタンプ ST1〜ST5 が
+ * 機能要件として、Slack 風スタンプバーで提供するトレーナー向けスタンプ ST1〜ST10 が
  * API 層で同一ルームへ送信できることを検証する。
  *
  * UI 要件（横並び配置・role="region"・レガシー「後で話そう」非表示）は E-M12 で検証。
@@ -730,6 +735,11 @@ describe('R-M11 Slack風スタンプバーからのスタンプ送信', () => {
     { stampId: 'ST3', content: '✅ 了解' },
     { stampId: 'ST4', content: '⏰ あとで' },
     { stampId: 'ST5', content: '❓ 詳しく' },
+    { stampId: 'ST6', content: '👀 確認中' },
+    { stampId: 'ST7', content: '💬 話そう' },
+    { stampId: 'ST8', content: '📝 メモした' },
+    { stampId: 'ST9', content: '🙌 ナイス' },
+    { stampId: 'ST10', content: '🚧 ちょっと待って' },
   ] as const;
 
   let threadStore: MessageThreadStore;
@@ -1019,6 +1029,61 @@ describe('U-M04 トレーナーがスレッドにテンプレートで返信', (
 });
 
 /**
+ * U-M04b: 新卒がスレッドにテンプレートで返信
+ *
+ * 前提条件: U-M01 でスレッド存在、新卒コンテキスト
+ * アクション: `threadId` を指定しテンプレート TQ1 で返信
+ * 期待結果: 同一 `threadId` に `type: template` が追加され、新規スレッドは作成されないこと
+ */
+describe('U-M04b 新卒がスレッドにテンプレートで返信', () => {
+  let threadStore: MessageThreadStore;
+  let messageStore: ThreadChatMessageStore;
+
+  beforeEach(() => {
+    threadStore = createMockMessageThreadStore({
+      create: vi.fn(),
+      listByParticipants: vi.fn(),
+    });
+    messageStore = {
+      append: vi.fn().mockResolvedValue(undefined),
+      listByThreadId: vi.fn().mockResolvedValue([U_M01_HEAD_MESSAGE]),
+    };
+  });
+
+  it('sendTraineeTemplateReply_新卒TQ1返信_同一スレッドにtemplateメッセージが追加される', async () => {
+    const result: SendTraineeTemplateReplyResult =
+      await sendTraineeTemplateReply(
+        {
+          threadId: CREATED_THREAD.id,
+          templateId: QUESTION_TEMPLATE_TQ1_ID,
+          trainerId: TRAINER_USER_ID,
+        },
+        TRAINEE_USER_ID,
+        'trainee',
+        threadStore,
+        messageStore,
+      );
+
+    expect(threadStore.getById).toHaveBeenCalledWith(CREATED_THREAD.id);
+    expect(threadStore.create).not.toHaveBeenCalled();
+
+    const expectedMessageFields = {
+      threadId: CREATED_THREAD.id,
+      senderId: TRAINEE_USER_ID,
+      receiverId: TRAINER_USER_ID,
+      content: QUESTION_TEMPLATE_TQ1_CONTENT,
+      type: 'template' as const,
+      templateId: QUESTION_TEMPLATE_TQ1_ID,
+    };
+
+    expect(messageStore.append).toHaveBeenCalledWith(
+      expect.objectContaining(expectedMessageFields),
+    );
+    expect(result.message).toMatchObject(expectedMessageFields);
+  });
+});
+
+/**
  * U-M05: トレーナーがスレッドに自由記述で返信
  *
  * 前提条件: U-M01 でスレッド存在、トレーナーコンテキスト
@@ -1284,6 +1349,40 @@ describe('U-M08 トレーナーが新規メッセージでスレッド開始', (
     expect(result.message.threadId).toBe(CREATED_THREAD.id);
     expect(result.message.type).toBe('template');
     expect(result.message.templateId).toBe(REPLY_TEMPLATE_TT4_ID);
+  });
+
+  it('sendTrainerTextMessage_トレーナー自由記述新規送信_新規スレッドとtextメッセージが保存される', async () => {
+    const freeTextContent = '進捗共有の時間をください';
+    const result: SendTrainerTextMessageResult = await sendTrainerTextMessage(
+      {
+        content: freeTextContent,
+        traineeId: TRAINEE_USER_ID,
+      },
+      TRAINER_USER_ID,
+      'trainer',
+      threadStore,
+      messageStore,
+    );
+
+    expect(threadStore.create).toHaveBeenCalledWith({
+      traineeId: TRAINEE_USER_ID,
+      trainerId: TRAINER_USER_ID,
+    });
+
+    const expectedMessageFields = {
+      threadId: CREATED_THREAD.id,
+      senderId: TRAINER_USER_ID,
+      receiverId: TRAINEE_USER_ID,
+      content: freeTextContent,
+      type: 'text' as const,
+    };
+
+    expect(messageStore.append).toHaveBeenCalledWith(
+      expect.objectContaining(expectedMessageFields),
+    );
+    expectThreadWithLatestActivity(result.thread, result.message);
+    expect(result.message).toMatchObject(expectedMessageFields);
+    expect(result.message.templateId).toBeUndefined();
   });
 });
 
@@ -2137,15 +2236,16 @@ describe('U-M19 未選択からルームを選択', () => {
 });
 
 /**
- * U-M20: 同一ルーム再クリックで閉じる
+ * U-M20 → BR-SV09: 同一ルーム再クリックでも選択維持（スプリットビュー）
  *
  * 前提条件: `selectedId = 'a'`
  * アクション: 再度 `threadId = 'a'` で選択（`resolveInlineThreadSelection`）
- * 期待結果: `null` が返る（閉状態）
+ * 期待結果: 同一 `threadId` が返る（選択解除しない）
  *
  * 結合境界: messageThreadInlineSelection（純関数 / `@ojt-app/shared`）
+ * 上書き: message-split-view-feature.md BR-SV09（旧 R-M17 トグル閉じは廃止）
  */
-describe('U-M20 同一ルーム再クリックで閉じる', () => {
+describe('U-M20 / BR-SV09 同一ルーム再クリックで選択維持', () => {
   it.each([
     {
       label: 'thread-a',
@@ -2160,14 +2260,14 @@ describe('U-M20 同一ルーム再クリックで閉じる', () => {
       threadId: U_M21_THREAD_B,
     },
   ])(
-    'resolveInlineThreadSelection_選択中の$labelを再クリック_閉状態になる',
+    'resolveInlineThreadSelection_選択中の$labelを再クリック_選択を維持する',
     ({ threadId }) => {
-      expect(shouldCloseInlineThreadSelection(threadId, threadId)).toBe(true);
+      expect(shouldCloseInlineThreadSelection(threadId, threadId)).toBe(false);
 
       const result = resolveInlineThreadSelection(threadId, threadId);
 
-      expect(result).toBeNull();
-      expect(isInlineThreadDetailOpen(result)).toBe(false);
+      expect(result).toBe(threadId);
+      expect(isInlineThreadDetailOpen(result)).toBe(true);
     },
   );
 });
@@ -2242,7 +2342,7 @@ describe('R-M17 インライン詳細パネル状態', () => {
     ).toBe(true);
   });
 
-  it('resolveInlineMessageThreadDetailState_同一ルーム再クリック_閉状態の詳細になる', () => {
+  it('resolveInlineMessageThreadDetailState_同一ルーム再クリック_選択を維持する', () => {
     const result = resolveInlineMessageThreadDetailState(
       U_M19_THREAD_A,
       U_M19_THREAD_A,
@@ -2250,8 +2350,8 @@ describe('R-M17 インライン詳細パネル状態', () => {
 
     expect(result).toEqual({
       inlineDetailThreadId: U_M19_THREAD_A,
-      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-      selectedThreadId: null,
+      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+      selectedThreadId: U_M19_THREAD_A,
     });
     expect(
       isInlineMessageThreadRowSelected(
@@ -2259,7 +2359,7 @@ describe('R-M17 インライン詳細パネル状態', () => {
         result.selectedThreadId,
         result.inlineDetailState,
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('shouldClearInlineMessageThreadDetailOnThreadCountIncrease_未選択時のみクリアする', () => {
@@ -2286,7 +2386,7 @@ describe('R-M17 インライン詳細パネル状態', () => {
  * `resolveInlineMessageThreadDetailState` の結果を apply コールバックへ渡す。
  */
 describe('R-M17 インライン詳細パネル選択アクション', () => {
-  it('applyInlineMessageThreadDetailSelection_同一ルーム再クリック_閉状態を適用する', () => {
+  it('applyInlineMessageThreadDetailSelection_同一ルーム再クリック_開状態を維持する', () => {
     const applyDetailState = vi.fn();
 
     const result = applyInlineMessageThreadDetailSelection(
@@ -2297,8 +2397,8 @@ describe('R-M17 インライン詳細パネル選択アクション', () => {
 
     expect(result).toEqual({
       inlineDetailThreadId: U_M19_THREAD_A,
-      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-      selectedThreadId: null,
+      inlineDetailState: MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
+      selectedThreadId: U_M19_THREAD_A,
     });
     expect(applyDetailState).toHaveBeenCalledTimes(1);
     expect(applyDetailState).toHaveBeenCalledWith(result);
@@ -2308,7 +2408,7 @@ describe('R-M17 インライン詳細パネル選択アクション', () => {
         result.selectedThreadId,
         result.inlineDetailState,
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -2468,18 +2568,17 @@ describe('U-M23 ルーム選択で履歴取得が走る', () => {
 });
 
 /**
- * U-M24: 選択解除でインライン詳細が非表示状態になる
+ * U-M24 → BR-SV09: 再クリックでも選択維持（スプリットビュー）
  *
  * 前提条件: ルーム A 選択済み（表示中）
- * アクション: 同一ルーム再選択（トグル / `selectInlineMessageThread` 相当）
- * 期待結果: `selectedThreadId` が `null` になり、詳細表示用の派生状態が falsy になること
+ * アクション: 同一ルーム再選択（`selectInlineMessageThread`）
+ * 期待結果: `selectedThreadId` は維持され、詳細は開いたまま
  *
  * 結合境界: messageThreadInlineSelection → messageThreadSelectionAction
- *           → setSelectedThreadId / reloadThreadHistory
- * （React hook・HTTP 層・E2E は対象外）
+ * 上書き: message-split-view-feature.md BR-SV09
  */
-describe('U-M24 選択解除でインライン詳細が非表示状態になる', () => {
-  it('selectInlineMessageThread_選択中ルーム再クリック_選択解除し履歴取得しない', async () => {
+describe('U-M24 / BR-SV09 再クリックでも選択維持', () => {
+  it('selectInlineMessageThread_選択中ルーム再クリック_選択を維持する', async () => {
     const { setSelectedThreadId, reloadThreadHistory } =
       createMessageThreadSelectionMocks();
 
@@ -2491,14 +2590,17 @@ describe('U-M24 選択解除でインライン詳細が非表示状態になる'
       reloadThreadHistory,
     );
 
-    expect(result).toBeNull();
+    expect(result).toBe(U_M19_THREAD_A);
     expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
-    expect(setSelectedThreadId).toHaveBeenCalledWith(null);
-    expect(isInlineThreadDetailOpen(result)).toBe(false);
-    expect(reloadThreadHistory).not.toHaveBeenCalled();
+    expect(setSelectedThreadId).toHaveBeenCalledWith(U_M19_THREAD_A);
+    expect(isInlineThreadDetailOpen(result)).toBe(true);
+    expect(reloadThreadHistory).toHaveBeenCalledWith(
+      U_M23_TRAINEE_USER,
+      U_M19_THREAD_A,
+    );
   });
 
-  it('selectInlineMessageThread_未ログインで再クリック_選択解除のみ行う', async () => {
+  it('selectInlineMessageThread_未ログインで再クリック_選択を維持し履歴取得しない', async () => {
     const { setSelectedThreadId, reloadThreadHistory } =
       createMessageThreadSelectionMocks();
 
@@ -2510,15 +2612,15 @@ describe('U-M24 選択解除でインライン詳細が非表示状態になる'
       reloadThreadHistory,
     );
 
-    expect(result).toBeNull();
+    expect(result).toBe(U_M19_THREAD_A);
     expect(setSelectedThreadId).toHaveBeenCalledTimes(1);
-    expect(setSelectedThreadId).toHaveBeenCalledWith(null);
-    expect(isInlineThreadDetailOpen(result)).toBe(false);
+    expect(setSelectedThreadId).toHaveBeenCalledWith(U_M19_THREAD_A);
+    expect(isInlineThreadDetailOpen(result)).toBe(true);
     expect(reloadThreadHistory).not.toHaveBeenCalled();
   });
 
   it.each(U_M24_INLINE_DESELECT_CASES)(
-    'selectInlineMessageThread_$labelで同一ルーム再選択_詳細非表示になる',
+    'selectInlineMessageThread_$labelで同一ルーム再選択_詳細を維持する',
     async ({ authUser, selectedThreadId, clickedThreadId }) => {
       const { setSelectedThreadId, reloadThreadHistory } =
         createMessageThreadSelectionMocks();
@@ -2531,10 +2633,9 @@ describe('U-M24 選択解除でインライン詳細が非表示状態になる'
         reloadThreadHistory,
       );
 
-      expect(result).toBeNull();
-      expect(setSelectedThreadId).toHaveBeenCalledWith(null);
-      expect(isInlineThreadDetailOpen(result)).toBe(false);
-      expect(reloadThreadHistory).not.toHaveBeenCalled();
+      expect(result).toBe(clickedThreadId);
+      expect(setSelectedThreadId).toHaveBeenCalledWith(clickedThreadId);
+      expect(isInlineThreadDetailOpen(result)).toBe(true);
     },
   );
 });
@@ -2831,405 +2932,417 @@ describe('U-M-RT04 ポーリング間隔の遵守', () => {
  * 期待結果: `chat_threads` と `chat_messages` にドキュメントが作成されること
  *
  * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
- * （HTTP 層は対象外）
+ * （HTTP 層は対象外。Emulator 未起動時は skip）
  */
-describe('Firestore Message 結合テスト', () => {
-  beforeEach(async () => {
-    await prepareFirestoreMessageTestEnvironment();
-  });
+const firestoreEmulatorAvailable = await isFirestoreEmulatorReachable();
 
-  afterEach(() => {
-    resetFirestoreForTests();
-  });
+describe.skipIf(!firestoreEmulatorAvailable)(
+  'Firestore Message 結合テスト',
+  () => {
+    beforeEach(async () => {
+      await prepareFirestoreMessageTestEnvironment();
+    });
 
-  it('I-M01 sendTraineeTemplateMessage_新卒TQ1送信_chat_threadsとchat_messagesに永続化される', async () => {
-    const { db, threadStore, messageStore } =
-      createFirestoreMessageTestStores();
+    afterEach(() => {
+      resetFirestoreForTests();
+    });
 
-    const result: SendTemplateMessageResult = await sendTraineeTq1NewThread(
-      TRAINEE_USER_ID,
-      TRAINER_USER_ID,
-      threadStore,
-      messageStore,
-    );
+    it('I-M01 sendTraineeTemplateMessage_新卒TQ1送信_chat_threadsとchat_messagesに永続化される', async () => {
+      const { db, threadStore, messageStore } =
+        createFirestoreMessageTestStores();
 
-    const threadDoc = await db
-      .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
-      .doc(result.thread.id)
-      .get();
-    const messagesSnapshot = await db
-      .collection(FIRESTORE_COLLECTIONS.THREAD_CHAT_MESSAGES)
-      .where('threadId', '==', result.thread.id)
-      .get();
+      const result: SendTemplateMessageResult = await sendTraineeTq1NewThread(
+        TRAINEE_USER_ID,
+        TRAINER_USER_ID,
+        threadStore,
+        messageStore,
+      );
 
-    expect(threadDoc.exists).toBe(true);
-    expect(threadDoc.data()).toEqual(
-      expect.objectContaining({
-        traineeId: TRAINEE_USER_ID,
-        trainerId: TRAINER_USER_ID,
-      }),
-    );
-    expect(threadDoc.data()?.createdAt).toEqual(expect.any(String));
-    expect(threadDoc.data()?.updatedAt).toEqual(expect.any(String));
+      const threadDoc = await db
+        .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
+        .doc(result.thread.id)
+        .get();
+      const messagesSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.THREAD_CHAT_MESSAGES)
+        .where('threadId', '==', result.thread.id)
+        .get();
 
-    expect(messagesSnapshot.docs).toHaveLength(1);
-    expect(messagesSnapshot.docs[0]?.id).toBe(result.message.id);
-    expect(messagesSnapshot.docs[0]?.data()).toEqual(
-      expect.objectContaining({
-        threadId: result.thread.id,
-        senderId: TRAINEE_USER_ID,
-        receiverId: TRAINER_USER_ID,
-        content: QUESTION_TEMPLATE_TQ1_CONTENT,
-        type: 'template',
-        templateId: QUESTION_TEMPLATE_TQ1_ID,
-      }),
-    );
-    expect(messagesSnapshot.docs[0]?.data()?.createdAt).toEqual(
-      expect.any(String),
-    );
+      expect(threadDoc.exists).toBe(true);
+      expect(threadDoc.data()).toEqual(
+        expect.objectContaining({
+          traineeId: TRAINEE_USER_ID,
+          trainerId: TRAINER_USER_ID,
+        }),
+      );
+      expect(threadDoc.data()?.createdAt).toEqual(expect.any(String));
+      expect(threadDoc.data()?.updatedAt).toEqual(expect.any(String));
 
-    expect(result.thread.traineeId).toBe(TRAINEE_USER_ID);
-    expect(result.thread.trainerId).toBe(TRAINER_USER_ID);
-    expect(result.message.threadId).toBe(result.thread.id);
-    expect(result.message.type).toBe('template');
-    expect(result.message.content).toBe(QUESTION_TEMPLATE_TQ1_CONTENT);
-    expect(result.message.templateId).toBe(QUESTION_TEMPLATE_TQ1_ID);
-  });
+      expect(messagesSnapshot.docs).toHaveLength(1);
+      expect(messagesSnapshot.docs[0]?.id).toBe(result.message.id);
+      expect(messagesSnapshot.docs[0]?.data()).toEqual(
+        expect.objectContaining({
+          threadId: result.thread.id,
+          senderId: TRAINEE_USER_ID,
+          receiverId: TRAINER_USER_ID,
+          content: QUESTION_TEMPLATE_TQ1_CONTENT,
+          type: 'template',
+          templateId: QUESTION_TEMPLATE_TQ1_ID,
+        }),
+      );
+      expect(messagesSnapshot.docs[0]?.data()?.createdAt).toEqual(
+        expect.any(String),
+      );
 
-  /**
-   * I-M02: スレッドへの返信永続化
-   *
-   * 前提条件: I-M01 完了（スレッドと先頭メッセージが存在）、Firestore Emulator 起動
-   * アクション: トレーナーが同一スレッドにスタンプ ST1 で返信（`POST /api/status/messages` 相当）
-   * 期待結果: `threadId` が一致する 2 件目のメッセージが `chat_messages` に存在すること
-   */
-  it('I-M02 sendTrainerStampReply_トレーナーST1返信_同一threadIdの2件目がchat_messagesに永続化される', async () => {
-    const { db, threadStore, messageStore } =
-      createFirestoreMessageTestStores();
+      expect(result.thread.traineeId).toBe(TRAINEE_USER_ID);
+      expect(result.thread.trainerId).toBe(TRAINER_USER_ID);
+      expect(result.message.threadId).toBe(result.thread.id);
+      expect(result.message.type).toBe('template');
+      expect(result.message.content).toBe(QUESTION_TEMPLATE_TQ1_CONTENT);
+      expect(result.message.templateId).toBe(QUESTION_TEMPLATE_TQ1_ID);
+    });
 
-    const { initialResult, replyResult } = await sendIm02Conversation(
-      TRAINEE_USER_ID,
-      TRAINER_USER_ID,
-      threadStore,
-      messageStore,
-    );
+    /**
+     * I-M02: スレッドへの返信永続化
+     *
+     * 前提条件: I-M01 完了（スレッドと先頭メッセージが存在）、Firestore Emulator 起動
+     * アクション: トレーナーが同一スレッドにスタンプ ST1 で返信（`POST /api/status/messages` 相当）
+     * 期待結果: `threadId` が一致する 2 件目のメッセージが `chat_messages` に存在すること
+     */
+    it('I-M02 sendTrainerStampReply_トレーナーST1返信_同一threadIdの2件目がchat_messagesに永続化される', async () => {
+      const { db, threadStore, messageStore } =
+        createFirestoreMessageTestStores();
 
-    const threadsSnapshot = await db
-      .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
-      .get();
-    const messagesSnapshot = await db
-      .collection(FIRESTORE_COLLECTIONS.THREAD_CHAT_MESSAGES)
-      .where('threadId', '==', initialResult.thread.id)
-      .get();
-    const threadMessages: ThreadChatMessage[] = await listThreadChatMessages(
-      TRAINER_USER_ID,
-      TRAINEE_USER_ID,
-      initialResult.thread.id,
-      TRAINER_USER_ID,
-      'trainer',
-      threadStore,
-      messageStore,
-    );
+      const { initialResult, replyResult } = await sendIm02Conversation(
+        TRAINEE_USER_ID,
+        TRAINER_USER_ID,
+        threadStore,
+        messageStore,
+      );
 
-    expect(threadsSnapshot.docs).toHaveLength(1);
-    expect(messagesSnapshot.docs).toHaveLength(2);
-    expect(replyResult.thread.id).toBe(initialResult.thread.id);
-    expect(replyResult.message.threadId).toBe(initialResult.thread.id);
-    expect(replyResult.message.type).toBe('stamp');
-    expect(replyResult.message.content).toBe(STAMP_ST1_CONTENT);
+      const threadsSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
+        .get();
+      const messagesSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.THREAD_CHAT_MESSAGES)
+        .where('threadId', '==', initialResult.thread.id)
+        .get();
+      const threadMessages: ThreadChatMessage[] = await listThreadChatMessages(
+        TRAINER_USER_ID,
+        TRAINEE_USER_ID,
+        initialResult.thread.id,
+        TRAINER_USER_ID,
+        'trainer',
+        threadStore,
+        messageStore,
+      );
 
-    expect(threadMessages).toHaveLength(2);
-    expect(threadMessages[0]?.id).toBe(initialResult.message.id);
-    expect(threadMessages[0]?.threadId).toBe(initialResult.thread.id);
-    expect(threadMessages[0]?.type).toBe('template');
-    expect(threadMessages[1]?.id).toBe(replyResult.message.id);
-    expect(threadMessages[1]?.threadId).toBe(initialResult.thread.id);
-    expect(threadMessages[1]?.senderId).toBe(TRAINER_USER_ID);
-    expect(threadMessages[1]?.receiverId).toBe(TRAINEE_USER_ID);
-    expect(threadMessages[1]?.type).toBe('stamp');
-    expect(threadMessages[1]?.content).toBe(STAMP_ST1_CONTENT);
-  });
+      expect(threadsSnapshot.docs).toHaveLength(1);
+      expect(messagesSnapshot.docs).toHaveLength(2);
+      expect(replyResult.thread.id).toBe(initialResult.thread.id);
+      expect(replyResult.message.threadId).toBe(initialResult.thread.id);
+      expect(replyResult.message.type).toBe('stamp');
+      expect(replyResult.message.content).toBe(STAMP_ST1_CONTENT);
 
-  /**
-   * I-M03: 再起動後もスレッドが維持
-   *
-   * 前提条件: I-M02 完了（スレッド + 先頭メッセージ + スタンプ返信が Firestore に永続化済み）
-   * アクション: 永続化層を再起動（クライアント再生成）したうえで、新卒・トレーナーそれぞれ一覧取得
-   * 期待結果: スレッドとメッセージ履歴が欠落なく取得できること
-   *
-   * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
-   * （HTTP 層は対象外）
-   */
-  it('I-M03 restartPersistence_新卒トレーナー一覧取得_スレッドと履歴が欠落なく取得できる', async () => {
-    const { threadStore, messageStore } = createFirestoreMessageTestStores();
+      expect(threadMessages).toHaveLength(2);
+      expect(threadMessages[0]?.id).toBe(initialResult.message.id);
+      expect(threadMessages[0]?.threadId).toBe(initialResult.thread.id);
+      expect(threadMessages[0]?.type).toBe('template');
+      expect(threadMessages[1]?.id).toBe(replyResult.message.id);
+      expect(threadMessages[1]?.threadId).toBe(initialResult.thread.id);
+      expect(threadMessages[1]?.senderId).toBe(TRAINER_USER_ID);
+      expect(threadMessages[1]?.receiverId).toBe(TRAINEE_USER_ID);
+      expect(threadMessages[1]?.type).toBe('stamp');
+      expect(threadMessages[1]?.content).toBe(STAMP_ST1_CONTENT);
+    });
 
-    const { initialResult, replyResult } = await sendIm02Conversation(
-      TRAINEE_USER_ID,
-      TRAINER_USER_ID,
-      threadStore,
-      messageStore,
-    );
+    /**
+     * I-M03: 再起動後もスレッドが維持
+     *
+     * 前提条件: I-M02 完了（スレッド + 先頭メッセージ + スタンプ返信が Firestore に永続化済み）
+     * アクション: 永続化層を再起動（クライアント再生成）したうえで、新卒・トレーナーそれぞれ一覧取得
+     * 期待結果: スレッドとメッセージ履歴が欠落なく取得できること
+     *
+     * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
+     * （HTTP 層は対象外）
+     */
+    it('I-M03 restartPersistence_新卒トレーナー一覧取得_スレッドと履歴が欠落なく取得できる', async () => {
+      const { threadStore, messageStore } = createFirestoreMessageTestStores();
 
-    const {
-      threadStore: reloadedThreadStore,
-      messageStore: reloadedMessageStore,
-    } = reconnectFirestoreMessagePersistence();
+      const { initialResult, replyResult } = await sendIm02Conversation(
+        TRAINEE_USER_ID,
+        TRAINER_USER_ID,
+        threadStore,
+        messageStore,
+      );
 
-    const traineeThreadList: MessageThreadListItem[] = await listMessageThreads(
-      TRAINER_USER_ID,
-      TRAINEE_USER_ID,
-      TRAINEE_USER_ID,
-      'trainee',
-      reloadedThreadStore,
-      reloadedMessageStore,
-    );
-    const trainerThreadList: MessageThreadListItem[] = await listMessageThreads(
-      TRAINER_USER_ID,
-      TRAINEE_USER_ID,
-      TRAINER_USER_ID,
-      'trainer',
-      reloadedThreadStore,
-      reloadedMessageStore,
-    );
-    const traineeHistory: ThreadChatMessage[] = await listThreadChatMessages(
-      TRAINER_USER_ID,
-      TRAINEE_USER_ID,
-      initialResult.thread.id,
-      TRAINEE_USER_ID,
-      'trainee',
-      reloadedThreadStore,
-      reloadedMessageStore,
-    );
-    const trainerHistory: ThreadChatMessage[] = await listThreadChatMessages(
-      TRAINER_USER_ID,
-      TRAINEE_USER_ID,
-      initialResult.thread.id,
-      TRAINER_USER_ID,
-      'trainer',
-      reloadedThreadStore,
-      reloadedMessageStore,
-    );
+      const {
+        threadStore: reloadedThreadStore,
+        messageStore: reloadedMessageStore,
+      } = reconnectFirestoreMessagePersistence();
 
-    expect(traineeThreadList).toHaveLength(1);
-    expect(trainerThreadList).toHaveLength(1);
-    expect(traineeThreadList[0]?.thread.id).toBe(initialResult.thread.id);
-    expect(trainerThreadList[0]?.thread.id).toBe(initialResult.thread.id);
-    expect(traineeThreadList[0]?.thread.traineeId).toBe(TRAINEE_USER_ID);
-    expect(traineeThreadList[0]?.thread.trainerId).toBe(TRAINER_USER_ID);
-    expect(traineeThreadList[0]?.firstMessage.id).toBe(
-      initialResult.message.id,
-    );
-    expect(traineeThreadList[0]?.firstMessage.threadId).toBe(
-      initialResult.thread.id,
-    );
-    expect(traineeThreadList[0]?.firstMessage.type).toBe('template');
-    expect(traineeThreadList[0]?.firstMessage.content).toBe(
-      QUESTION_TEMPLATE_TQ1_CONTENT,
-    );
-    expect(trainerThreadList[0]?.firstMessage).toEqual(
-      traineeThreadList[0]?.firstMessage,
-    );
-
-    expect(traineeHistory).toHaveLength(2);
-    expect(trainerHistory).toHaveLength(2);
-    expect(traineeHistory).toEqual(trainerHistory);
-    expect(traineeHistory[0]?.id).toBe(initialResult.message.id);
-    expect(traineeHistory[0]?.threadId).toBe(initialResult.thread.id);
-    expect(traineeHistory[0]?.senderId).toBe(TRAINEE_USER_ID);
-    expect(traineeHistory[0]?.receiverId).toBe(TRAINER_USER_ID);
-    expect(traineeHistory[0]?.type).toBe('template');
-    expect(traineeHistory[0]?.content).toBe(QUESTION_TEMPLATE_TQ1_CONTENT);
-    expect(traineeHistory[0]?.templateId).toBe(QUESTION_TEMPLATE_TQ1_ID);
-    expect(traineeHistory[1]?.id).toBe(replyResult.message.id);
-    expect(traineeHistory[1]?.threadId).toBe(initialResult.thread.id);
-    expect(traineeHistory[1]?.senderId).toBe(TRAINER_USER_ID);
-    expect(traineeHistory[1]?.receiverId).toBe(TRAINEE_USER_ID);
-    expect(traineeHistory[1]?.type).toBe('stamp');
-    expect(traineeHistory[1]?.content).toBe(STAMP_ST1_CONTENT);
-  });
-
-  /**
-   * I-M04: 複数スレッドの並存
-   *
-   * 前提条件: Firestore Emulator 起動
-   * アクション: 新卒が異なる内容（TQ1 テンプレート + 自由記述）で 2 回新規送信し、トレーナーが一覧取得
-   * 期待結果: 2 つのスレッドが区別され、それぞれに先頭メッセージが紐づくこと
-   *
-   * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
-   * （HTTP 層は対象外）
-   */
-  it('I-M04 listMessageThreads_新卒2回新規送信_2スレッドが区別され先頭メッセージが紐づく', async () => {
-    const { db, threadStore, messageStore } =
-      createFirestoreMessageTestStores();
-
-    const { firstResult, secondResult } = await sendIm04TwoNewThreads(
-      TRAINEE_USER_ID,
-      TRAINER_USER_ID,
-      I_M04_SECOND_MESSAGE_CONTENT,
-      threadStore,
-      messageStore,
-    );
-
-    const trainerThreadList: MessageThreadListItem[] = await listMessageThreads(
-      TRAINER_USER_ID,
-      TRAINEE_USER_ID,
-      TRAINER_USER_ID,
-      'trainer',
-      threadStore,
-      messageStore,
-    );
-    const threadsSnapshot = await db
-      .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
-      .get();
-    const messagesSnapshot = await db
-      .collection(FIRESTORE_COLLECTIONS.THREAD_CHAT_MESSAGES)
-      .get();
-
-    expect(threadsSnapshot.docs).toHaveLength(2);
-    expect(messagesSnapshot.docs).toHaveLength(2);
-    expect(trainerThreadList).toHaveLength(2);
-    expect(firstResult.thread.id).not.toBe(secondResult.thread.id);
-
-    const firstThreadItem = findMessageThreadListItem(
-      trainerThreadList,
-      firstResult.thread.id,
-    );
-    const secondThreadItem = findMessageThreadListItem(
-      trainerThreadList,
-      secondResult.thread.id,
-    );
-
-    expect(firstThreadItem).toBeDefined();
-    expect(secondThreadItem).toBeDefined();
-    expect(firstThreadItem?.firstMessage.id).toBe(firstResult.message.id);
-    expect(firstThreadItem?.firstMessage.threadId).toBe(firstResult.thread.id);
-    expect(firstThreadItem?.firstMessage.type).toBe('template');
-    expect(firstThreadItem?.firstMessage.content).toBe(
-      QUESTION_TEMPLATE_TQ1_CONTENT,
-    );
-    expect(firstThreadItem?.firstMessage.templateId).toBe(
-      QUESTION_TEMPLATE_TQ1_ID,
-    );
-    expect(secondThreadItem?.firstMessage.id).toBe(secondResult.message.id);
-    expect(secondThreadItem?.firstMessage.threadId).toBe(
-      secondResult.thread.id,
-    );
-    expect(secondThreadItem?.firstMessage.type).toBe('text');
-    expect(secondThreadItem?.firstMessage.content).toBe(
-      I_M04_SECOND_MESSAGE_CONTENT,
-    );
-  });
-
-  /**
-   * I-M05: ルーム一覧の並び順
-   *
-   * 前提条件: Firestore Emulator 起動、新卒が時間差を空けて 2 回新規送信済み
-   * アクション: 新卒・トレーナーそれぞれ一覧取得（`listMessageThreads`）
-   * 期待結果: `updatedAt` 降順で並び、直近送信ルームが先頭であること
-   *
-   * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
-   * （HTTP 層は対象外）
-   *
-   * 単体ケース U-M14・要件 R-M09 と重複するが、Firestore 永続化層での要件 ID 単位の網羅を目的とする。
-   */
-  it.each([
-    {
-      role: 'trainee' as const,
-      userId: TRAINEE_USER_ID,
-      label: '新卒コンテキスト',
-    },
-    {
-      role: 'trainer' as const,
-      userId: TRAINER_USER_ID,
-      label: 'トレーナーコンテキスト',
-    },
-  ])(
-    'I-M05 listMessageThreads_$labelで2回新規送信後_updatedAt降順で直近送信ルームが先頭',
-    async ({ role, userId }) => {
-      vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(I_M05_FIRST_SENT_AT);
-
-      try {
-        const { db, threadStore, messageStore } =
-          createFirestoreMessageTestStores();
-
-        const firstResult: SendTemplateMessageResult =
-          await sendTraineeTemplateMessage(
-            {
-              templateId: QUESTION_TEMPLATE_TQ1_ID,
-              trainerId: TRAINER_USER_ID,
-            },
-            TRAINEE_USER_ID,
-            'trainee',
-            threadStore,
-            messageStore,
-          );
-
-        vi.setSystemTime(I_M05_SECOND_SENT_AT);
-
-        const secondResult: SendTextMessageResult =
-          await sendTraineeTextMessage(
-            {
-              content: I_M05_SECOND_MESSAGE_CONTENT,
-              trainerId: TRAINER_USER_ID,
-            },
-            TRAINEE_USER_ID,
-            'trainee',
-            threadStore,
-            messageStore,
-          );
-
-        const threadList: MessageThreadListItem[] = await listMessageThreads(
+      const traineeThreadList: MessageThreadListItem[] =
+        await listMessageThreads(
           TRAINER_USER_ID,
           TRAINEE_USER_ID,
-          userId,
-          role,
+          TRAINEE_USER_ID,
+          'trainee',
+          reloadedThreadStore,
+          reloadedMessageStore,
+        );
+      const trainerThreadList: MessageThreadListItem[] =
+        await listMessageThreads(
+          TRAINER_USER_ID,
+          TRAINEE_USER_ID,
+          TRAINER_USER_ID,
+          'trainer',
+          reloadedThreadStore,
+          reloadedMessageStore,
+        );
+      const traineeHistory: ThreadChatMessage[] = await listThreadChatMessages(
+        TRAINER_USER_ID,
+        TRAINEE_USER_ID,
+        initialResult.thread.id,
+        TRAINEE_USER_ID,
+        'trainee',
+        reloadedThreadStore,
+        reloadedMessageStore,
+      );
+      const trainerHistory: ThreadChatMessage[] = await listThreadChatMessages(
+        TRAINER_USER_ID,
+        TRAINEE_USER_ID,
+        initialResult.thread.id,
+        TRAINER_USER_ID,
+        'trainer',
+        reloadedThreadStore,
+        reloadedMessageStore,
+      );
+
+      expect(traineeThreadList).toHaveLength(1);
+      expect(trainerThreadList).toHaveLength(1);
+      expect(traineeThreadList[0]?.thread.id).toBe(initialResult.thread.id);
+      expect(trainerThreadList[0]?.thread.id).toBe(initialResult.thread.id);
+      expect(traineeThreadList[0]?.thread.traineeId).toBe(TRAINEE_USER_ID);
+      expect(traineeThreadList[0]?.thread.trainerId).toBe(TRAINER_USER_ID);
+      expect(traineeThreadList[0]?.firstMessage.id).toBe(
+        initialResult.message.id,
+      );
+      expect(traineeThreadList[0]?.firstMessage.threadId).toBe(
+        initialResult.thread.id,
+      );
+      expect(traineeThreadList[0]?.firstMessage.type).toBe('template');
+      expect(traineeThreadList[0]?.firstMessage.content).toBe(
+        QUESTION_TEMPLATE_TQ1_CONTENT,
+      );
+      expect(trainerThreadList[0]?.firstMessage).toEqual(
+        traineeThreadList[0]?.firstMessage,
+      );
+
+      expect(traineeHistory).toHaveLength(2);
+      expect(trainerHistory).toHaveLength(2);
+      expect(traineeHistory).toEqual(trainerHistory);
+      expect(traineeHistory[0]?.id).toBe(initialResult.message.id);
+      expect(traineeHistory[0]?.threadId).toBe(initialResult.thread.id);
+      expect(traineeHistory[0]?.senderId).toBe(TRAINEE_USER_ID);
+      expect(traineeHistory[0]?.receiverId).toBe(TRAINER_USER_ID);
+      expect(traineeHistory[0]?.type).toBe('template');
+      expect(traineeHistory[0]?.content).toBe(QUESTION_TEMPLATE_TQ1_CONTENT);
+      expect(traineeHistory[0]?.templateId).toBe(QUESTION_TEMPLATE_TQ1_ID);
+      expect(traineeHistory[1]?.id).toBe(replyResult.message.id);
+      expect(traineeHistory[1]?.threadId).toBe(initialResult.thread.id);
+      expect(traineeHistory[1]?.senderId).toBe(TRAINER_USER_ID);
+      expect(traineeHistory[1]?.receiverId).toBe(TRAINEE_USER_ID);
+      expect(traineeHistory[1]?.type).toBe('stamp');
+      expect(traineeHistory[1]?.content).toBe(STAMP_ST1_CONTENT);
+    });
+
+    /**
+     * I-M04: 複数スレッドの並存
+     *
+     * 前提条件: Firestore Emulator 起動
+     * アクション: 新卒が異なる内容（TQ1 テンプレート + 自由記述）で 2 回新規送信し、トレーナーが一覧取得
+     * 期待結果: 2 つのスレッドが区別され、それぞれに先頭メッセージが紐づくこと
+     *
+     * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
+     * （HTTP 層は対象外）
+     */
+    it('I-M04 listMessageThreads_新卒2回新規送信_2スレッドが区別され先頭メッセージが紐づく', async () => {
+      const { db, threadStore, messageStore } =
+        createFirestoreMessageTestStores();
+
+      const { firstResult, secondResult } = await sendIm04TwoNewThreads(
+        TRAINEE_USER_ID,
+        TRAINER_USER_ID,
+        I_M04_SECOND_MESSAGE_CONTENT,
+        threadStore,
+        messageStore,
+      );
+
+      const trainerThreadList: MessageThreadListItem[] =
+        await listMessageThreads(
+          TRAINER_USER_ID,
+          TRAINEE_USER_ID,
+          TRAINER_USER_ID,
+          'trainer',
           threadStore,
           messageStore,
         );
-        const threadsSnapshot = await db
-          .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
-          .get();
-        const firstThreadDoc = await db
-          .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
-          .doc(firstResult.thread.id)
-          .get();
-        const secondThreadDoc = await db
-          .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
-          .doc(secondResult.thread.id)
-          .get();
+      const threadsSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
+        .get();
+      const messagesSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.THREAD_CHAT_MESSAGES)
+        .get();
 
-        expect(threadsSnapshot.docs).toHaveLength(2);
-        expect(threadList).toHaveLength(2);
-        expect(threadList[0]?.thread.id).toBe(secondResult.thread.id);
-        expect(threadList[1]?.thread.id).toBe(firstResult.thread.id);
-        expect(
-          new Date(threadList[0]!.thread.updatedAt).getTime(),
-        ).toBeGreaterThan(new Date(threadList[1]!.thread.updatedAt).getTime());
-        expect(threadList[0]?.thread.updatedAt).toBe(
-          secondResult.thread.updatedAt,
-        );
-        expect(threadList[1]?.thread.updatedAt).toBe(
-          firstResult.thread.updatedAt,
-        );
+      expect(threadsSnapshot.docs).toHaveLength(2);
+      expect(messagesSnapshot.docs).toHaveLength(2);
+      expect(trainerThreadList).toHaveLength(2);
+      expect(firstResult.thread.id).not.toBe(secondResult.thread.id);
 
-        expect(firstThreadDoc.exists).toBe(true);
-        expect(secondThreadDoc.exists).toBe(true);
-        expect(
-          new Date(secondThreadDoc.data()?.updatedAt as string).getTime(),
-        ).toBeGreaterThan(
-          new Date(firstThreadDoc.data()?.updatedAt as string).getTime(),
-        );
-        expect(secondThreadDoc.data()?.updatedAt).toBe(
-          secondResult.thread.updatedAt,
-        );
-        expect(firstThreadDoc.data()?.updatedAt).toBe(
-          firstResult.thread.updatedAt,
-        );
-      } finally {
-        vi.useRealTimers();
-      }
-    },
-    15_000,
-  );
-});
+      const firstThreadItem = findMessageThreadListItem(
+        trainerThreadList,
+        firstResult.thread.id,
+      );
+      const secondThreadItem = findMessageThreadListItem(
+        trainerThreadList,
+        secondResult.thread.id,
+      );
+
+      expect(firstThreadItem).toBeDefined();
+      expect(secondThreadItem).toBeDefined();
+      expect(firstThreadItem?.firstMessage.id).toBe(firstResult.message.id);
+      expect(firstThreadItem?.firstMessage.threadId).toBe(
+        firstResult.thread.id,
+      );
+      expect(firstThreadItem?.firstMessage.type).toBe('template');
+      expect(firstThreadItem?.firstMessage.content).toBe(
+        QUESTION_TEMPLATE_TQ1_CONTENT,
+      );
+      expect(firstThreadItem?.firstMessage.templateId).toBe(
+        QUESTION_TEMPLATE_TQ1_ID,
+      );
+      expect(secondThreadItem?.firstMessage.id).toBe(secondResult.message.id);
+      expect(secondThreadItem?.firstMessage.threadId).toBe(
+        secondResult.thread.id,
+      );
+      expect(secondThreadItem?.firstMessage.type).toBe('text');
+      expect(secondThreadItem?.firstMessage.content).toBe(
+        I_M04_SECOND_MESSAGE_CONTENT,
+      );
+    });
+
+    /**
+     * I-M05: ルーム一覧の並び順
+     *
+     * 前提条件: Firestore Emulator 起動、新卒が時間差を空けて 2 回新規送信済み
+     * アクション: 新卒・トレーナーそれぞれ一覧取得（`listMessageThreads`）
+     * 期待結果: `updatedAt` 降順で並び、直近送信ルームが先頭であること
+     *
+     * 結合境界: messageFacade → messageService → FirestoreMessageThreadStore / FirestoreThreadChatMessageStore → Firestore Emulator
+     * （HTTP 層は対象外）
+     *
+     * 単体ケース U-M14・要件 R-M09 と重複するが、Firestore 永続化層での要件 ID 単位の網羅を目的とする。
+     */
+    it.each([
+      {
+        role: 'trainee' as const,
+        userId: TRAINEE_USER_ID,
+        label: '新卒コンテキスト',
+      },
+      {
+        role: 'trainer' as const,
+        userId: TRAINER_USER_ID,
+        label: 'トレーナーコンテキスト',
+      },
+    ])(
+      'I-M05 listMessageThreads_$labelで2回新規送信後_updatedAt降順で直近送信ルームが先頭',
+      async ({ role, userId }) => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(I_M05_FIRST_SENT_AT);
+
+        try {
+          const { db, threadStore, messageStore } =
+            createFirestoreMessageTestStores();
+
+          const firstResult: SendTemplateMessageResult =
+            await sendTraineeTemplateMessage(
+              {
+                templateId: QUESTION_TEMPLATE_TQ1_ID,
+                trainerId: TRAINER_USER_ID,
+              },
+              TRAINEE_USER_ID,
+              'trainee',
+              threadStore,
+              messageStore,
+            );
+
+          vi.setSystemTime(I_M05_SECOND_SENT_AT);
+
+          const secondResult: SendTextMessageResult =
+            await sendTraineeTextMessage(
+              {
+                content: I_M05_SECOND_MESSAGE_CONTENT,
+                trainerId: TRAINER_USER_ID,
+              },
+              TRAINEE_USER_ID,
+              'trainee',
+              threadStore,
+              messageStore,
+            );
+
+          const threadList: MessageThreadListItem[] = await listMessageThreads(
+            TRAINER_USER_ID,
+            TRAINEE_USER_ID,
+            userId,
+            role,
+            threadStore,
+            messageStore,
+          );
+          const threadsSnapshot = await db
+            .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
+            .get();
+          const firstThreadDoc = await db
+            .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
+            .doc(firstResult.thread.id)
+            .get();
+          const secondThreadDoc = await db
+            .collection(FIRESTORE_COLLECTIONS.CHAT_THREADS)
+            .doc(secondResult.thread.id)
+            .get();
+
+          expect(threadsSnapshot.docs).toHaveLength(2);
+          expect(threadList).toHaveLength(2);
+          expect(threadList[0]?.thread.id).toBe(secondResult.thread.id);
+          expect(threadList[1]?.thread.id).toBe(firstResult.thread.id);
+          expect(
+            new Date(threadList[0]!.thread.updatedAt).getTime(),
+          ).toBeGreaterThan(
+            new Date(threadList[1]!.thread.updatedAt).getTime(),
+          );
+          expect(threadList[0]?.thread.updatedAt).toBe(
+            secondResult.thread.updatedAt,
+          );
+          expect(threadList[1]?.thread.updatedAt).toBe(
+            firstResult.thread.updatedAt,
+          );
+
+          expect(firstThreadDoc.exists).toBe(true);
+          expect(secondThreadDoc.exists).toBe(true);
+          expect(
+            new Date(secondThreadDoc.data()?.updatedAt as string).getTime(),
+          ).toBeGreaterThan(
+            new Date(firstThreadDoc.data()?.updatedAt as string).getTime(),
+          );
+          expect(secondThreadDoc.data()?.updatedAt).toBe(
+            secondResult.thread.updatedAt,
+          );
+          expect(firstThreadDoc.data()?.updatedAt).toBe(
+            firstResult.thread.updatedAt,
+          );
+        } finally {
+          vi.useRealTimers();
+        }
+      },
+      15_000,
+    );
+  },
+);

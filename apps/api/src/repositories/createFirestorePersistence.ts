@@ -9,9 +9,13 @@ import { FirestoreChatMessageStore } from './firestore/firestoreChatMessageStore
 import { FirestoreConditionRecordStore } from './firestore/firestoreConditionRecordStore.js';
 import { FirestoreGoalRepository } from './firestore/firestoreGoalRepository.js';
 import { FirestoreLearningRepository } from './firestore/firestoreLearningRepository.js';
+import { FirestoreMessageAnnouncementRepository } from './firestore/firestoreMessageAnnouncementRepository.js';
+import { FirestoreMessageBookmarkRepository } from './firestore/firestoreMessageBookmarkRepository.js';
 import { FirestoreReportRepository } from './firestore/firestoreReportRepository.js';
 import { FirestoreTrainerStatusStore } from './firestore/firestoreTrainerStatusStore.js';
 import { createFirestoreMessagePersistence } from './createFirestoreMessagePersistence.js';
+import type { MessageAnnouncementRepository } from './messageAnnouncementRepository.js';
+import type { MessageBookmarkRepository } from './messageBookmarkRepository.js';
 import type { MessageThreadStore } from './messageThreadStore.js';
 import type { GoalRepository } from './goalRepository.js';
 import type { LearningRepository } from './learningRepository.js';
@@ -25,6 +29,8 @@ export interface AppPersistence {
   goalRepository: GoalRepository;
   learningRepository: LearningRepository;
   reportRepository: ReportRepository;
+  messageBookmarkRepository: MessageBookmarkRepository;
+  messageAnnouncementRepository: MessageAnnouncementRepository;
   trainerStatusStore: TrainerStatusStore;
   chatMessageStore: ChatMessageStore;
   threadStore: MessageThreadStore;
@@ -43,6 +49,10 @@ export async function createFirestorePersistence(): Promise<AppPersistence> {
       goalRepository: new FirestoreGoalRepository(db),
       learningRepository: new FirestoreLearningRepository(db),
       reportRepository: new FirestoreReportRepository(db),
+      messageBookmarkRepository: new FirestoreMessageBookmarkRepository(db),
+      messageAnnouncementRepository: new FirestoreMessageAnnouncementRepository(
+        db,
+      ),
       trainerStatusStore: new FirestoreTrainerStatusStore(db),
       chatMessageStore: new FirestoreChatMessageStore(db),
       threadStore: messagePersistence.threadStore,

@@ -43,6 +43,16 @@ export function parseQuestionMessageBody(
     return null;
   }
 
+  // 同時送信はクライアントが 2 リクエストに分ける。1 body に複数種別は不正。
+  const presentKinds = [
+    Boolean(content),
+    Boolean(templateId),
+    Boolean(stampId),
+  ].filter(Boolean).length;
+  if (presentKinds > 1) {
+    return null;
+  }
+
   return {
     trainerId: body.trainerId,
     content,
@@ -72,6 +82,17 @@ export interface TrainerStampReplyBody {
 export interface TrainerNewMessageBody {
   templateId: string;
   traineeId: string;
+}
+
+export interface TrainerNewTextMessageBody {
+  traineeId: string;
+  content: string;
+}
+
+export interface TrainerTextReplyBody {
+  threadId: string;
+  traineeId: string;
+  content: string;
 }
 
 interface TrainerThreadScopedFields {
@@ -151,6 +172,41 @@ export function parseTrainerStampReplyBody(
   };
 }
 
+export function parseTrainerTextReplyBody(
+  body: unknown,
+): TrainerTextReplyBody | null {
+  const scopedFields = parseTrainerThreadScopedFields(body);
+
+  if (!scopedFields || typeof body !== 'object' || body === null) {
+    return null;
+  }
+
+  if (
+    'templateId' in body &&
+    typeof body.templateId === 'string' &&
+    body.templateId
+  ) {
+    return null;
+  }
+
+  if ('stampId' in body && typeof body.stampId === 'string' && body.stampId) {
+    return null;
+  }
+
+  if (
+    !('content' in body) ||
+    typeof body.content !== 'string' ||
+    body.content.trim() === ''
+  ) {
+    return null;
+  }
+
+  return {
+    ...scopedFields,
+    content: body.content.trim(),
+  };
+}
+
 export function parseTrainerNewMessageBody(
   body: unknown,
 ): TrainerNewMessageBody | null {
@@ -195,10 +251,66 @@ export function parseTrainerNewMessageBody(
   };
 }
 
-export function parseReplyMessageBody(body: unknown): ReplyMessageBody | null {
+/** トレーナー新規・自由記述（threadId / templateId / stampId なし） */
+export function parseTrainerNewTextMessageBody(
+  body: unknown,
+): TrainerNewTextMessageBody | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+
   if (
-    typeof body !== 'object' ||
-    body === null ||
+    'threadId' in body &&
+    typeof body.threadId === 'string' &&
+    body.threadId
+  ) {
+    return null;
+  }
+
+  if (
+    'templateId' in body &&
+    typeof body.templateId === 'string' &&
+    body.templateId
+  ) {
+    return null;
+  }
+
+  if ('stampId' in body && typeof body.stampId === 'string' && body.stampId) {
+    return null;
+  }
+
+  if (
+    !('traineeId' in body) ||
+    typeof body.traineeId !== 'string' ||
+    !body.traineeId ||
+    !('content' in body) ||
+    typeof body.content !== 'string' ||
+    body.content.trim() === ''
+  ) {
+    return null;
+  }
+
+  return {
+    traineeId: body.traineeId,
+    content: body.content.trim(),
+  };
+}
+
+export function parseReplyMessageBody(body: unknown): ReplyMessageBody | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+
+  // ルーム紐づき返信をレガシー拒否パスへ誤誘導しない
+  if (
+    'threadId' in body &&
+    typeof body.threadId === 'string' &&
+    body.threadId
+  ) {
+    return null;
+  }
+
+  if (
     !('traineeId' in body) ||
     typeof body.traineeId !== 'string' ||
     !('content' in body) ||

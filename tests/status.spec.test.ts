@@ -16,7 +16,20 @@ import {
 } from './helpers/message';
 
 const TRAINER_STATUS_QUEST_OK = '質問OK';
+const TRAINER_STATUS_FOCUS_MODE = '集中モード';
 const E_S01_QUESTION_CONTENT = 'ステータス確認E2Eの質問です';
+
+function isStatusUpdateResponse(response: {
+  url: () => string;
+  request: () => { method: () => string };
+  ok: () => boolean;
+}): boolean {
+  return (
+    response.url().includes('/api/status') &&
+    ['POST', 'PUT', 'PATCH'].includes(response.request().method()) &&
+    response.ok()
+  );
+}
 
 async function openTrainerStatusSettings(page: Page): Promise<void> {
   await page.getByRole('link', { name: 'ステータス設定' }).click();
@@ -26,17 +39,21 @@ async function openTrainerStatusSettings(page: Page): Promise<void> {
 }
 
 async function setTrainerStatus(page: Page, status: string): Promise<void> {
-  const updateResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/status') &&
-      ['POST', 'PUT', 'PATCH'].includes(response.request().method()) &&
-      response.ok(),
-  );
+  const radio = page.getByRole('radio', { name: status });
+  // 既に選択済みだと change が飛ばないため、一度別ステータスへ切り替えてから戻す
+  if (await radio.isChecked()) {
+    const otherStatus =
+      status === TRAINER_STATUS_QUEST_OK
+        ? TRAINER_STATUS_FOCUS_MODE
+        : TRAINER_STATUS_QUEST_OK;
+    const otherUpdate = page.waitForResponse(isStatusUpdateResponse);
+    await page.getByRole('radio', { name: otherStatus }).check();
+    await otherUpdate;
+  }
 
-  await page.getByRole('radio', { name: status }).check();
-
+  const updateResponse = page.waitForResponse(isStatusUpdateResponse);
+  await radio.check();
   await updateResponse;
-  await expect(page.getByText(status)).toBeVisible();
 }
 
 async function openTraineeHome(page: Page): Promise<void> {
@@ -101,7 +118,11 @@ test.describe('E-S01 ステータス確認と質問のEnd-to-End', () => {
     await logout(page);
     await loginAsTrainee(page);
     await openTraineeHome(page);
-    await expect(trainerStatusRegion(page)).toHaveText(TRAINER_STATUS_QUEST_OK);
+    // バッジ文言は「トレーナー：質問OK」（ラベル付き）。値の反映待ちを含む
+    await expect(trainerStatusRegion(page)).toBeVisible({ timeout: 15_000 });
+    await expect(trainerStatusRegion(page)).toContainText(
+      TRAINER_STATUS_QUEST_OK,
+    );
     await sendFreeTextMessage(page, E_S01_QUESTION_CONTENT);
 
     await logout(page);

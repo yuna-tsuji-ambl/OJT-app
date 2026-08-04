@@ -33,6 +33,12 @@ export interface SendTraineeTextReplyInput {
   trainerId: string;
 }
 
+export interface SendTraineeTemplateReplyInput {
+  threadId: string;
+  templateId: string;
+  trainerId: string;
+}
+
 export interface SendTraineeStampReplyInput {
   threadId: string;
   stampId: string;
@@ -50,6 +56,11 @@ export interface SendTrainerTemplateReplyInput {
 
 export interface SendTrainerTemplateMessageInput {
   templateId: string;
+  traineeId: string;
+}
+
+export interface SendTrainerTextMessageInput {
+  content: string;
   traineeId: string;
 }
 
@@ -78,9 +89,11 @@ export interface SendMessageResult {
 export type SendTemplateMessageResult = SendMessageResult;
 export type SendTextMessageResult = SendMessageResult;
 export type SendTraineeTextReplyResult = SendMessageResult;
+export type SendTraineeTemplateReplyResult = SendMessageResult;
 export type SendTraineeStampReplyResult = SendMessageResult;
 export type SendTrainerTemplateReplyResult = SendMessageResult;
 export type SendTrainerTemplateMessageResult = SendMessageResult;
+export type SendTrainerTextMessageResult = SendMessageResult;
 export type SendTrainerTextReplyResult = SendMessageResult;
 export type SendTrainerStampReplyResult = SendMessageResult;
 

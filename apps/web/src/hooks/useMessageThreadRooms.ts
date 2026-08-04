@@ -9,6 +9,7 @@ import {
   type MessageThreadSelection,
 } from '@ojt-app/shared';
 import type { AuthUser } from '../auth/types';
+import { selectLatestThreadId } from '../domain/messageThreadSelection';
 import { createSyncMessageThreadViews } from '../domain/messageThreadView';
 import { useInlineMessageThreadDetail } from './useInlineMessageThreadDetail';
 import { useMessageThreadHistory } from './useMessageThreadHistory';
@@ -76,6 +77,39 @@ export function useMessageThreadRooms(user: AuthUser | null) {
       applyDetailState(createInitialInlineMessageThreadDetailState());
     }
   }, [applyDetailState, detailState, threads.length]);
+
+  // BR-SV07 / BR-SV08: 最新自動選択。一覧が非空→空になったときだけ選択クリア
+  const previousThreadsLengthForAutoSelectRef = useRef(threads.length);
+
+  useEffect(() => {
+    const previousLength = previousThreadsLengthForAutoSelectRef.current;
+    previousThreadsLengthForAutoSelectRef.current = threads.length;
+
+    if (threads.length === 0) {
+      if (previousLength > 0 && detailState.selectedThreadId !== null) {
+        clearInlineThreadSelection();
+      }
+      return;
+    }
+
+    const latestId = selectLatestThreadId(threads);
+    if (!latestId) {
+      return;
+    }
+
+    const selectedStillExists = threads.some(
+      (item) => item.thread.id === detailState.selectedThreadId,
+    );
+
+    if (detailState.selectedThreadId === null || !selectedStillExists) {
+      openInlineDetailWithHistory(latestId);
+    }
+  }, [
+    clearInlineThreadSelection,
+    detailState.selectedThreadId,
+    openInlineDetailWithHistory,
+    threads,
+  ]);
 
   const paginatedThreads = useMemo(
     () => paginateMessageThreads(threads, threadListPage),

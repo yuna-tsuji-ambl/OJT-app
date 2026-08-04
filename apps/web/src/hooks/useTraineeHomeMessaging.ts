@@ -7,12 +7,12 @@ import { useMessageThreadRooms } from './useMessageThreadRooms';
 
 export function useTraineeHomeMessaging(user: AuthUser | null) {
   const {
-    messages,
     selectedTemplateId,
     freeTextContent,
     setSelectedTemplateId,
     setFreeTextContent,
     sendMessage: sendTraineeMessage,
+    sendError: newMessageSendError,
   } = useTraineeMessageSend(user);
   const {
     threads,
@@ -34,6 +34,7 @@ export function useTraineeHomeMessaging(user: AuthUser | null) {
     setFreeTextContent: setThreadFreeTextContent,
     sendThreadMessage,
     sendStampReply,
+    sendError: replySendError,
   } = useTraineeThreadReply(inlineDetail.selectedThreadId, syncThreadViews);
 
   const sendMessage = useCallback(
@@ -79,7 +80,6 @@ export function useTraineeHomeMessaging(user: AuthUser | null) {
   ]);
 
   return {
-    messages,
     threadMessages,
     threads,
     visibleThreads,
@@ -95,5 +95,6 @@ export function useTraineeHomeMessaging(user: AuthUser | null) {
     setFreeTextContent,
     selectThread,
     sendMessage,
+    sendError: newMessageSendError || replySendError,
   };
 }

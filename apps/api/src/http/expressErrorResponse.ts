@@ -6,6 +6,12 @@ import {
   ForbiddenError,
   InvalidAssignmentStatusError,
   LegacyQuickReplyNotSupportedError,
+  MessageAnnouncementInvalidInputError,
+  MessageAnnouncementNotFoundError,
+  MessageAnnouncementTargetNotFoundError,
+  MessageBookmarkInvalidInputError,
+  MessageBookmarkNotFoundError,
+  MessageBookmarkTargetNotFoundError,
   MessageContentRequiredError,
   MessageTemplateRequiredError,
   MessageThreadNotFoundError,
@@ -165,6 +171,56 @@ export function sendReportErrorResponse(
   }
 
   if (error instanceof ReportNotFoundError) {
+    response.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (sendSharedAuthErrors(response, error)) {
+    return;
+  }
+
+  response.status(401).json({ error: 'Unauthorized' });
+}
+
+export function sendMessageBookmarkErrorResponse(
+  response: Response,
+  error: unknown,
+): void {
+  if (error instanceof MessageBookmarkInvalidInputError) {
+    response.status(400).json({ error: error.message });
+    return;
+  }
+
+  if (
+    error instanceof MessageBookmarkNotFoundError ||
+    error instanceof MessageBookmarkTargetNotFoundError ||
+    error instanceof MessageThreadNotFoundError
+  ) {
+    response.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (sendSharedAuthErrors(response, error)) {
+    return;
+  }
+
+  response.status(401).json({ error: 'Unauthorized' });
+}
+
+export function sendMessageAnnouncementErrorResponse(
+  response: Response,
+  error: unknown,
+): void {
+  if (error instanceof MessageAnnouncementInvalidInputError) {
+    response.status(400).json({ error: error.message });
+    return;
+  }
+
+  if (
+    error instanceof MessageAnnouncementNotFoundError ||
+    error instanceof MessageAnnouncementTargetNotFoundError ||
+    error instanceof MessageThreadNotFoundError
+  ) {
     response.status(404).json({ error: 'Not found' });
     return;
   }

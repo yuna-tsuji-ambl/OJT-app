@@ -2,52 +2,85 @@ import { useCallback, useState } from 'react';
 import {
   sendTraineeTemplateMessage,
   sendTraineeTextMessage,
+  sendTraineeThreadTextMessage,
 } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
+import {
+  formatMessageSendError,
+  hasDualSendPayload,
+  resolveDualSendParts,
+  runDualSendSequence,
+} from '../domain/messageDualSend';
 import { DEFAULT_TRAINER_ID } from '../domain/participantConstants';
+import { createTraineeThreadTextReplyPayload } from '../domain/traineeThreadReply';
 import type { SendMessageResult } from '@ojt-app/shared';
-import { useConversationMessages } from './useConversationMessages';
 
-export function useTraineeMessageSend(user: AuthUser | null) {
+export function useTraineeMessageSend(_user: AuthUser | null) {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [freeTextContent, setFreeTextContent] = useState('');
-  const { messages, reloadMessages } = useConversationMessages(user);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const sendMessage = useCallback(
     async (authUser: AuthUser): Promise<SendMessageResult | undefined> => {
-      let result: SendMessageResult | undefined;
+      const parts = resolveDualSendParts(selectedTemplateId, freeTextContent);
 
-      if (selectedTemplateId) {
-        result = await sendTraineeTemplateMessage(
-          DEFAULT_TRAINER_ID,
-          selectedTemplateId,
-          authUser,
-        );
-        setSelectedTemplateId('');
-      } else if (freeTextContent.trim()) {
-        result = await sendTraineeTextMessage(
-          DEFAULT_TRAINER_ID,
-          freeTextContent.trim(),
-          authUser,
-        );
-        setFreeTextContent('');
-      } else {
+      if (!hasDualSendPayload(parts)) {
         return undefined;
       }
 
-      await reloadMessages(authUser);
+      setSendError(null);
 
-      return result;
+      try {
+        let createdThreadId: string | undefined;
+
+        const { templateResult, freeTextResult } = await runDualSendSequence(
+          parts,
+          async (templateId) => {
+            const result = await sendTraineeTemplateMessage(
+              DEFAULT_TRAINER_ID,
+              templateId,
+              authUser,
+            );
+            createdThreadId = result.thread.id;
+            setSelectedTemplateId('');
+            return result;
+          },
+          async (freeText) => {
+            const result = createdThreadId
+              ? await sendTraineeThreadTextMessage(
+                  createTraineeThreadTextReplyPayload(
+                    createdThreadId,
+                    freeText,
+                  ),
+                  authUser,
+                )
+              : await sendTraineeTextMessage(
+                  DEFAULT_TRAINER_ID,
+                  freeText,
+                  authUser,
+                );
+            setFreeTextContent('');
+            return result;
+          },
+        );
+
+        return freeTextResult ?? templateResult;
+      } catch (error: unknown) {
+        setSendError(
+          formatMessageSendError(error, 'メッセージの送信に失敗しました'),
+        );
+        return undefined;
+      }
     },
-    [freeTextContent, reloadMessages, selectedTemplateId],
+    [freeTextContent, selectedTemplateId],
   );
 
   return {
-    messages,
     selectedTemplateId,
     freeTextContent,
     setSelectedTemplateId,
     setFreeTextContent,
     sendMessage,
+    sendError,
   };
 }

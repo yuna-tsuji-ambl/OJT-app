@@ -7,6 +7,8 @@ import {
 import {
   formatThreadUpdatedAtLocal,
   MESSAGE_THREAD_LIST_PAGE_SIZE,
+  STAMPS,
+  TRAINEE_STAMPS,
 } from '@ojt-app/shared';
 
 export { formatThreadUpdatedAtLocal };
@@ -41,23 +43,11 @@ export const REPLY_TEMPLATE_TT2_LABEL = '質問OKです。声をかけてくだ�
 
 export const REPLY_TEMPLATE_TT4_LABEL = '明日の1on1で話しましょう';
 
-export const STAMP_ST1_LABEL = '👍 OK';
+export const STAMP_ST1_LABEL = STAMPS[0].label;
 
-export const TRAINER_STAMP_LABELS = [
-  '👍 OK',
-  '🙏 ありがとう',
-  '✅ 了解',
-  '⏰ あとで',
-  '❓ 詳しく',
-] as const;
+export const TRAINER_STAMP_LABELS = STAMPS.map((stamp) => stamp.label);
 
-export const TRAINEE_STAMP_LABELS = [
-  '🙇 ありがとうございます',
-  '✅ 承知いたしました',
-  '🙏 よろしくお願いいたします',
-  '⏰ 後ほど確認いたします',
-  '❓ 詳しく教えていただけますか',
-] as const;
+export const TRAINEE_STAMP_LABELS = TRAINEE_STAMPS.map((stamp) => stamp.label);
 
 export const TRAINEE_STAMP_STS1_LABEL = TRAINEE_STAMP_LABELS[0];
 
@@ -220,7 +210,7 @@ export async function expectRealtimeMessageInTraineeHistory(
   await expect(messageThreadDetail(page)).toBeVisible();
   await expect(
     messageThreadRoomHistory(page)
-      .getByRole('listitem')
+      .getByRole('article')
       .filter({ hasText: messageText }),
   ).toBeVisible({ timeout: REALTIME_UPDATE_TIMEOUT_MS });
 }
@@ -252,13 +242,16 @@ export async function expectHorizontalStampBar(
     ).toBeVisible();
   }
 
-  const rowTops = await buttons.evaluateAll((nodes) =>
-    nodes.map((node) => node.getBoundingClientRect().top),
-  );
-  const minTop = Math.min(...rowTops);
-  const maxTop = Math.max(...rowTops);
-
-  expect(maxTop - minTop).toBeLessThanOrEqual(1);
+  // R-M11: 横並び（折り返し可）。縦積み専用レイアウトでないことだけ確認する
+  const layout = await stampRegion.locator('.btn-group').evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      display: style.display,
+      flexDirection: style.flexDirection,
+    };
+  });
+  expect(layout.display).toBe('flex');
+  expect(layout.flexDirection).toBe('row');
 }
 
 export async function expectLegacyReplyStampAbsent(page: Page): Promise<void> {
@@ -313,7 +306,7 @@ export async function expectRealtimeMessageInTrainerThreadHistory(
 ): Promise<void> {
   await expect(
     messageThreadHistory(page)
-      .getByRole('listitem')
+      .getByRole('article')
       .filter({ hasText: messageText }),
   ).toBeVisible({ timeout: REALTIME_UPDATE_TIMEOUT_MS });
 }
@@ -329,9 +322,11 @@ export function messageThreadList(page: Page) {
 }
 
 export function messageThread(page: Page, previewText: string) {
+  // 長文は a11y ツリー上の name が省略されることがあるため、本文テキストで特定する
   return messageThreadList(page)
     .getByRole('listitem')
-    .getByRole('article', { name: previewText, exact: true });
+    .getByRole('article')
+    .filter({ has: page.getByText(previewText, { exact: true }) });
 }
 
 export function messageThreadDetail(page: Page) {
@@ -356,7 +351,8 @@ export function messageThreadBubbles(page: Page) {
   return messageThreadRoomHistory(page).getByRole('article');
 }
 
-const MESSAGE_THREAD_HISTORY_SCROLL_TOLERANCE_PX = 1;
+/** 日付区切り・BM ボタン等のレイアウト誤差を許容 */
+const MESSAGE_THREAD_HISTORY_SCROLL_TOLERANCE_PX = 8;
 
 export async function expectMessageThreadHistoryScrolledToBottom(
   history: Locator,
@@ -450,14 +446,50 @@ export async function sendTrainerNewMessage(page: Page): Promise<void> {
   await sendResponse;
 }
 
+async function clickMessageThreadArticle(article: Locator): Promise<void> {
+  await article.scrollIntoViewIfNeeded();
+  // ハートボタンではなく本文をクリック（BM トグルの stopPropagation を避ける）
+  const preview = article.locator('p').first();
+  if ((await preview.count()) > 0) {
+    await preview.click({ force: true });
+    return;
+  }
+  await article.click({ force: true });
+}
+
 export async function openMessageThread(
   page: Page,
   previewText: string,
 ): Promise<void> {
+  const article = messageThread(page, previewText).first();
+  const historyPreview = messageThreadRoomHistory(page)
+    .getByRole('article')
+    .filter({ hasText: previewText })
+    .first();
+
+  if (
+    (await article.getAttribute('aria-selected')) === 'true' &&
+    (await historyPreview.isVisible())
+  ) {
+    await expect(messageThreadDetail(page)).toBeVisible();
+    return;
+  }
+
   const historyLoaded = waitForThreadHistoryLoaded(page);
-  await messageThread(page, previewText).first().click();
+  await clickMessageThreadArticle(article);
+  await expect(article).toHaveAttribute('aria-selected', 'true', {
+    timeout: REALTIME_UPDATE_TIMEOUT_MS,
+  });
   await expect(messageThreadDetail(page)).toBeVisible();
-  await historyLoaded;
+  await Promise.race([
+    historyLoaded.catch(() => undefined),
+    historyPreview
+      .waitFor({ state: 'visible', timeout: REALTIME_UPDATE_TIMEOUT_MS })
+      .catch(() => undefined),
+  ]);
+  await expect(historyPreview).toBeVisible({
+    timeout: REALTIME_UPDATE_TIMEOUT_MS,
+  });
 }
 
 export async function selectReplyTemplate(
@@ -549,25 +581,6 @@ export async function sendSelectedMessage(page: Page): Promise<void> {
   await clickMessageSendAndWaitForThreads(page);
 }
 
-async function closeOpenInlineMessageThread(page: Page): Promise<void> {
-  const openDetail = openInlineMessageThreadDetails(page);
-
-  if ((await openDetail.count()) === 0) {
-    return;
-  }
-
-  await expect(openDetail).toBeVisible();
-
-  const threadId = await openDetail.getAttribute('data-thread-id');
-
-  if (!threadId) {
-    return;
-  }
-
-  await messageThreadRowById(page, threadId).getByRole('article').click();
-  await expect(openDetail).toBeHidden();
-}
-
 export function questionTemplateCombobox(page: Page) {
   return messageSendRegion(page).getByRole('combobox', {
     name: '質問テンプレート',
@@ -612,7 +625,7 @@ export async function sendFreeTextMessage(
   await clickMessageSendAndWaitForThreads(page);
   // 並列 E2E で共有 API に他スレッドが先行することがあるため、先頭行前提にしない
   await expect(messageThreadListItem(page, content)).toBeVisible();
-  await closeOpenInlineMessageThread(page);
+  // BR-SV09: 再クリックで閉じないため、送信後の詳細クローズは不要
 }
 
 export type MessageThreadRowPosition = 'first' | 'last';
@@ -625,7 +638,7 @@ export function messageThreadListItem(
   const matchingRows = messageThreadList(page)
     .getByRole('listitem')
     .filter({
-      has: page.getByRole('article', { name: previewText, exact: true }),
+      has: page.getByText(previewText, { exact: true }),
     });
 
   if (position === 'first') {
@@ -641,28 +654,29 @@ export function messageThreadRowById(page: Page, threadId: string): Locator {
   );
 }
 
+/** 右ペインのトーク詳細（スプリットビュー）。旧インライン直下展開の locator 名は互換のため維持 */
 export function inlineMessageThreadDetailAfterThreadId(
   page: Page,
   threadId: string,
 ): Locator {
-  return messageThreadRowById(page, threadId).locator(
-    `xpath=following-sibling::*[1][@role="region"][@aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"]`,
+  return page.locator(
+    `[role="region"][aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"][data-thread-id="${threadId}"]`,
   );
 }
 
 export function inlineMessageThreadDetailAfterRow(
   page: Page,
   previewText: string,
-  position: MessageThreadRowPosition = 'first',
+  _position: MessageThreadRowPosition = 'first',
   threadId?: string,
 ): Locator {
   if (threadId) {
     return inlineMessageThreadDetailAfterThreadId(page, threadId);
   }
 
-  return messageThreadListItem(page, previewText, position).locator(
-    `xpath=following-sibling::*[1][@role="region"][@aria-label="${MESSAGE_THREAD_DETAIL_REGION_LABEL}"]`,
-  );
+  return openInlineMessageThreadDetails(page).filter({
+    has: page.getByText(previewText, { exact: false }),
+  });
 }
 
 export function openInlineMessageThreadDetails(page: Page): Locator {
@@ -699,7 +713,11 @@ export async function clickMessageThreadRow(
 ): Promise<string> {
   const row = messageThreadListItem(page, previewText, position);
 
-  await row.getByRole('article', { name: previewText, exact: true }).click();
+  await clickMessageThreadArticle(
+    row
+      .getByRole('article')
+      .filter({ has: page.getByText(previewText, { exact: true }) }),
+  );
 
   const threadId = await row.getAttribute('data-thread-id');
 
@@ -902,6 +920,7 @@ export async function mockMessageThreadHistoryFailure(
   });
 }
 
+/** スプリットビュー: 再クリックでも選択維持、別ルームへ切替 */
 export async function assertInlineOpenCloseAndSwitchBehavior(
   page: Page,
   threadA: string,
@@ -912,10 +931,9 @@ export async function assertInlineOpenCloseAndSwitchBehavior(
   await expectMessageThreadRowSelected(page, threadA);
 
   await clickMessageThreadRow(page, threadA);
-  await expectInlineDetailClosedAfterRow(page, threadA);
-
-  await clickMessageThreadRowAndWaitForHistory(page, threadA);
   await expectInlineDetailOpenAfterRow(page, threadA);
+  await expectMessageThreadRowSelected(page, threadA);
+  await expectOpenInlineDetailsCount(page, 1);
 
   await expectInlineDetailSwitchBetweenRows(page, threadA, threadB);
 }

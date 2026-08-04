@@ -2,12 +2,20 @@ import { useCallback, useState } from 'react';
 import {
   sendTrainerStampReply,
   sendTrainerTemplateReply,
+  sendTrainerTextReply,
 } from '../api/messageThreadApi';
 import type { AuthUser } from '../auth/types';
+import {
+  formatMessageSendError,
+  hasDualSendPayload,
+  resolveDualSendParts,
+  runDualSendSequence,
+} from '../domain/messageDualSend';
 import type { SyncMessageThreadViews } from '../domain/messageThreadView';
 import {
   createTrainerStampReplyPayload,
   createTrainerTemplateReplyPayload,
+  createTrainerTextReplyPayload,
 } from '../domain/trainerThreadReply';
 
 export function useTrainerThreadReply(
@@ -15,24 +23,56 @@ export function useTrainerThreadReply(
   syncThreadViews: SyncMessageThreadViews,
 ) {
   const [selectedReplyTemplateId, setSelectedReplyTemplateId] = useState('');
+  const [replyFreeTextContent, setReplyFreeTextContent] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const sendReply = useCallback(
     async (authUser: AuthUser): Promise<void> => {
-      if (!selectedThreadId || !selectedReplyTemplateId) {
+      if (!selectedThreadId) {
         return;
       }
 
-      await sendTrainerTemplateReply(
-        createTrainerTemplateReplyPayload(
-          selectedThreadId,
-          selectedReplyTemplateId,
-        ),
-        authUser,
+      const parts = resolveDualSendParts(
+        selectedReplyTemplateId,
+        replyFreeTextContent,
       );
-      setSelectedReplyTemplateId('');
-      await syncThreadViews(authUser, selectedThreadId);
+
+      if (!hasDualSendPayload(parts)) {
+        return;
+      }
+
+      setSendError(null);
+
+      try {
+        await runDualSendSequence(
+          parts,
+          async (templateId) => {
+            await sendTrainerTemplateReply(
+              createTrainerTemplateReplyPayload(selectedThreadId, templateId),
+              authUser,
+            );
+            setSelectedReplyTemplateId('');
+          },
+          async (freeText) => {
+            await sendTrainerTextReply(
+              createTrainerTextReplyPayload(selectedThreadId, freeText),
+              authUser,
+            );
+            setReplyFreeTextContent('');
+          },
+        );
+
+        await syncThreadViews(authUser, selectedThreadId);
+      } catch (error: unknown) {
+        setSendError(formatMessageSendError(error, '返信の送信に失敗しました'));
+      }
     },
-    [selectedReplyTemplateId, selectedThreadId, syncThreadViews],
+    [
+      replyFreeTextContent,
+      selectedReplyTemplateId,
+      selectedThreadId,
+      syncThreadViews,
+    ],
   );
 
   const sendStampReply = useCallback(
@@ -41,11 +81,19 @@ export function useTrainerThreadReply(
         return;
       }
 
-      await sendTrainerStampReply(
-        createTrainerStampReplyPayload(selectedThreadId, stampId),
-        authUser,
-      );
-      await syncThreadViews(authUser, selectedThreadId);
+      setSendError(null);
+
+      try {
+        await sendTrainerStampReply(
+          createTrainerStampReplyPayload(selectedThreadId, stampId),
+          authUser,
+        );
+        await syncThreadViews(authUser, selectedThreadId);
+      } catch (error: unknown) {
+        setSendError(
+          formatMessageSendError(error, 'スタンプの送信に失敗しました'),
+        );
+      }
     },
     [selectedThreadId, syncThreadViews],
   );
@@ -53,7 +101,10 @@ export function useTrainerThreadReply(
   return {
     selectedReplyTemplateId,
     setSelectedReplyTemplateId,
+    replyFreeTextContent,
+    setReplyFreeTextContent,
     sendReply,
     sendStampReply,
+    sendError,
   };
 }

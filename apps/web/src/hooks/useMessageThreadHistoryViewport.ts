@@ -14,6 +14,10 @@ export function useMessageThreadHistoryViewport(messages: ThreadChatMessage[]) {
     }
 
     scrollMessageThreadHistoryToBottom(historyElement);
+    const frameId = window.requestAnimationFrame(() => {
+      scrollMessageThreadHistoryToBottom(historyElement);
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, [latestMessageId, messages.length]);
 
   return historyRef;

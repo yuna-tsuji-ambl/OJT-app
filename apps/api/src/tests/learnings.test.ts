@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Firestore } from '@google-cloud/firestore';
+import { isFirestoreEmulatorReachable } from './firestoreEmulatorEnv.js';
 import type { LearningRepository } from '../repositories/learningRepository.js';
 import {
   I_L01_POST_BODY,
@@ -51,11 +52,16 @@ import {
   resetLearningFirestoreTestContext,
 } from './learningFirestoreTestHelpers.js';
 
+const firestoreEmulatorAvailable = await isFirestoreEmulatorReachable();
+
 function setupLearningFirestoreTests() {
   let db: Firestore;
   let repository: LearningRepository;
 
-  beforeEach(async () => {
+  beforeEach(async ({ skip }) => {
+    if (!firestoreEmulatorAvailable) {
+      skip();
+    }
     ({ db, repository } = createLearningFirestoreTestContext());
     await clearLearningPostsCollection(db);
   });

@@ -15,6 +15,11 @@ export type {
   UserRole,
 } from './types.js';
 export type {
+  MessageBookmark,
+  MessageBookmarkTargetType,
+} from './messageBookmarkTypes.js';
+export type { MessageAnnouncement } from './messageAnnouncementTypes.js';
+export type {
   ConditionLineChartData,
   ConditionLineChartSeries,
   ConditionLineChartSeriesKey,

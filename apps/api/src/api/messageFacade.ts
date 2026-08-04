@@ -10,6 +10,8 @@ import type {
   SendTraineeTemplateMessageInput,
   SendTraineeTextMessageInput,
   SendTraineeTextReplyInput,
+  SendTraineeTemplateReplyInput,
+  SendTraineeTemplateReplyResult,
   SendTraineeStampReplyInput,
   SendTraineeStampReplyResult,
   SendTrainerLegacyFlatReplyInput,
@@ -17,6 +19,8 @@ import type {
   SendTrainerTemplateReplyResult,
   SendTrainerTemplateMessageInput,
   SendTrainerTemplateMessageResult,
+  SendTrainerTextMessageInput,
+  SendTrainerTextMessageResult,
   SendTrainerTextReplyInput,
   SendTrainerTextReplyResult,
   SendTrainerStampReplyInput,
@@ -78,6 +82,21 @@ export async function sendTraineeTextReply(
   );
 }
 
+export async function sendTraineeTemplateReply(
+  input: SendTraineeTemplateReplyInput,
+  userId: string,
+  role: UserRole,
+  threadStore: MessageThreadStore,
+  messageStore: ThreadChatMessageStore,
+): Promise<SendTraineeTemplateReplyResult> {
+  return messageService.sendTraineeTemplateReply(
+    input,
+    toUserContext(userId, role),
+    threadStore,
+    messageStore,
+  );
+}
+
 export async function sendTraineeStampReply(
   input: SendTraineeStampReplyInput,
   userId: string,
@@ -129,6 +148,21 @@ export async function sendTrainerTemplateMessage(
   messageStore: ThreadChatMessageStore,
 ): Promise<SendTrainerTemplateMessageResult> {
   return messageService.sendTrainerTemplateMessage(
+    input,
+    toUserContext(userId, role),
+    threadStore,
+    messageStore,
+  );
+}
+
+export async function sendTrainerTextMessage(
+  input: SendTrainerTextMessageInput,
+  userId: string,
+  role: UserRole,
+  threadStore: MessageThreadStore,
+  messageStore: ThreadChatMessageStore,
+): Promise<SendTrainerTextMessageResult> {
+  return messageService.sendTrainerTextMessage(
     input,
     toUserContext(userId, role),
     threadStore,

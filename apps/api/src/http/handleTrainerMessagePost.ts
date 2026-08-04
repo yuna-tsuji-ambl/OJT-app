@@ -5,13 +5,17 @@ import type { ThreadChatMessageStore } from '../repositories/threadChatMessageSt
 import {
   handleTrainerLegacyFlatReplyPost,
   handleTrainerNewMessagePost,
+  handleTrainerNewTextMessagePost,
   handleTrainerStampReplyPost,
   handleTrainerTemplateReplyPost,
+  handleTrainerTextReplyPost,
 } from './handleTrainerThreadReplies.js';
 import {
   parseReplyMessageBody,
   parseTrainerNewMessageBody,
+  parseTrainerNewTextMessageBody,
   parseTrainerStampReplyBody,
+  parseTrainerTextReplyBody,
   parseTrainerThreadReplyBody,
 } from './messageRequestTypes.js';
 
@@ -44,11 +48,33 @@ export async function handleTrainerMessagePost(
     );
   }
 
+  const textReplyBody = parseTrainerTextReplyBody(body);
+
+  if (textReplyBody) {
+    return handleTrainerTextReplyPost(
+      textReplyBody,
+      context,
+      threadStore,
+      threadChatMessageStore,
+    );
+  }
+
   const newMessageBody = parseTrainerNewMessageBody(body);
 
   if (newMessageBody) {
     return handleTrainerNewMessagePost(
       newMessageBody,
+      context,
+      threadStore,
+      threadChatMessageStore,
+    );
+  }
+
+  const newTextMessageBody = parseTrainerNewTextMessageBody(body);
+
+  if (newTextMessageBody) {
+    return handleTrainerNewTextMessagePost(
+      newTextMessageBody,
       context,
       threadStore,
       threadChatMessageStore,

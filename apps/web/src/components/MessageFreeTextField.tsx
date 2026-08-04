@@ -12,7 +12,7 @@ export function MessageFreeTextField({
   onChange,
 }: MessageFreeTextFieldProps) {
   return (
-    <>
+    <div className="message-form-field">
       <label htmlFor={fieldId}>{FREE_TEXT_INPUT_LABEL}</label>
       <textarea
         id={fieldId}
@@ -20,7 +20,8 @@ export function MessageFreeTextField({
         aria-label={FREE_TEXT_INPUT_LABEL}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        rows={3}
       />
-    </>
+    </div>
   );
 }

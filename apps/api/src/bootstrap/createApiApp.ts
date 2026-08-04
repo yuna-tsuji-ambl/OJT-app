@@ -12,6 +12,8 @@ import { createMessageRouter } from '../routes/messageRoutes.js';
 import { createQuestRouter } from '../routes/questRoutes.js';
 import { createGoalRouter } from '../routes/goalRoutes.js';
 import { createLearningRouter } from '../routes/learningRoutes.js';
+import { createMessageAnnouncementRouter } from '../routes/messageAnnouncementRoutes.js';
+import { createMessageBookmarkRouter } from '../routes/messageBookmarkRoutes.js';
 import { createReportRouter } from '../routes/reportRoutes.js';
 import { createStatusRouter } from '../routes/statusRoutes.js';
 
@@ -30,6 +32,8 @@ export async function createApiApp(
     goalRepository,
     learningRepository,
     reportRepository,
+    messageBookmarkRepository,
+    messageAnnouncementRepository,
     trainerStatusStore,
     chatMessageStore,
     threadStore,
@@ -57,6 +61,20 @@ export async function createApiApp(
   apiRouter.use(createStatusRouter(trainerStatusStore));
   apiRouter.use(
     createMessageRouter(chatMessageStore, threadStore, threadChatMessageStore),
+  );
+  apiRouter.use(
+    createMessageBookmarkRouter({
+      bookmarkRepository: messageBookmarkRepository,
+      threadStore,
+      messageStore: threadChatMessageStore,
+    }),
+  );
+  apiRouter.use(
+    createMessageAnnouncementRouter({
+      announcementRepository: messageAnnouncementRepository,
+      threadStore,
+      messageStore: threadChatMessageStore,
+    }),
   );
 
   app.use('/api', apiRouter);

@@ -12,116 +12,137 @@ import { deleteAllDocumentsInCollection } from '../firestore/deleteAllDocumentsI
 import { FirestoreAssignmentRepository } from '../repositories/firestore/firestoreAssignmentRepository.js';
 import { getFirestore } from '../firestore/client.js';
 import { seedFirestoreDefaults } from '../firestore/seed.js';
-import { ensureFirestoreEmulatorEnv } from '../tests/firestoreEmulatorEnv.js';
+import {
+  ensureFirestoreEmulatorEnv,
+  isFirestoreEmulatorReachable,
+} from '../tests/firestoreEmulatorEnv.js';
 import {
   CREATE_ASSIGNMENT_INPUT,
   TRAINEE_USER_ID,
   TRAINER_USER_ID,
 } from './questTestFixtures.js';
 
-describe('Firestore AssignmentRepository', () => {
-  let repository: FirestoreAssignmentRepository;
+const firestoreEmulatorAvailable = await isFirestoreEmulatorReachable();
 
-  beforeEach(async () => {
-    ensureFirestoreEmulatorEnv();
-    resetFirestoreForTests();
-    const db = getFirestore();
-    await deleteAllDocumentsInCollection(db, FIRESTORE_COLLECTIONS.ASSIGNMENTS);
-    await seedFirestoreDefaults(db);
-    repository = new FirestoreAssignmentRepository(db);
-  });
+describe.skipIf(!firestoreEmulatorAvailable)(
+  'Firestore AssignmentRepository',
+  () => {
+    let repository: FirestoreAssignmentRepository;
 
-  afterEach(() => {
-    resetFirestoreForTests();
-  });
+    beforeEach(async () => {
+      ensureFirestoreEmulatorEnv();
+      resetFirestoreForTests();
+      const db = getFirestore();
+      await deleteAllDocumentsInCollection(
+        db,
+        FIRESTORE_COLLECTIONS.ASSIGNMENTS,
+      );
+      await seedFirestoreDefaults(db);
+      repository = new FirestoreAssignmentRepository(db);
+    });
 
-  it('I-A01 Firestore 永続化の作成・読取', async () => {
-    const created = await repository.create(
-      CREATE_ASSIGNMENT_INPUT,
-      TRAINER_USER_ID,
-    );
-    const assignments = await repository.findByTraineeId(TRAINEE_USER_ID);
+    afterEach(() => {
+      resetFirestoreForTests();
+    });
 
-    expect(assignments.some((assignment) => assignment.id === created.id)).toBe(
-      true,
-    );
-    expect(
-      assignments.find((assignment) => assignment.id === created.id),
-    ).toEqual(
-      expect.objectContaining({ title: CREATE_ASSIGNMENT_INPUT.title }),
-    );
-  });
+    it('I-A01 Firestore 永続化の作成・読取', async () => {
+      const created = await repository.create(
+        CREATE_ASSIGNMENT_INPUT,
+        TRAINER_USER_ID,
+      );
+      const assignments = await repository.findByTraineeId(TRAINEE_USER_ID);
 
-  it('I-A02 申請から承認までの一連フロー', async () => {
-    const created = await repository.create(
-      CREATE_ASSIGNMENT_INPUT,
-      TRAINER_USER_ID,
-    );
+      expect(
+        assignments.some((assignment) => assignment.id === created.id),
+      ).toBe(true);
+      expect(
+        assignments.find((assignment) => assignment.id === created.id),
+      ).toEqual(
+        expect.objectContaining({ title: CREATE_ASSIGNMENT_INPUT.title }),
+      );
+    });
 
-    await requestClearAssignment(
-      created.id,
-      TRAINEE_USER_ID,
-      'trainee',
-      repository,
-    );
-    let stored = await repository.findById(created.id);
-    expect(stored?.status).toBe(QUEST_STATUS.PENDING);
+    it('I-A02 申請から承認までの一連フロー', async () => {
+      const created = await repository.create(
+        CREATE_ASSIGNMENT_INPUT,
+        TRAINER_USER_ID,
+      );
 
-    await approveAssignment(created.id, TRAINER_USER_ID, 'trainer', repository);
-    stored = await repository.findById(created.id);
-    expect(stored?.status).toBe(QUEST_STATUS.CLEARED);
-  });
+      await requestClearAssignment(
+        created.id,
+        TRAINEE_USER_ID,
+        'trainee',
+        repository,
+      );
+      let stored = await repository.findById(created.id);
+      expect(stored?.status).toBe(QUEST_STATUS.PENDING);
 
-  it('I-A03 再起動後もデータが残る', async () => {
-    const created = await repository.create(
-      CREATE_ASSIGNMENT_INPUT,
-      TRAINER_USER_ID,
-    );
-    await requestClearAssignment(
-      created.id,
-      TRAINEE_USER_ID,
-      'trainee',
-      repository,
-    );
-    await approveAssignment(created.id, TRAINER_USER_ID, 'trainer', repository);
+      await approveAssignment(
+        created.id,
+        TRAINER_USER_ID,
+        'trainer',
+        repository,
+      );
+      stored = await repository.findById(created.id);
+      expect(stored?.status).toBe(QUEST_STATUS.CLEARED);
+    });
 
-    resetFirestoreForTests();
-    const reloadedRepository = new FirestoreAssignmentRepository(
-      getFirestore(),
-    );
-    const stored = await reloadedRepository.findById(created.id);
+    it('I-A03 再起動後もデータが残る', async () => {
+      const created = await repository.create(
+        CREATE_ASSIGNMENT_INPUT,
+        TRAINER_USER_ID,
+      );
+      await requestClearAssignment(
+        created.id,
+        TRAINEE_USER_ID,
+        'trainee',
+        repository,
+      );
+      await approveAssignment(
+        created.id,
+        TRAINER_USER_ID,
+        'trainer',
+        repository,
+      );
 
-    expect(stored?.status).toBe(QUEST_STATUS.CLEARED);
-  });
+      resetFirestoreForTests();
+      const reloadedRepository = new FirestoreAssignmentRepository(
+        getFirestore(),
+      );
+      const stored = await reloadedRepository.findById(created.id);
 
-  it('I-A04 課題削除の永続化反映', async () => {
-    const created = await repository.create(
-      CREATE_ASSIGNMENT_INPUT,
-      TRAINER_USER_ID,
-    );
+      expect(stored?.status).toBe(QUEST_STATUS.CLEARED);
+    });
 
-    await repository.delete(created.id);
-    const assignments = await getAssignmentList(
-      TRAINEE_USER_ID,
-      'trainee',
-      repository,
-    );
+    it('I-A04 課題削除の永続化反映', async () => {
+      const created = await repository.create(
+        CREATE_ASSIGNMENT_INPUT,
+        TRAINER_USER_ID,
+      );
 
-    expect(assignments.some((assignment) => assignment.id === created.id)).toBe(
-      false,
-    );
-  });
+      await repository.delete(created.id);
+      const assignments = await getAssignmentList(
+        TRAINEE_USER_ID,
+        'trainee',
+        repository,
+      );
 
-  it('I-A05 シードデータとの共存', async () => {
-    const created = await repository.create(
-      CREATE_ASSIGNMENT_INPUT,
-      TRAINER_USER_ID,
-    );
-    const assignments = await repository.findByTraineeId(TRAINEE_USER_ID);
+      expect(
+        assignments.some((assignment) => assignment.id === created.id),
+      ).toBe(false);
+    });
 
-    expect(assignments.length).toBe(SEED_ASSIGNMENTS.length + 1);
-    expect(assignments.some((assignment) => assignment.id === created.id)).toBe(
-      true,
-    );
-  });
-});
+    it('I-A05 シードデータとの共存', async () => {
+      const created = await repository.create(
+        CREATE_ASSIGNMENT_INPUT,
+        TRAINER_USER_ID,
+      );
+      const assignments = await repository.findByTraineeId(TRAINEE_USER_ID);
+
+      expect(assignments.length).toBe(SEED_ASSIGNMENTS.length + 1);
+      expect(
+        assignments.some((assignment) => assignment.id === created.id),
+      ).toBe(true);
+    });
+  },
+);

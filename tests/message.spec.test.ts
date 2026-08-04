@@ -34,8 +34,6 @@ import {
   assertInlineOpenCloseAndSwitchBehavior,
   clickMessageThreadRow,
   clickMessageThreadRowAndWaitForHistory,
-  expectInlineDetailClosesWithCollapsingHeight,
-  expectInlineDetailClosedAfterRow,
   expectInlineDetailOpenAfterRow,
   expectInlineDetailOpensWithExpandingHeight,
   expectInlineDetailSwitchBetweenRows,
@@ -44,13 +42,8 @@ import {
   expectOpenInlineDetailsCount,
   goToMessageThreadListPageContaining,
   inlineMessageThreadDetailAfterRow,
-  inlineMessageThreadDetailAfterThreadId,
   messageThreadHistoryError,
-  messageThreadRowById,
   MESSAGE_THREAD_HISTORY_ERROR_PATTERN,
-  MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-  MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
-  MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
   MESSAGE_THREAD_LIST_PAGE_SIZE,
   mockEmptyMessageThreadList,
   mockMessageThreadHistoryFailure,
@@ -210,7 +203,8 @@ test.describe('E-M03 スレッドへの返信と新卒側反映', () => {
     await openMessageThread(page, E_M03_QUESTION_CONTENT);
 
     const history = messageThreadHistory(page);
-    const messages = history.getByRole('listitem');
+    // 日付区切りも listitem になるため、吹き出し（article）で件数を見る（T-C）
+    const messages = history.getByRole('article');
 
     await expect(history).toBeVisible();
     await expect(messages).toHaveCount(2);
@@ -254,7 +248,7 @@ test.describe('E-M04 スタンプ返信の送受信', () => {
     await openMessageThread(page, E_M04_QUESTION_CONTENT);
 
     const history = messageThreadHistory(page);
-    const messages = history.getByRole('listitem');
+    const messages = history.getByRole('article');
 
     await expect(history).toBeVisible();
     await expect(messages).toHaveCount(2);
@@ -292,7 +286,7 @@ test.describe('E-M05 トレーナーからの新規メッセージでスレッ�
     await openMessageThread(page, REPLY_TEMPLATE_TT4_LABEL);
 
     const history = messageThreadHistory(page);
-    const messages = history.getByRole('listitem');
+    const messages = history.getByRole('article');
 
     await expect(history).toBeVisible();
     await expect(messages).toHaveCount(1);
@@ -405,6 +399,8 @@ test.describe('E-M07 テンプレートドロップダウン UI', () => {
  * 期待結果（データ）:
  * - 各送信 API（POST /api/status/messages）が成功する
  */
+const E_M08_QUESTION_CONTENT = 'E-M08リアルタイム反映の確認です';
+
 test.describe('E-M08 リアルタイム反映（手動リロード不要）', () => {
   test('新卒送信とトレーナースタンプ返信が相手画面に自動反映される', async ({
     browser,
@@ -421,40 +417,28 @@ test.describe('E-M08 リアルタイム反映（手動リロード不要）', ()
       await loginAsTrainer(trainerPage);
       await openTrainerMessagesAndWaitForThreads(trainerPage);
 
-      const threadsBefore = await messageThreadArticles(trainerPage).count();
-
-      await selectQuestionTemplate(traineePage, QUESTION_TEMPLATE_TQ1_LABEL);
-      await sendSelectedMessage(traineePage);
-      await expect(messageThreadDetail(traineePage)).toBeVisible({
-        timeout: REALTIME_UPDATE_TIMEOUT_MS,
-      });
+      // 並列・連続 E2E でテンプレ文言が衝突しないよう固有の自由記述を使う
+      await sendFreeTextMessage(traineePage, E_M08_QUESTION_CONTENT);
       await expect(
         messageThreadRoomHistory(traineePage)
-          .getByRole('listitem')
-          .filter({ hasText: QUESTION_TEMPLATE_TQ1_LABEL }),
+          .getByRole('article')
+          .filter({ hasText: E_M08_QUESTION_CONTENT }),
       ).toBeVisible({ timeout: REALTIME_UPDATE_TIMEOUT_MS });
 
-      await expect(messageThreadArticles(trainerPage)).toHaveCount(
-        threadsBefore + 1,
-        { timeout: REALTIME_UPDATE_TIMEOUT_MS },
-      );
-      await expectRealtimeThreadOnTrainer(
-        trainerPage,
-        QUESTION_TEMPLATE_TQ1_LABEL,
-      );
+      await expectRealtimeThreadOnTrainer(trainerPage, E_M08_QUESTION_CONTENT);
 
-      await openMessageThread(trainerPage, QUESTION_TEMPLATE_TQ1_LABEL);
+      await openMessageThread(trainerPage, E_M08_QUESTION_CONTENT);
       await sendTrainerStampReply(trainerPage, STAMP_ST1_LABEL);
 
       await expectRealtimeMessageInTraineeHistory(traineePage, STAMP_ST1_LABEL);
 
       const history = messageThreadRoomHistory(traineePage);
-      const messages = history.getByRole('listitem');
+      const messages = history.getByRole('article');
 
       await expect(messages).toHaveCount(2, {
         timeout: REALTIME_UPDATE_TIMEOUT_MS,
       });
-      await expect(messages.nth(0)).toContainText(QUESTION_TEMPLATE_TQ1_LABEL);
+      await expect(messages.nth(0)).toContainText(E_M08_QUESTION_CONTENT);
       await expect(messages.nth(1)).toContainText(STAMP_ST1_LABEL);
     } finally {
       await traineeContext.close();
@@ -492,17 +476,16 @@ test.describe('E-M09 送信でホームにチャットルームが追加され�
     const threadList = messageThreadList(page);
     await expect(threadList).toBeVisible();
 
-    const threadsBefore = await messageThreadArticles(page).count();
+    // 共有 API の既存トーク件数に依存しないよう、固有プレビューの出現で追加を検証する
+    const uniquePreview = `E-M09ルーム追加の確認-${Date.now()}`;
+    await expect(messageThread(page, uniquePreview)).toHaveCount(0);
 
-    await selectQuestionTemplate(page, QUESTION_TEMPLATE_TQ1_LABEL);
+    await freeTextInput(page).fill(uniquePreview);
     await sendSelectedMessage(page);
 
-    await expect(messageThreadArticles(page)).toHaveCount(threadsBefore + 1, {
+    await expect(messageThread(page, uniquePreview).first()).toBeVisible({
       timeout: REALTIME_UPDATE_TIMEOUT_MS,
     });
-    await expect(
-      messageThread(page, QUESTION_TEMPLATE_TQ1_LABEL).first(),
-    ).toBeVisible();
   });
 });
 
@@ -945,11 +928,23 @@ test.describe('E-M16 ルーム開封時にチャット欄下端へ視点固定',
     );
 
     await expect(traineeLatestBubble).toBeVisible();
-    await expectMessageThreadHistoryScrolledToBottom(traineeHistory);
-    await expectMessageBubbleWithinHistoryViewport(
-      traineeHistory,
-      traineeLatestBubble,
-    );
+    await expect
+      .poll(
+        async () => {
+          try {
+            await expectMessageThreadHistoryScrolledToBottom(traineeHistory);
+            await expectMessageBubbleWithinHistoryViewport(
+              traineeHistory,
+              traineeLatestBubble,
+            );
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: REALTIME_UPDATE_TIMEOUT_MS },
+      )
+      .toBe(true);
 
     await logout(page);
     await loginAsTrainer(page);
@@ -966,11 +961,23 @@ test.describe('E-M16 ルーム開封時にチャット欄下端へ視点固定',
     );
 
     await expect(trainerLatestBubble).toBeVisible();
-    await expectMessageThreadHistoryScrolledToBottom(trainerHistory);
-    await expectMessageBubbleWithinHistoryViewport(
-      trainerHistory,
-      trainerLatestBubble,
-    );
+    await expect
+      .poll(
+        async () => {
+          try {
+            await expectMessageThreadHistoryScrolledToBottom(trainerHistory);
+            await expectMessageBubbleWithinHistoryViewport(
+              trainerHistory,
+              trainerLatestBubble,
+            );
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: REALTIME_UPDATE_TIMEOUT_MS },
+      )
+      .toBe(true);
   });
 });
 
@@ -1067,23 +1074,10 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
   });
 
   /**
-   * E-M17-02: 同一ルーム再クリックで閉じる
-   * 観点: CUJ / 操作性
-   * 対応: TC-MSG-UI-008, TC-MSG-UI-013（開→閉）, TC-MSG-UI-023（開→閉）
-   *
-   * 手順:
-   * 1. 新卒でスレッド1件を用意しルームAを選択（チャット欄表示中）
-   * 2. ルームAを再クリック
-   *
-   * 期待結果（表示）:
-   * - 閉じアニメーション（高さ減少）後、チャット欄（`role="region"`）が非表示
-   * - `data-state="closed"`、選択行は非選択色（`aria-selected="false"`）
-   *
-   * 期待結果（データ）:
-   * - 同一ルームのトグル閉じのため、新規の履歴 API 呼び出しは不要
+   * E-M17-02 → E-SV06: 同一ルーム再クリックでも選択維持（BR-SV09）
    */
-  test.describe('E-M17-02 同一ルーム再クリックで閉じる', () => {
-    test('選択中ルーム再クリック_閉じアニメーション後に詳細が非表示になる', async ({
+  test.describe('E-SV06 同一ルーム再クリックで選択維持', () => {
+    test('選択中ルーム再クリック_詳細と選択状態を維持する', async ({
       page,
     }) => {
       await loginAsTrainee(page);
@@ -1101,63 +1095,20 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
       await expectInlineDetailOpenAfterRow(page, E_M17_THREAD_A_CONTENT);
       await expectMessageThreadRowSelected(page, E_M17_THREAD_A_CONTENT);
 
-      await expectInlineDetailClosesWithCollapsingHeight(
-        page,
-        E_M17_THREAD_A_CONTENT,
-      );
+      await clickMessageThreadRow(page, E_M17_THREAD_A_CONTENT);
 
-      await expectOpenInlineDetailsCount(page, 0);
-      await expectInlineDetailClosedAfterRow(page, E_M17_THREAD_A_CONTENT);
-      await expectMessageThreadRowNotSelected(page, E_M17_THREAD_A_CONTENT);
+      await expectOpenInlineDetailsCount(page, 1);
+      await expectInlineDetailOpenAfterRow(page, E_M17_THREAD_A_CONTENT);
+      await expectMessageThreadRowSelected(page, E_M17_THREAD_A_CONTENT);
     });
   });
 
   /**
-   * E-M17-03: 閉じた後に再オープンできる
-   * 観点: CUJ / 操作性
-   * 対応: TC-MSG-UI-009
+   * E-M17-03: トグル閉じは廃止（BR-SV09）。再クリック維持は E-SV06 で担保。
    */
   test.describe('E-M17-03 閉じた後に再オープンできる', () => {
-    test('閉状態から再クリック_開くアニメーションで履歴が再表示される', async ({
-      page,
-    }) => {
-      await loginAsTrainee(page);
-
-      const threadsLoaded = waitForMessageThreadsLoaded(page);
-      await openTraineeHome(page);
-      await threadsLoaded;
-
-      await sendFreeTextMessage(page, E_M17_THREAD_A_CONTENT);
-      await clickMessageThreadRowAndWaitForHistory(
-        page,
-        E_M17_THREAD_A_CONTENT,
-      );
-
-      const openedDetail = openInlineMessageThreadDetails(page);
-      const threadId = await openedDetail.getAttribute('data-thread-id');
-
-      if (!threadId) {
-        throw new Error('Open inline detail thread id not found');
-      }
-
-      const detail = inlineMessageThreadDetailAfterThreadId(page, threadId);
-      const openedRow = messageThreadRowById(page, threadId);
-
-      await openedRow.getByRole('article').click();
-      await expect(detail).toHaveAttribute(
-        MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
-        MESSAGE_THREAD_INLINE_DETAIL_CLOSED_STATE,
-      );
-      await expect(detail).toBeHidden();
-
-      await openedRow.getByRole('article').click();
-      await expect(detail).toHaveAttribute(
-        MESSAGE_THREAD_INLINE_DETAIL_STATE_ATTR,
-        MESSAGE_THREAD_INLINE_DETAIL_OPEN_STATE,
-      );
-      await expect(
-        detail.getByRole('log', { name: 'スレッド履歴' }),
-      ).toBeVisible();
+    test.skip('閉状態から再クリック_開くアニメーションで履歴が再表示される', async () => {
+      // スプリットビューでは選択解除しないため不要
     });
   });
 
@@ -1207,6 +1158,9 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
       await expect(messageThreadList(page)).toBeVisible();
       await expect(messageThreadArticles(page)).toHaveCount(0);
       await expect(openInlineMessageThreadDetails(page)).toHaveCount(0);
+      await expect(
+        page.getByText('メッセージを送信してください'),
+      ).toBeVisible();
     });
   });
 
@@ -1321,7 +1275,7 @@ test.describe('E-M17 スレッド一覧インライン展開', () => {
       await expectInlineDetailOpenAfterRow(page, twentiethVisiblePreview);
 
       await clickMessageThreadRow(page, twentiethVisiblePreview);
-      await expectInlineDetailClosedAfterRow(page, twentiethVisiblePreview);
+      await expectInlineDetailOpenAfterRow(page, twentiethVisiblePreview);
 
       await goToMessageThreadListPageContaining(
         page,

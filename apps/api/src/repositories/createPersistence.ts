@@ -2,6 +2,8 @@ import { createInMemoryAssignmentRepository } from './createInMemoryAssignmentPe
 import { createInMemoryMessagePersistence } from './createInMemoryMessagePersistence.js';
 import { createInMemoryGoalRepository } from './createInMemoryGoalPersistence.js';
 import { createInMemoryLearningRepository } from './createInMemoryLearningPersistence.js';
+import { createInMemoryMessageAnnouncementRepository } from './inMemoryMessageAnnouncementRepository.js';
+import { createInMemoryMessageBookmarkRepository } from './inMemoryMessageBookmarkRepository.js';
 import { createInMemoryReportRepository } from './createInMemoryReportPersistence.js';
 import { createInMemoryStatusPersistence } from './createInMemoryStatusPersistence.js';
 import { createFirestorePersistence } from './createFirestorePersistence.js';
@@ -30,6 +32,9 @@ export async function createPersistence(): Promise<AppPersistence> {
     goalRepository: createInMemoryGoalRepository(),
     learningRepository: createInMemoryLearningRepository(),
     reportRepository: createInMemoryReportRepository(),
+    messageBookmarkRepository: createInMemoryMessageBookmarkRepository(),
+    messageAnnouncementRepository:
+      createInMemoryMessageAnnouncementRepository(),
     trainerStatusStore,
     chatMessageStore,
     threadStore,
