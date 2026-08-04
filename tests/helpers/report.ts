@@ -24,8 +24,9 @@ export const WEEKLY_REPORT_PAGE_TITLE = '週次報告';
 export const REPORT_LIST_PAGE_TITLE = '報告書一覧';
 export const MAIN_NAV_ARIA_LABEL = 'メインナビゲーション';
 export const REPORT_HEADER_NAV_LABEL = '報告書';
-export const DAILY_REPORT_LIST_LINK_LABEL = '日次報告書一覧';
-export const WEEKLY_REPORT_LIST_LINK_LABEL = '週次報告書一覧';
+export const REPORT_TYPE_TOGGLE_ARIA_LABEL = '報告種別';
+export const REPORT_TYPE_TOGGLE_DAILY_LABEL = DAILY_REPORT_PAGE_TITLE;
+export const REPORT_TYPE_TOGGLE_WEEKLY_LABEL = WEEKLY_REPORT_PAGE_TITLE;
 export const DAILY_REPORT_LIST_PAGE_TITLE = '日次報告書一覧';
 export const WEEKLY_REPORT_LIST_PAGE_TITLE = '週次報告書一覧';
 export const REPORT_LIST_FILTER_FORM_ARIA_LABEL = '報告書一覧の絞り込み';
@@ -39,6 +40,8 @@ export const REPORT_PERIOD_FILTER_CONFLICT_MESSAGE =
   '期間の範囲指定と特定日は同時に使えません。どちらか一方だけを指定してください。';
 export const PAST_DAILY_REPORTS_SECTION_LABEL = '過去の日次報告';
 export const PAST_WEEKLY_REPORTS_SECTION_LABEL = '過去の週次報告';
+export const PAST_DAILY_REPORTS_EMPTY_MESSAGE = `${PAST_DAILY_REPORTS_SECTION_LABEL}はありません`;
+export const PAST_WEEKLY_REPORTS_EMPTY_MESSAGE = `${PAST_WEEKLY_REPORTS_SECTION_LABEL}はありません`;
 export const DAILY_REPORT_DRAFT_SAVE_BUTTON_LABEL = '下書き保存';
 export const DAILY_REPORT_DRAFT_SAVE_SUCCESS_MESSAGE = '下書きを保存しました';
 export const REPORT_SUBMIT_BUTTON_LABEL = '提出';
@@ -244,11 +247,23 @@ async function expectReportFormReady(
   await expect(form.getByLabel(formPage.firstFieldLabel)).toBeEnabled();
 }
 
+async function selectReportTypeToggle(
+  page: Page,
+  label:
+    | typeof REPORT_TYPE_TOGGLE_DAILY_LABEL
+    | typeof REPORT_TYPE_TOGGLE_WEEKLY_LABEL,
+): Promise<void> {
+  await page.getByRole('button', { name: label }).click();
+}
+
 async function openReportFormPage(
   page: Page,
   formPage: ReportFormPageDescriptor,
 ): Promise<void> {
   await page.goto(formPage.path);
+  if (formPage.title === WEEKLY_REPORT_PAGE_TITLE) {
+    await selectReportTypeToggle(page, REPORT_TYPE_TOGGLE_WEEKLY_LABEL);
+  }
   await expectReportFormReady(page, formPage);
 }
 
@@ -278,18 +293,30 @@ export async function navigateFromTraineeHomeToDailyReport(
   await expectReportFormReady(page, DAILY_REPORT_FORM_PAGE);
 }
 
-/** `/reports` に日次・週次入力欄と各一覧リンクが揃っていることを検証する（E-R06） */
+/** `/reports` のトグル・日次初期表示・週次切替・右ペイン一覧を検証する（E-R06） */
 export async function expectTraineeReportsPageWithFormsAndLinks(
   page: Page,
 ): Promise<void> {
   await expectTraineeReportPageReady(page);
+  await expect(
+    page.getByRole('group', { name: REPORT_TYPE_TOGGLE_ARIA_LABEL }),
+  ).toBeVisible();
   await expectReportFormReady(page, DAILY_REPORT_FORM_PAGE);
+  await expect(
+    page
+      .getByRole('region', { name: PAST_DAILY_REPORTS_SECTION_LABEL })
+      .or(page.getByText(PAST_DAILY_REPORTS_EMPTY_MESSAGE)),
+  ).toBeVisible();
+
+  await selectReportTypeToggle(page, REPORT_TYPE_TOGGLE_WEEKLY_LABEL);
   await expectReportFormReady(page, WEEKLY_REPORT_FORM_PAGE);
   await expect(
-    page.getByRole('link', { name: DAILY_REPORT_LIST_LINK_LABEL }),
-  ).toBeVisible();
+    page.getByRole('form', { name: DAILY_REPORT_PAGE_TITLE }),
+  ).toHaveCount(0);
   await expect(
-    page.getByRole('link', { name: WEEKLY_REPORT_LIST_LINK_LABEL }),
+    page
+      .getByRole('region', { name: PAST_WEEKLY_REPORTS_SECTION_LABEL })
+      .or(page.getByText(PAST_WEEKLY_REPORTS_EMPTY_MESSAGE)),
   ).toBeVisible();
 }
 
@@ -780,13 +807,11 @@ export async function openWeeklyReportListPage(page: Page): Promise<void> {
   await expectHeadingVisible(page, WEEKLY_REPORT_LIST_PAGE_TITLE);
 }
 
-/** `/reports` から日次報告書一覧へ遷移する（E-R08） */
+/** 日次報告書一覧ページを開く（E-R08 / ディープリンク互換） */
 export async function navigateFromReportsPageToDailyReportList(
   page: Page,
 ): Promise<void> {
-  await page.getByRole('link', { name: DAILY_REPORT_LIST_LINK_LABEL }).click();
-  await expect(page).toHaveURL(new RegExp(`${DAILY_REPORT_LIST_PATH}$`));
-  await expectHeadingVisible(page, DAILY_REPORT_LIST_PAGE_TITLE);
+  await openDailyReportListPage(page);
 }
 
 /** 廃止ルートが `/reports` へリダイレクトされることを検証する（E-R12） */

@@ -23,6 +23,12 @@ export const WEEKLY_REPORT_PAGE_TITLE = '週次報告';
 export const REPORT_LIST_PAGE_TITLE = '報告書一覧';
 export const REPORT_DETAIL_PAGE_TITLE = '報告詳細';
 
+/** 新卒 `/reports` の日次／週次切替（BR-R07 / BR-R09） */
+export const REPORT_TYPE_TOGGLE_ARIA_LABEL = '報告種別';
+export const REPORT_TYPE_TOGGLE_DAILY_LABEL = DAILY_REPORT_PAGE_TITLE;
+export const REPORT_TYPE_TOGGLE_WEEKLY_LABEL = WEEKLY_REPORT_PAGE_TITLE;
+export const REPORT_SPLIT_VIEW_ARIA_LABEL = '報告書の入力と一覧';
+
 export const DAILY_REPORT_HEADING_ID = 'daily-report-heading';
 export const WEEKLY_REPORT_HEADING_ID = 'weekly-report-heading';
 export const REPORT_LIST_HEADING_ID = 'report-list-heading';

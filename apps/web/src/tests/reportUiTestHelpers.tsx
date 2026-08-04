@@ -17,7 +17,6 @@ import {
   DAILY_REPORT_DRAFT_SAVE_BUTTON_LABEL,
   DAILY_REPORT_DRAFT_SAVE_SUCCESS_MESSAGE,
   DAILY_REPORT_FORM_FIELDS,
-  DAILY_REPORT_LIST_LINK_LABEL,
   DAILY_REPORT_LIST_PAGE_TITLE,
   DAILY_REPORT_LIST_PATH,
   DAILY_REPORT_PAGE_TITLE,
@@ -33,10 +32,13 @@ import {
   REPORT_LIST_TO_FIELD_ID,
   REPORT_PAGE_PATH,
   REPORT_PERIOD_FILTER_CONFLICT_MESSAGE,
+  REPORT_SPLIT_VIEW_ARIA_LABEL,
   REPORT_SUBMIT_BUTTON_LABEL,
   REPORT_SUBMIT_SUCCESS_MESSAGE,
+  REPORT_TYPE_TOGGLE_ARIA_LABEL,
+  REPORT_TYPE_TOGGLE_DAILY_LABEL,
+  REPORT_TYPE_TOGGLE_WEEKLY_LABEL,
   WEEKLY_REPORT_FORM_FIELDS,
-  WEEKLY_REPORT_LIST_LINK_LABEL,
   WEEKLY_REPORT_LIST_PAGE_TITLE,
   WEEKLY_REPORT_LIST_PATH,
   WEEKLY_REPORT_PAGE_TITLE,
@@ -342,40 +344,70 @@ export function expectWeeklyReportFormVisible(): void {
   expectFieldLabelsVisible(WEEKLY_REPORT_FIELD_LABELS);
 }
 
+export function expectDailyReportFormHidden(): void {
+  expect(
+    screen.queryByRole('form', { name: DAILY_REPORT_PAGE_TITLE }),
+  ).toBeNull();
+}
+
+export function expectWeeklyReportFormHidden(): void {
+  expect(
+    screen.queryByRole('form', { name: WEEKLY_REPORT_PAGE_TITLE }),
+  ).toBeNull();
+}
+
+/** 日次／週次トグルを選択する */
+export async function selectReportTypeToggle(
+  label:
+    | typeof REPORT_TYPE_TOGGLE_DAILY_LABEL
+    | typeof REPORT_TYPE_TOGGLE_WEEKLY_LABEL,
+): Promise<void> {
+  fireEvent.click(screen.getByRole('button', { name: label }));
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
+export async function selectWeeklyReportTypeToggle(): Promise<void> {
+  await selectReportTypeToggle(REPORT_TYPE_TOGGLE_WEEKLY_LABEL);
+}
+
 /** U-R37: 新卒の `/reports` は入力画面であることを検証する */
 export function expectTraineeReportsInputPageVisible(): void {
   expect(
     screen.getByRole('heading', { name: TRAINEE_REPORTS_PAGE_HEADING }),
   ).toBeTruthy();
+  expect(
+    screen.getByRole('group', { name: REPORT_TYPE_TOGGLE_ARIA_LABEL }),
+  ).toBeTruthy();
   expectDailyReportFormVisible();
-  expectWeeklyReportFormVisible();
   expect(
     screen.queryByRole('heading', { name: REPORT_LIST_PAGE_TITLE }),
   ).toBeNull();
 }
 
-/** U-R40: 日次入力 → 日次一覧リンク → 週次入力 → 週次一覧リンクの順 */
+/** U-R40: トグル → 左フォーム（日次） → 右一覧（日次）の順 */
 export function expectTraineeReportPageElementOrder(): void {
+  const toggle = screen.getByRole('group', {
+    name: REPORT_TYPE_TOGGLE_ARIA_LABEL,
+  });
   const dailyHeading = screen.getByRole('heading', {
     name: DAILY_REPORT_PAGE_TITLE,
   });
-  const dailyListLink = screen.getByRole('link', {
-    name: DAILY_REPORT_LIST_LINK_LABEL,
-  });
-  const weeklyHeading = screen.getByRole('heading', {
-    name: WEEKLY_REPORT_PAGE_TITLE,
-  });
-  const weeklyListLink = screen.getByRole('link', {
-    name: WEEKLY_REPORT_LIST_LINK_LABEL,
-  });
+  const pastDailyList =
+    screen.queryByRole('region', { name: PAST_DAILY_REPORTS_SECTION_LABEL }) ??
+    screen.getByText(`${PAST_DAILY_REPORTS_SECTION_LABEL}はありません`);
 
-  const order = [dailyHeading, dailyListLink, weeklyHeading, weeklyListLink];
+  const order = [toggle, dailyHeading, pastDailyList];
   for (let index = 0; index < order.length - 1; index += 1) {
     expect(
       order[index]!.compareDocumentPosition(order[index + 1]!) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   }
+  expect(
+    screen.getByRole('group', { name: REPORT_SPLIT_VIEW_ARIA_LABEL }),
+  ).toBeTruthy();
 }
 
 /** U-R39 / U-R43: ヘッダーに報告書があり、廃止ルートへの導線がない */
@@ -520,24 +552,6 @@ export async function expectPastWeeklyReportsVisible(
     reports,
     WEEKLY_REPORT_FORM_FIELDS,
   );
-}
-
-export async function clickDailyReportListLink(): Promise<void> {
-  fireEvent.click(
-    screen.getByRole('link', { name: DAILY_REPORT_LIST_LINK_LABEL }),
-  );
-  await act(async () => {
-    await Promise.resolve();
-  });
-}
-
-export async function clickWeeklyReportListLink(): Promise<void> {
-  fireEvent.click(
-    screen.getByRole('link', { name: WEEKLY_REPORT_LIST_LINK_LABEL }),
-  );
-  await act(async () => {
-    await Promise.resolve();
-  });
 }
 
 export function expectDailyReportListPageVisible(): void {

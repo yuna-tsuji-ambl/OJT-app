@@ -161,6 +161,10 @@ textarea:focus {
   padding-bottom: var(--message-main-padding-y);
 }
 
+.app-main:has(.page-section--wide) {
+  max-width: min(96rem, 100%);
+}
+
 .page-section {
   padding: 1.5rem;
   border-radius: var(--radius);
@@ -246,6 +250,54 @@ textarea:focus {
   width: 100%;
   min-height: 0;
   height: auto;
+}
+
+.page-section--wide {
+  width: 100%;
+}
+
+.report-type-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+}
+
+.report-type-toggle__button {
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-type-toggle__button:hover,
+.report-type-toggle__button:focus-visible {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.report-type-toggle__button--active,
+.report-type-toggle__button[aria-pressed='true'] {
+  background: var(--netflix-red);
+  border-color: var(--netflix-red);
+  color: var(--text-primary);
+}
+
+.report-split-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.report-split-view__left,
+.report-split-view__right {
+  min-width: 0;
 }
 
 .page-section h1 {
@@ -1523,6 +1575,10 @@ dd {
 
   .landing-lang {
     min-width: 5.5rem;
+  }
+
+  .report-split-view {
+    grid-template-columns: 1fr;
   }
 }
 

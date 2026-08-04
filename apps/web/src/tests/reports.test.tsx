@@ -10,15 +10,13 @@ import {
 import {
   clearAuthSession,
   clickDailyReportDraftSave,
-  clickDailyReportListLink,
   clickDailyReportSubmit,
-  clickWeeklyReportListLink,
   createTraineeHomeMessagingMock,
   expectDailyReportDraftSaveSuccess,
   expectDailyReportFieldLabelsPerSpec,
   expectDailyReportFieldValues,
+  expectDailyReportFormHidden,
   expectDailyReportFormVisible,
-  expectDailyReportListPageVisible,
   expectDailyReportPeriodKeysNotVisible,
   expectDailyReportPeriodKeysVisible,
   expectDailyReportSubmitSuccess,
@@ -29,13 +27,14 @@ import {
   expectTraineeReportPageElementOrder,
   expectTraineeReportsInputPageVisible,
   expectWeeklyReportFieldLabelsPerSpec,
+  expectWeeklyReportFormHidden,
   expectWeeklyReportFormVisible,
-  expectWeeklyReportListPageVisible,
   expectWeeklyReportPeriodKeysVisible,
   fillDailyReportFields,
   fillReportListFilter,
   navigateFromHeaderToReports,
   renderTraineeReportNavigation,
+  selectWeeklyReportTypeToggle,
   submitReportListFilter,
   U_R30_DAILY_DATE,
   U_R30_PARTIAL_DAILY_VALUES,
@@ -134,10 +133,12 @@ describe('報告書 UI（新卒）', () => {
   });
 
   describe('U-R27 新卒・報告書ページの週次入力欄', () => {
-    it('reports表示中_日次入力欄の下に週次記入欄が表示される', async () => {
+    it('週次トグル選択_週次記入欄が表示され日次は非表示になる', async () => {
       await renderTraineeReportNavigation(REPORT_PAGE_PATH);
       expectDailyReportFormVisible();
+      await selectWeeklyReportTypeToggle();
       expectWeeklyReportFormVisible();
+      expectDailyReportFormHidden();
     });
   });
 
@@ -149,8 +150,9 @@ describe('報告書 UI（新卒）', () => {
   });
 
   describe('U-R29 週次記入欄の項目表示', () => {
-    it('reports表示中_週次4項目の入力欄が表示される', async () => {
+    it('週次トグル選択後_週次4項目の入力欄が表示される', async () => {
       await renderTraineeReportNavigation(REPORT_PAGE_PATH);
+      await selectWeeklyReportTypeToggle();
       expectWeeklyReportFieldLabelsPerSpec();
     });
   });
@@ -230,14 +232,14 @@ describe('報告書 UI（新卒）', () => {
     });
   });
 
-  describe('U-R32 新卒・日次報告書一覧リンク', () => {
-    it('日次一覧リンク選択_daily/listへ遷移し日次報告書一覧が表示される', async () => {
+  describe('U-R32 新卒・日次報告書の右ペイン一覧', () => {
+    it('日次選択時_右ペインに日次報告書一覧が表示される', async () => {
       fetchOwnDailyReportsMock.mockResolvedValue(U_R32_PAST_DAILY_REPORTS);
 
       await renderTraineeReportNavigation(REPORT_PAGE_PATH);
-      await clickDailyReportListLink();
+      expectDailyReportFormVisible();
+      expectWeeklyReportFormHidden();
 
-      expectDailyReportListPageVisible();
       await waitFor(() => {
         expect(fetchOwnDailyReportsMock).toHaveBeenCalledWith(
           expect.objectContaining({ userId: 'trainee-1', role: 'trainee' }),
@@ -248,14 +250,15 @@ describe('報告書 UI（新卒）', () => {
     });
   });
 
-  describe('U-R33 新卒・週次報告書一覧リンク', () => {
-    it('週次一覧リンク選択_weekly/listへ遷移し週次報告書一覧が表示される', async () => {
+  describe('U-R33 新卒・週次報告書の右ペイン一覧', () => {
+    it('週次トグル選択_右ペインに週次報告書一覧が表示される', async () => {
       fetchOwnWeeklyReportsMock.mockResolvedValue(U_R33_PAST_WEEKLY_REPORTS);
 
       await renderTraineeReportNavigation(REPORT_PAGE_PATH);
-      await clickWeeklyReportListLink();
+      await selectWeeklyReportTypeToggle();
+      expectWeeklyReportFormVisible();
+      expectDailyReportFormHidden();
 
-      expectWeeklyReportListPageVisible();
       await waitFor(() => {
         expect(fetchOwnWeeklyReportsMock).toHaveBeenCalledWith(
           expect.objectContaining({ userId: 'trainee-1', role: 'trainee' }),
@@ -281,7 +284,7 @@ describe('報告書 UI（新卒）', () => {
   });
 
   describe('U-R40 新卒報告書ページの配置順', () => {
-    it('reports表示中_日次入力一覧リンク週次入力一覧リンクの順である', async () => {
+    it('reports表示中_トグル左フォーム右一覧の順である', async () => {
       await renderTraineeReportNavigation(REPORT_PAGE_PATH);
       expectTraineeReportPageElementOrder();
     });

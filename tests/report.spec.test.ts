@@ -395,16 +395,16 @@ test.describe('報告書 E2E', () => {
    * 手順:
    * 1. 新卒で `/home` を開く
    * 2. ヘッダー「報告書」から `/reports` へ遷移する
-   * 3. 日次・週次入力欄と各一覧リンクを確認する
+   * 3. 日次初期表示・週次トグル・右ペイン一覧を確認する
    *
    * 期待結果（表示）:
-   * - URL が `/reports` であり、日次・週次の入力欄が利用できる
-   * - 各入力欄直下に対応する一覧リンクがある
+   * - URL が `/reports` であり、初期は日次入力＋日次一覧
+   * - 週次トグル後は週次入力＋週次一覧になる
    *
    * 参照: docs/test-specs/report-feature.md E-R06
    */
   test.describe('E-R06 新卒の画面遷移（ヘッダー → /reports）', () => {
-    test('ヘッダー報告書からreportsへ遷移_日次週次入力欄と一覧リンクが利用できる', async ({
+    test('ヘッダー報告書からreportsへ遷移_日次週次トグルと右ペイン一覧が利用できる', async ({
       page,
     }) => {
       await loginAsTrainee(page);
@@ -450,7 +450,7 @@ test.describe('報告書 E2E', () => {
    *
    * 手順:
    * 1. API で過去 3 日分の日次報告を投入する（前提データ）
-   * 2. 新卒で `/reports` から日次報告書一覧リンクを開く
+   * 2. 新卒で `/reports/daily/list` を開く
    * 3. 過去報告欄を確認する
    *
    * 期待結果（表示）:
@@ -459,7 +459,7 @@ test.describe('報告書 E2E', () => {
    * 参照: docs/test-specs/report-feature.md E-R08
    */
   test.describe('E-R08 過去報告一覧の表示', () => {
-    test('reportsから日次報告書一覧を開くと過去3日分が新しい順で表示される', async ({
+    test('daily/listを開くと過去3日分が新しい順で表示される', async ({
       page,
       request,
     }) => {
@@ -472,7 +472,6 @@ test.describe('報告書 E2E', () => {
       await seedPastDailyReportsViaApi(request, reportsOldestFirst);
 
       await loginAsTrainee(page);
-      await openDailyReportPage(page);
       await navigateFromReportsPageToDailyReportList(page);
       await expectPastDailyReportsNewestFirst(page, reportsNewestFirst);
     });
