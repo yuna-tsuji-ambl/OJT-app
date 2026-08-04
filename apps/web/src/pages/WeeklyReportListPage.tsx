@@ -35,6 +35,7 @@ function WeeklyReportListPageContent() {
     >
       <ReportListFilter
         dateFieldLabel="特定日または週キー"
+        dateInputType="text"
         onApply={(query) => void applyFilter(query)}
       />
       {filterError ? <div role="alert">{filterError}</div> : null}

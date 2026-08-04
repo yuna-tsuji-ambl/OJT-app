@@ -4,12 +4,14 @@ import { ReportCard } from './ReportCard';
 interface ReportCardListProps {
   reports: readonly ReportResponse[];
   getDetailPath?: (report: ReportResponse) => string;
+  onEdit?: (report: ReportResponse) => void;
 }
 
 /** ReportCard の並び描画（表示順は呼び出し側が決定する） */
 export function ReportCardList({
   reports,
   getDetailPath,
+  onEdit,
 }: ReportCardListProps) {
   return (
     <>
@@ -18,6 +20,7 @@ export function ReportCardList({
           key={report.id}
           report={report}
           detailTo={getDetailPath?.(report)}
+          onEdit={onEdit}
         />
       ))}
     </>

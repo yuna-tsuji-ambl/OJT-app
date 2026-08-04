@@ -1,6 +1,6 @@
-import { DailyReportActions } from '../components/DailyReportActions';
 import { PastDailyReportList } from '../components/PastDailyReportList';
 import { ReportForm } from '../components/ReportForm';
+import { ReportSubmitButton } from '../components/ReportSubmitButton';
 import { RequireTraineeRole } from '../components/RequireRole';
 import { TraineeOwnedReportPageLayout } from '../components/TraineeOwnedReportPageLayout';
 import {
@@ -21,7 +21,7 @@ export function DailyReportPage() {
 }
 
 function DailyReportPageContent() {
-  const { values, updateField, saveDraft, submit, persistFeedback, isReady } =
+  const { values, updateField, submit, persistFeedback, isReady } =
     useDailyReportForm();
   const { reports } = useOwnDailyReports();
 
@@ -38,7 +38,7 @@ function DailyReportPageContent() {
           disabled={!isReady}
         />
       }
-      actions={<DailyReportActions onSaveDraft={saveDraft} onSubmit={submit} />}
+      actions={<ReportSubmitButton onSubmit={submit} />}
       pastList={<PastDailyReportList reports={reports} />}
     />
   );

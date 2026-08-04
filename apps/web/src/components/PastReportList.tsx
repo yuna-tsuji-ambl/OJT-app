@@ -5,6 +5,7 @@ interface PastReportListProps {
   sectionLabel: string;
   reports: readonly ReportResponse[];
   getDetailPath?: (report: ReportResponse) => string;
+  onEdit?: (report: ReportResponse) => void;
 }
 
 /** セクション付き報告一覧シェル */
@@ -12,6 +13,7 @@ export function PastReportList({
   sectionLabel,
   reports,
   getDetailPath,
+  onEdit,
 }: PastReportListProps) {
   if (reports.length === 0) {
     return null;
@@ -19,7 +21,11 @@ export function PastReportList({
 
   return (
     <section aria-label={sectionLabel}>
-      <ReportCardList reports={reports} getDetailPath={getDetailPath} />
+      <ReportCardList
+        reports={reports}
+        getDetailPath={getDetailPath}
+        onEdit={onEdit}
+      />
     </section>
   );
 }

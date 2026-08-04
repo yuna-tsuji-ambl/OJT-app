@@ -1,6 +1,5 @@
 import {
   REPORT_CONTENT_FIELD_MAX_LENGTH,
-  REPORT_STATUS_DRAFT,
   REPORT_STATUS_SUBMITTED,
 } from '../reports/reportConstants.js';
 import type {
@@ -29,7 +28,7 @@ export const U_R01_PUT_BODY = {
 
 export const U_R02_DAILY_DATE = '2026-07-29';
 
-/** U-R02: 一部項目のみ入力した下書き用コンテンツ */
+/** U-R02: 下書き保存が拒否されることの検証用に一部項目のみ入力したコンテンツ */
 export const U_R02_PARTIAL_CONTENT: DailyReportContent = {
   doneToday: 'ペアプロでコードレビューを受けた',
   learnedToday: '命名規則の重要性',
@@ -37,27 +36,15 @@ export const U_R02_PARTIAL_CONTENT: DailyReportContent = {
   planTomorrow: '',
 };
 
+/** U-R02: 下書き（`status: draft`）は廃止済みのため拒否される想定の入力 */
 export const U_R02_PUT_BODY = {
-  status: REPORT_STATUS_DRAFT,
+  status: 'draft',
   content: U_R02_PARTIAL_CONTENT,
 };
 
 export const U_R03_DAILY_DATE = '2026-07-30';
 
-/** U-R03: 下書き保存時の部分入力コンテンツ */
-export const U_R03_DRAFT_CONTENT: DailyReportContent = {
-  doneToday: '下書き段階の作業内容',
-  learnedToday: '下書き時の学び',
-  blockers: '',
-  planTomorrow: '',
-};
-
-export const U_R03_DRAFT_PUT_BODY = {
-  status: REPORT_STATUS_DRAFT,
-  content: U_R03_DRAFT_CONTENT,
-};
-
-/** U-R03: 下書きから提出する際の全項目入力コンテンツ */
+/** U-R03: 既存の提出済み報告として保存しておく初回コンテンツ */
 export const U_R03_SUBMITTED_CONTENT: DailyReportContent = {
   doneToday: '本日の作業を完了した',
   learnedToday: 'テスト駆動開発の進め方',
@@ -68,6 +55,19 @@ export const U_R03_SUBMITTED_CONTENT: DailyReportContent = {
 export const U_R03_SUBMITTED_PUT_BODY = {
   status: REPORT_STATUS_SUBMITTED,
   content: U_R03_SUBMITTED_CONTENT,
+};
+
+/** U-R03: 提出済み報告に対して下書きへの変更を試みる入力（拒否される想定） */
+export const U_R03_DRAFT_CONTENT: DailyReportContent = {
+  doneToday: '下書きへの変更を試みる作業内容',
+  learnedToday: '下書きへの変更を試みる学び',
+  blockers: '',
+  planTomorrow: '',
+};
+
+export const U_R03_DRAFT_PUT_BODY = {
+  status: 'draft',
+  content: U_R03_DRAFT_CONTENT,
 };
 
 export const U_R04_DAILY_DATE = '2026-08-01';
@@ -365,7 +365,7 @@ export const U_R24_PUT_BODY = {
   content: U_R24_DAILY_CONTENT,
 };
 
-/** U-R25: 全項目空文字の下書き保存用日付 */
+/** U-R25: 全項目空文字での提出用日付（下書き廃止により提出時は拒否される想定） */
 export const U_R25_DAILY_DATE = '2026-08-18';
 
 export const EMPTY_DAILY_CONTENT = createDailyContentWithFieldLength(0);
@@ -373,7 +373,7 @@ export const EMPTY_DAILY_CONTENT = createDailyContentWithFieldLength(0);
 export const U_R25_EMPTY_DAILY_CONTENT = EMPTY_DAILY_CONTENT;
 
 export const U_R25_PUT_BODY = {
-  status: REPORT_STATUS_DRAFT,
+  status: REPORT_STATUS_SUBMITTED,
   content: U_R25_EMPTY_DAILY_CONTENT,
 };
 

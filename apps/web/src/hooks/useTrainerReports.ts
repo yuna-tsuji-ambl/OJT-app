@@ -1,42 +1,29 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { fetchReports } from '../api/reportApi';
 import type { AuthUser } from '../auth/types';
 import { DEFAULT_TRAINEE_ID } from '../domain/participantConstants';
 import {
-  REPORT_TYPE_FILTER_ALL_VALUE,
-  toReportsListTypeQuery,
+  type OwnReportListQuery,
+  type ReportFormType,
   type ReportResponse,
-  type ReportTypeFilterValue,
 } from '../domain/reportForm';
-import { useReportList } from './useReportList';
+import { useFilteredOwnReports } from './useFilteredOwnReports';
 
 const EMPTY_TRAINER_REPORTS: readonly ReportResponse[] = [];
 
-/** トレーナー向け担当新卒の報告一覧（UC-R04 / U-R35 / E-R10） */
-export function useTrainerReports() {
-  const [reportTypeFilter, setReportTypeFilter] =
-    useState<ReportTypeFilterValue>(REPORT_TYPE_FILTER_ALL_VALUE);
-
-  const fetchAssignedTraineeReports = useCallback(
-    (user: AuthUser): Promise<readonly ReportResponse[]> => {
-      const reportType = toReportsListTypeQuery(reportTypeFilter);
-      return fetchReports(
-        DEFAULT_TRAINEE_ID,
-        user,
-        reportType ? { reportType } : {},
-      );
-    },
-    [reportTypeFilter],
+/** トレーナー向け・種別固定の担当新卒報告一覧（検索・期間絞り込み対応） */
+export function useTrainerTypedReports(reportType: ReportFormType) {
+  const fetchTypedReports = useCallback(
+    (user: AuthUser, query: OwnReportListQuery) =>
+      fetchReports(DEFAULT_TRAINEE_ID, user, {
+        reportType,
+        ...query,
+      }),
+    [reportType],
   );
 
-  const { reports } = useReportList(
-    fetchAssignedTraineeReports,
-    EMPTY_TRAINER_REPORTS,
-  );
-
-  return {
-    reports,
-    reportTypeFilter,
-    setReportTypeFilter,
-  };
+  return useFilteredOwnReports({
+    fetchReports: fetchTypedReports,
+    emptyReports: EMPTY_TRAINER_REPORTS,
+  });
 }

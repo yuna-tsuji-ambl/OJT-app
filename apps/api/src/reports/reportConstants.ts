@@ -3,15 +3,14 @@ export const REPORT_TYPE = {
   WEEKLY: 'weekly',
 } as const;
 
+/** 下書き（draft）は廃止。提出（submitted）のみをサポートする */
 export const REPORT_STATUS = {
-  DRAFT: 'draft',
   SUBMITTED: 'submitted',
 } as const;
 
 export const REPORT_TYPE_DAILY = REPORT_TYPE.DAILY;
 export const REPORT_TYPE_WEEKLY = REPORT_TYPE.WEEKLY;
 
-export const REPORT_STATUS_DRAFT = REPORT_STATUS.DRAFT;
 export const REPORT_STATUS_SUBMITTED = REPORT_STATUS.SUBMITTED;
 
 export type ReportType = (typeof REPORT_TYPE)[keyof typeof REPORT_TYPE];

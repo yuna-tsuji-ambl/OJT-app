@@ -75,8 +75,12 @@ export type OwnedReportByType = {
   [REPORT_TYPE_WEEKLY]: WeeklyReport;
 };
 
-/** トレーナー向け報告一覧の検索条件 */
+/** トレーナー向け報告一覧の検索条件（`q`/`from`/`to`/`date` は新卒一覧と同仕様） */
 export interface ListReportsCriteria {
   traineeId: string;
   type?: ReportType;
+  q?: string;
+  from?: string;
+  to?: string;
+  date?: string;
 }

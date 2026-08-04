@@ -1,14 +1,14 @@
-import { ReportPageShell } from '../components/ReportPageShell';
-import { ReportTypeFilter } from '../components/ReportTypeFilter';
+import { ReportSplitView } from '../components/ReportSplitView';
 import { RequireTrainerRole } from '../components/RequireRole';
-import { TrainerReportList } from '../components/TrainerReportList';
+import { TrainerTypedReportPane } from '../components/TrainerTypedReportPane';
 import {
   REPORT_LIST_HEADING_ID,
   REPORT_LIST_PAGE_TITLE,
+  REPORT_TYPE_DAILY,
+  REPORT_TYPE_WEEKLY,
 } from '../domain/reportForm';
-import { useTrainerReports } from '../hooks/useTrainerReports';
 
-/** トレーナー向け担当新卒の報告書一覧（§6.1 / U-R34 / U-R35 / U-R37 / E-R10） */
+/** トレーナー向け担当新卒の報告書一覧（左=日次 / 右=週次 + 検索） */
 export function ReportListPage() {
   return (
     <RequireTrainerRole>
@@ -17,21 +17,17 @@ export function ReportListPage() {
   );
 }
 
-/** トレーナー認可後の一覧本体（データ取得はここでのみ行う） */
 function TrainerReportListContent() {
-  const { reports, reportTypeFilter, setReportTypeFilter } =
-    useTrainerReports();
-
   return (
-    <ReportPageShell
-      title={REPORT_LIST_PAGE_TITLE}
-      headingId={REPORT_LIST_HEADING_ID}
+    <section
+      className="page-section page-section--wide"
+      aria-labelledby={REPORT_LIST_HEADING_ID}
     >
-      <ReportTypeFilter
-        value={reportTypeFilter}
-        onChange={setReportTypeFilter}
+      <h1 id={REPORT_LIST_HEADING_ID}>{REPORT_LIST_PAGE_TITLE}</h1>
+      <ReportSplitView
+        left={<TrainerTypedReportPane reportType={REPORT_TYPE_DAILY} />}
+        right={<TrainerTypedReportPane reportType={REPORT_TYPE_WEEKLY} />}
       />
-      <TrainerReportList reports={reports} />
-    </ReportPageShell>
+    </section>
   );
 }

@@ -300,6 +300,66 @@ textarea:focus {
   min-width: 0;
 }
 
+.trainer-report-pane h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
+.report-list-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: calc(var(--radius) * 0.8);
+  background: var(--surface-muted);
+}
+
+.report-list-filter .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.report-list-filter__period-mode {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: calc(var(--radius) * 0.6);
+}
+
+.report-list-filter__period-mode legend {
+  padding: 0 0.5rem;
+  color: var(--text-secondary);
+}
+
+.report-list-filter__period-mode label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
+.report-edit-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--netflix-red);
+  border-radius: calc(var(--radius) * 0.8);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
 .page-section h1 {
   margin: 0 0 1.5rem;
   font-size: clamp(1.75rem, 3vw, 2.25rem);

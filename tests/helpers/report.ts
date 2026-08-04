@@ -35,17 +35,31 @@ export const REPORT_LIST_FROM_LABEL = '開始';
 export const REPORT_LIST_TO_LABEL = '終了';
 export const REPORT_LIST_DATE_LABEL = '特定日';
 export const REPORT_LIST_WEEKLY_DATE_LABEL = '特定日または週キー';
-export const REPORT_LIST_FILTER_BUTTON_LABEL = '絞り込み';
+/** 期間の指定方法（範囲/特定日）の排他ラジオラベル（BR-R16） */
+export const REPORT_LIST_FILTER_PERIOD_MODE_RANGE_LABEL = '期間で指定';
+export const REPORT_LIST_FILTER_PERIOD_MODE_DATE_LABEL = '特定日で指定';
+export const REPORT_LIST_FILTER_CLEAR_BUTTON_LABEL = '絞り込みをクリア';
+/** 絞り込み入力の自動適用デバウンス（ms） */
+export const REPORT_LIST_FILTER_DEBOUNCE_MS = 300;
 export const REPORT_PERIOD_FILTER_CONFLICT_MESSAGE =
   '期間の範囲指定と特定日は同時に使えません。どちらか一方だけを指定してください。';
 export const PAST_DAILY_REPORTS_SECTION_LABEL = '過去の日次報告';
 export const PAST_WEEKLY_REPORTS_SECTION_LABEL = '過去の週次報告';
 export const PAST_DAILY_REPORTS_EMPTY_MESSAGE = `${PAST_DAILY_REPORTS_SECTION_LABEL}はありません`;
 export const PAST_WEEKLY_REPORTS_EMPTY_MESSAGE = `${PAST_WEEKLY_REPORTS_SECTION_LABEL}はありません`;
-export const DAILY_REPORT_DRAFT_SAVE_BUTTON_LABEL = '下書き保存';
-export const DAILY_REPORT_DRAFT_SAVE_SUCCESS_MESSAGE = '下書きを保存しました';
 export const REPORT_SUBMIT_BUTTON_LABEL = '提出';
 export const REPORT_SUBMIT_SUCCESS_MESSAGE = '提出しました';
+/** 一覧からの編集（BR-R17） */
+export const REPORT_EDIT_BUTTON_LABEL = '編集';
+export function getDailyReportEditingBannerMessage(periodKey: string): string {
+  return `${periodKey} の日次報告を編集しています`;
+}
+
+export function getWeeklyReportEditingBannerMessage(periodKey: string): string {
+  return `${periodKey} の週次報告を編集しています`;
+}
+export const DAILY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL = '今日の報告に戻る';
+export const WEEKLY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL = '今週の報告に戻る';
 /** 日次提出時に「本日やったこと」が空のときのバリデーションメッセージ（E-R09） */
 export const DAILY_REPORT_DONE_TODAY_REQUIRED_MESSAGE =
   '本日やったことを入力してください';
@@ -429,14 +443,6 @@ async function clickReportPersistAndWait(
   return response;
 }
 
-export async function saveDailyReportDraft(page: Page): Promise<Response> {
-  return clickReportPersistAndWait(page, dailyReportSection(page), {
-    buttonLabel: DAILY_REPORT_DRAFT_SAVE_BUTTON_LABEL,
-    successMessage: DAILY_REPORT_DRAFT_SAVE_SUCCESS_MESSAGE,
-    putPathPattern: DAILY_REPORT_PUT_PATH_PATTERN,
-  });
-}
-
 export async function submitDailyReport(page: Page): Promise<Response> {
   return clickReportPersistAndWait(page, dailyReportSection(page), {
     buttonLabel: REPORT_SUBMIT_BUTTON_LABEL,
@@ -482,6 +488,77 @@ export async function expectReportResponseStatus(
 ): Promise<void> {
   const body = (await response.json()) as ReportStatusResponseBody;
   expect(body.status).toBe(status);
+}
+
+/** 一覧カードの「編集」を押し、指定 periodKey の報告を左フォームへ読み込む（BR-R17） */
+export async function clickDailyReportEdit(
+  page: Page,
+  periodKey: string,
+): Promise<void> {
+  await pastDailyReportsSection(page)
+    .getByRole('button', { name: `${REPORT_EDIT_BUTTON_LABEL} ${periodKey}` })
+    .click();
+}
+
+export async function clickWeeklyReportEdit(
+  page: Page,
+  periodKey: string,
+): Promise<void> {
+  await pastWeeklyReportsSection(page)
+    .getByRole('button', { name: `${REPORT_EDIT_BUTTON_LABEL} ${periodKey}` })
+    .click();
+}
+
+export async function expectDailyReportEditingBannerVisible(
+  page: Page,
+  periodKey: string,
+): Promise<void> {
+  await expect(
+    page.getByText(getDailyReportEditingBannerMessage(periodKey)),
+  ).toBeVisible();
+}
+
+export async function expectDailyReportEditingBannerHidden(
+  page: Page,
+  periodKey: string,
+): Promise<void> {
+  await expect(
+    page.getByText(getDailyReportEditingBannerMessage(periodKey)),
+  ).toHaveCount(0);
+}
+
+export async function expectWeeklyReportEditingBannerVisible(
+  page: Page,
+  periodKey: string,
+): Promise<void> {
+  await expect(
+    page.getByText(getWeeklyReportEditingBannerMessage(periodKey)),
+  ).toBeVisible();
+}
+
+export async function expectWeeklyReportEditingBannerHidden(
+  page: Page,
+  periodKey: string,
+): Promise<void> {
+  await expect(
+    page.getByText(getWeeklyReportEditingBannerMessage(periodKey)),
+  ).toHaveCount(0);
+}
+
+export async function clickDailyReportResetToCurrent(
+  page: Page,
+): Promise<void> {
+  await page
+    .getByRole('button', { name: DAILY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL })
+    .click();
+}
+
+export async function clickWeeklyReportResetToCurrent(
+  page: Page,
+): Promise<void> {
+  await page
+    .getByRole('button', { name: WEEKLY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL })
+    .click();
 }
 
 export async function openTrainerDashboardPage(page: Page): Promise<void> {
@@ -771,22 +848,30 @@ function isReportsListGetResponse(
   );
 }
 
-/**
- * トレーナー報告一覧で種別フィルタを選択し、type 付き GET 完了を待つ（E-R10）。
- */
-export async function filterTrainerReportsByType(
+/** トレーナー報告書ページで日次・週次の type 付き GET 完了を待つ（E-R10） */
+export async function waitForTrainerSplitReportListLoads(
   page: Page,
-  reportType:
-    | typeof REPORT_TYPE_FILTER_VALUE_DAILY
-    | typeof REPORT_TYPE_FILTER_VALUE_WEEKLY,
-): Promise<Response> {
-  const responsePromise = page.waitForResponse((response) =>
-    isReportsListGetResponse(response, reportType),
-  );
+): Promise<void> {
+  await Promise.all([
+    page.waitForResponse((response) =>
+      isReportsListGetResponse(response, REPORT_TYPE_FILTER_VALUE_DAILY),
+    ),
+    page.waitForResponse((response) =>
+      isReportsListGetResponse(response, REPORT_TYPE_FILTER_VALUE_WEEKLY),
+    ),
+  ]);
+}
 
-  await page.getByLabel(REPORT_TYPE_FILTER_LABEL).selectOption(reportType);
-
-  return responsePromise;
+/** トレーナー画面の左日次・右週次見出しが表示されていることを検証する（E-R10） */
+export async function expectTrainerReportSplitLayout(
+  page: Page,
+): Promise<void> {
+  await expect(
+    page.getByRole('heading', { name: DAILY_REPORT_PAGE_TITLE }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: WEEKLY_REPORT_PAGE_TITLE }),
+  ).toBeVisible();
 }
 
 function pastDailyReportsSection(page: Page): Locator {
@@ -835,7 +920,29 @@ interface FillReportListFilterOptions {
   readonly dateFieldLabel?: string;
 }
 
-/** 報告書一覧の絞り込みフォームに値を入力する（E-R13 / E-R14 / E-R15） */
+/** 期間の指定方法ラジオを「期間で指定（from/to）」に切り替える（BR-R16） */
+export async function selectReportListFilterRangeMode(
+  page: Page,
+): Promise<void> {
+  await reportListFilterForm(page)
+    .getByRole('radio', { name: REPORT_LIST_FILTER_PERIOD_MODE_RANGE_LABEL })
+    .check();
+}
+
+/** 期間の指定方法ラジオを「特定日で指定」に切り替える（BR-R16） */
+export async function selectReportListFilterDateMode(
+  page: Page,
+): Promise<void> {
+  await reportListFilterForm(page)
+    .getByRole('radio', { name: REPORT_LIST_FILTER_PERIOD_MODE_DATE_LABEL })
+    .check();
+}
+
+/**
+ * 報告書一覧の絞り込みフォームに値を入力する（E-R13 / E-R14）。
+ * from/to と date は排他ラジオで切り替わるため、指定条件に応じて対応するモードへ
+ * 切り替えたうえで入力する（両方を同時に指定することはできない）。
+ */
 export async function fillReportListFilter(
   page: Page,
   values: ReportListFilterValues,
@@ -847,15 +954,27 @@ export async function fillReportListFilter(
   if (values.q !== undefined) {
     await form.getByLabel(REPORT_LIST_SEARCH_LABEL).fill(values.q);
   }
+  if (values.date !== undefined) {
+    await selectReportListFilterDateMode(page);
+    await form.getByLabel(dateFieldLabel).fill(values.date);
+    return;
+  }
+  if (values.from !== undefined || values.to !== undefined) {
+    await selectReportListFilterRangeMode(page);
+  }
   if (values.from !== undefined) {
     await form.getByLabel(REPORT_LIST_FROM_LABEL).fill(values.from);
   }
   if (values.to !== undefined) {
     await form.getByLabel(REPORT_LIST_TO_LABEL).fill(values.to);
   }
-  if (values.date !== undefined) {
-    await form.getByLabel(dateFieldLabel).fill(values.date);
-  }
+}
+
+/** 絞り込みフォームをクリアする（BR-R16） */
+export async function clickReportListFilterClear(page: Page): Promise<void> {
+  await reportListFilterForm(page)
+    .getByRole('button', { name: REPORT_LIST_FILTER_CLEAR_BUTTON_LABEL })
+    .click();
 }
 
 function isOwnDailyReportsListGet(response: Response): boolean {
@@ -874,33 +993,21 @@ function isOwnWeeklyReportsListGet(response: Response): boolean {
   return new URL(response.url()).pathname === '/api/reports/weekly';
 }
 
-/** 日次一覧の絞り込みを実行し GET 完了を待つ（E-R13） */
+/**
+ * 日次一覧の絞り込み入力後、デバウンス（300ms）による自動適用の GET 完了を待つ（E-R13）。
+ * `fillReportListFilter` の直後に呼び出すこと。
+ */
 export async function applyDailyReportListFilter(
   page: Page,
 ): Promise<Response> {
-  const responsePromise = page.waitForResponse(isOwnDailyReportsListGet);
-  await reportListFilterForm(page)
-    .getByRole('button', { name: REPORT_LIST_FILTER_BUTTON_LABEL })
-    .click();
-  return responsePromise;
+  return page.waitForResponse(isOwnDailyReportsListGet);
 }
 
-/** 週次一覧の絞り込みを実行し GET 完了を待つ（E-R14） */
+/** 週次一覧の絞り込み入力後、デバウンスによる自動適用の GET 完了を待つ（E-R14） */
 export async function applyWeeklyReportListFilter(
   page: Page,
 ): Promise<Response> {
-  const responsePromise = page.waitForResponse(isOwnWeeklyReportsListGet);
-  await reportListFilterForm(page)
-    .getByRole('button', { name: REPORT_LIST_FILTER_BUTTON_LABEL })
-    .click();
-  return responsePromise;
-}
-
-/** 絞り込みフォームを送信する（API 呼び出しを待たない / E-R15） */
-export async function submitReportListFilter(page: Page): Promise<void> {
-  await reportListFilterForm(page)
-    .getByRole('button', { name: REPORT_LIST_FILTER_BUTTON_LABEL })
-    .click();
+  return page.waitForResponse(isOwnWeeklyReportsListGet);
 }
 
 /** 期間条件同時指定のエラー表示を検証する（E-R15） */

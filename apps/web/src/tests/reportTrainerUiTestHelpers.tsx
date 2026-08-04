@@ -17,11 +17,13 @@ import {
   DAILY_REPORT_FORM_FIELDS,
   DAILY_REPORT_PAGE_TITLE,
   DAILY_REPORT_PATH,
+  formatReportPeriodKeyLabel,
   REPORT_DETAIL_ROUTE_PATH,
   REPORT_HEADER_NAV_LABEL,
   REPORT_LIST_PAGE_TITLE,
   REPORT_PAGE_PATH,
   REPORT_TYPE_DAILY,
+  REPORT_TYPE_WEEKLY,
   WEEKLY_REPORT_FORM_FIELDS,
   WEEKLY_REPORT_PAGE_TITLE,
   WEEKLY_REPORT_PATH,
@@ -51,7 +53,7 @@ export type TrainerReportListItem = ReportResponse & {
 
 /**
  * U-R35: 担当新卒の報告が複数存在する前提データ。
- * 未読 → 既読、同グループ内は最新順（UC-R04）で並べた表示期待順。
+ * 左右分割後の表示期待順は「日次（最新順）→ 週次（最新順）」。
  */
 export const U_R35_ASSIGNED_TRAINEE_REPORTS: readonly TrainerReportListItem[] =
   [
@@ -171,15 +173,35 @@ export function expectReportListPageVisible(): void {
   ).toBeTruthy();
 }
 
-/** U-R38: トレーナーの `/reports` は一覧画面 */
+/** U-R38: トレーナーの `/reports` は一覧画面（左日次・右週次） */
 export function expectTrainerReportsListPageVisible(): void {
   expectReportListPageVisible();
+  expect(
+    screen.getByRole('heading', { name: DAILY_REPORT_PAGE_TITLE }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('heading', { name: WEEKLY_REPORT_PAGE_TITLE }),
+  ).toBeTruthy();
   expect(
     screen.queryByRole('form', { name: DAILY_REPORT_PAGE_TITLE }),
   ).toBeNull();
   expect(
     screen.queryByRole('form', { name: WEEKLY_REPORT_PAGE_TITLE }),
   ).toBeNull();
+}
+
+/** 左=日次 / 右=週次の配置順を検証する */
+export function expectTrainerReportSplitOrder(): void {
+  const dailyHeading = screen.getByRole('heading', {
+    name: DAILY_REPORT_PAGE_TITLE,
+  });
+  const weeklyHeading = screen.getByRole('heading', {
+    name: WEEKLY_REPORT_PAGE_TITLE,
+  });
+  expect(
+    dailyHeading.compareDocumentPosition(weeklyHeading) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
 }
 
 function expectReportCardContentVisible(
@@ -212,11 +234,17 @@ export async function expectTrainerReportCardsVisible(
   });
 }
 
-/** U-R35: 一覧が未読・最新順（UC-R04）で表示されることを検証する */
+/** U-R35: 左ペイン日次→右ペイン週次の順でカードが表示されることを検証する */
 export async function expectTrainerReportListOrder(
   reports: readonly TrainerReportListItem[],
 ): Promise<void> {
-  const expectedPeriodKeys = reports.map((report) => report.periodKey);
+  const dailyKeys = reports
+    .filter((report) => report.type === REPORT_TYPE_DAILY)
+    .map((report) => report.periodKey);
+  const weeklyKeys = reports
+    .filter((report) => report.type === REPORT_TYPE_WEEKLY)
+    .map((report) => report.periodKey);
+  const expectedPeriodKeys = [...dailyKeys, ...weeklyKeys];
 
   await waitFor(() => {
     const articles = screen.getAllByRole('article');
@@ -224,6 +252,7 @@ export async function expectTrainerReportListOrder(
       articles.map((article) => article.getAttribute('aria-label')),
     ).toEqual(expectedPeriodKeys);
   });
+  expectTrainerReportSplitOrder();
 }
 
 /** U-R36: 提出済み日次報告（一覧から選択して詳細閲覧する前提データ） */
@@ -268,7 +297,9 @@ export async function expectTrainerDailyReportDetailVisible(
   });
 
   expect(
-    within(detail).getByRole('heading', { name: report.periodKey }),
+    within(detail).getByRole('heading', {
+      name: formatReportPeriodKeyLabel(report.periodKey),
+    }),
   ).toBeTruthy();
 
   for (const field of DAILY_REPORT_FORM_FIELDS) {

@@ -8,7 +8,6 @@ import {
   U_R01_DAILY_DATE,
   U_R01_PUT_BODY,
   U_R02_DAILY_DATE,
-  U_R02_PARTIAL_CONTENT,
   U_R02_PUT_BODY,
   U_R03_DAILY_DATE,
   U_R03_DRAFT_PUT_BODY,
@@ -149,7 +148,6 @@ import {
 } from './reportFirestoreTestHelpers.js';
 import { buildReportUniquenessKey } from '../reports/reportUniquenessKey.js';
 import {
-  REPORT_STATUS_DRAFT,
   REPORT_STATUS_SUBMITTED,
   REPORT_TYPE_DAILY,
   REPORT_TYPE_WEEKLY,
@@ -234,38 +232,29 @@ describe('U-R01 日次報告の新規提出', () => {
 });
 
 /**
- * U-R02: 日次報告の下書き保存
+ * U-R02: 日次報告の下書き保存は拒否される（下書き廃止 / BR-R03）
  *
  * 前提条件: 新卒として認証済み。当該日の日次報告は未作成
  * 入力値: `PUT /api/reports/daily/2026-07-29` に `status: draft` と一部項目のみ送信
- * 期待結果: HTTP 200。`status=draft` で保存される。`submittedAt` は未設定
+ * 期待結果: HTTP 400。下書き保存は廃止されたため拒否され、保存されない
  *
- * 結合境界: reportRoutes → reportFacade → ReportRepository → Firestore
+ * 結合境界: reportRoutes → parsePutDailyReportBody → isReportStatus
  * 参照: docs/test-specs/report-feature.md U-R02
  */
-describe('U-R02 日次報告の下書き保存', () => {
+describe('U-R02 日次報告の下書き保存は拒否される', () => {
   const testContext = setupReportFirestoreTests();
 
-  it('putDailyReport_新卒が日次報告を下書き保存_HTTP200かつFirestoreにdraftとして保存される', async () => {
+  it('putDailyReport_statusがdraft_HTTP400で拒否され保存されない', async () => {
     const response = await putDailyReport(
       U_R02_DAILY_DATE,
       U_R02_PUT_BODY,
       testContext.getRepository(),
     );
 
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toEqual(
-      expect.objectContaining({
-        traineeId: TRAINEE_USER_ID,
-        type: REPORT_TYPE_DAILY,
-        periodKey: U_R02_DAILY_DATE,
-        status: REPORT_STATUS_DRAFT,
-        content: U_R02_PARTIAL_CONTENT,
-      }),
-    );
-    expect(
-      (response.body as { submittedAt?: string }).submittedAt,
-    ).toBeUndefined();
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Invalid report input',
+    });
 
     const snapshot = await findDailyReportsInFirestore(
       testContext.getDb(),
@@ -273,41 +262,24 @@ describe('U-R02 日次報告の下書き保存', () => {
       U_R02_DAILY_DATE,
     );
 
-    expectReportPersistedInCollection(snapshot, {
-      traineeId: TRAINEE_USER_ID,
-      type: REPORT_TYPE_DAILY,
-      periodKey: U_R02_DAILY_DATE,
-      content: U_R02_PARTIAL_CONTENT,
-      status: REPORT_STATUS_DRAFT,
-    });
-    expect(snapshot.docs[0]!.data().submittedAt).toBeUndefined();
+    expect(snapshot.size).toBe(0);
   });
 });
 
 /**
- * U-R03: 下書きから提出への更新
+ * U-R03: 提出済み報告への下書き変更は拒否される（下書き廃止 / BR-R03）
  *
- * 前提条件: 新卒として認証済み。当該日の日次報告が `draft` で保存済み
- * 入力値: 同一日付に `status: submitted` と全項目を `PUT`
- * 期待結果: HTTP 200。`status` が `submitted` に更新され、`submittedAt` が設定される
+ * 前提条件: 新卒として認証済み。`2026-07-30` の日次報告が `submitted` で保存済み
+ * 入力値: 同一日付に `status: draft` を `PUT`
+ * 期待結果: HTTP 400。拒否され、既存の提出済みドキュメントは変更されない
  *
- * 結合境界: reportRoutes → reportFacade → ReportRepository → Firestore
+ * 結合境界: reportRoutes → parsePutDailyReportBody → isReportStatus
  * 参照: docs/test-specs/report-feature.md U-R03
  */
-describe('U-R03 下書きから提出への更新', () => {
+describe('U-R03 提出済み報告への下書き変更は拒否される', () => {
   const testContext = setupReportFirestoreTests();
 
-  it('putDailyReport_下書きから提出に更新_statusがsubmittedになりsubmittedAtが設定される', async () => {
-    const draftResponse = await putDailyReport(
-      U_R03_DAILY_DATE,
-      U_R03_DRAFT_PUT_BODY,
-      testContext.getRepository(),
-    );
-
-    expect(draftResponse.statusCode).toBe(200);
-
-    const draftReportId = (draftResponse.body as { id: string }).id;
-
+  it('putDailyReport_提出済み報告にstatusdraftをPUT_HTTP400で拒否され既存内容が変更されない', async () => {
     const submitResponse = await putDailyReport(
       U_R03_DAILY_DATE,
       U_R03_SUBMITTED_PUT_BODY,
@@ -315,22 +287,19 @@ describe('U-R03 下書きから提出への更新', () => {
     );
 
     expect(submitResponse.statusCode).toBe(200);
-    expect(submitResponse.body).toEqual(
-      expect.objectContaining({
-        id: draftReportId,
-        traineeId: TRAINEE_USER_ID,
-        type: REPORT_TYPE_DAILY,
-        periodKey: U_R03_DAILY_DATE,
-        status: REPORT_STATUS_SUBMITTED,
-        content: U_R03_SUBMITTED_CONTENT,
-        submittedAt: expect.any(String),
-      }),
+
+    const submittedReportId = (submitResponse.body as { id: string }).id;
+
+    const draftResponse = await putDailyReport(
+      U_R03_DAILY_DATE,
+      U_R03_DRAFT_PUT_BODY,
+      testContext.getRepository(),
     );
 
-    const submittedAt = (submitResponse.body as { submittedAt?: string })
-      .submittedAt;
-    expect(submittedAt).toBeTruthy();
-    expect(() => new Date(submittedAt!).toISOString()).not.toThrow();
+    expect(draftResponse.statusCode).toBe(400);
+    expect(draftResponse.body).toEqual({
+      error: 'Invalid report input',
+    });
 
     const snapshot = await findDailyReportsInFirestore(
       testContext.getDb(),
@@ -339,13 +308,12 @@ describe('U-R03 下書きから提出への更新', () => {
     );
 
     expectReportPersistedInCollection(snapshot, {
-      id: draftReportId,
+      id: submittedReportId,
       traineeId: TRAINEE_USER_ID,
       type: REPORT_TYPE_DAILY,
       periodKey: U_R03_DAILY_DATE,
       content: U_R03_SUBMITTED_CONTENT,
       status: REPORT_STATUS_SUBMITTED,
-      submittedAt,
     });
   });
 });
@@ -1304,7 +1272,7 @@ describe('U-R21 未認証アクセス', () => {
  *
  * 前提条件: 新卒として認証済み
  * 入力値: `status: "published"` を指定して `PUT`
- * 期待結果: HTTP 400。`draft` / `submitted` 以外は拒否される
+ * 期待結果: HTTP 400。`submitted` 以外（`draft` を含む）は拒否される
  *
  * 結合境界: reportRoutes → parsePutDailyReportBody → isReportStatus
  * 参照: docs/test-specs/report-feature.md U-R22
@@ -1431,19 +1399,19 @@ describe('U-R24 テキスト項目の最大長超過', () => {
 });
 
 /**
- * U-R25: 空文字列の下書き保存
+ * U-R25: 全項目空文字列での提出は拒否される（下書き廃止 / BR-R03）
  *
  * 前提条件: 新卒として認証済み
- * 入力値: `status: draft` で全テキスト項目を空文字で `PUT`
- * 期待結果: HTTP 200。下書きとして保存可能（提出時のみ必須検証）
+ * 入力値: `status: submitted` で全テキスト項目を空文字で `PUT`
+ * 期待結果: HTTP 400。下書きが廃止されたため、提出時は全項目が必須となり拒否される
  *
  * 結合境界: reportRoutes → reportFacade → validateOwnedReportPutInput → ReportRepository
  * 参照: docs/test-specs/report-feature.md U-R25
  */
-describe('U-R25 空文字列の下書き保存', () => {
+describe('U-R25 全項目空文字列での提出は拒否される', () => {
   const testContext = setupReportFirestoreTests();
 
-  it('putDailyReport_全項目空文字の下書き_HTTP200かつdraftで保存されsubmittedAtは未設定', async () => {
+  it('putDailyReport_全項目空文字で提出_HTTP400で拒否され保存されない', async () => {
     expect(
       Object.values(U_R25_EMPTY_DAILY_CONTENT).every((value) => value === ''),
     ).toBe(true);
@@ -1454,19 +1422,10 @@ describe('U-R25 空文字列の下書き保存', () => {
       testContext.getRepository(),
     );
 
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toEqual(
-      expect.objectContaining({
-        traineeId: TRAINEE_USER_ID,
-        type: REPORT_TYPE_DAILY,
-        periodKey: U_R25_DAILY_DATE,
-        status: REPORT_STATUS_DRAFT,
-        content: U_R25_EMPTY_DAILY_CONTENT,
-      }),
-    );
-    expect(
-      (response.body as { submittedAt?: string }).submittedAt,
-    ).toBeUndefined();
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Invalid report input',
+    });
 
     const snapshot = await findDailyReportsInFirestore(
       testContext.getDb(),
@@ -1474,14 +1433,7 @@ describe('U-R25 空文字列の下書き保存', () => {
       U_R25_DAILY_DATE,
     );
 
-    expectReportPersistedInCollection(snapshot, {
-      traineeId: TRAINEE_USER_ID,
-      type: REPORT_TYPE_DAILY,
-      periodKey: U_R25_DAILY_DATE,
-      content: U_R25_EMPTY_DAILY_CONTENT,
-      status: REPORT_STATUS_DRAFT,
-    });
-    expect(snapshot.docs[0]!.data().submittedAt).toBeUndefined();
+    expect(snapshot.size).toBe(0);
   });
 });
 

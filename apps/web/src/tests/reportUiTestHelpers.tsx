@@ -14,18 +14,23 @@ import { Layout } from '../components/Layout';
 import { clearAuthSession, setTraineeSession } from './reportAuthTestHelpers';
 import { TRAINEE_HOME_PATH } from '../domain/appPaths';
 import {
-  DAILY_REPORT_DRAFT_SAVE_BUTTON_LABEL,
-  DAILY_REPORT_DRAFT_SAVE_SUCCESS_MESSAGE,
   DAILY_REPORT_FORM_FIELDS,
   DAILY_REPORT_LIST_PAGE_TITLE,
   DAILY_REPORT_LIST_PATH,
   DAILY_REPORT_PAGE_TITLE,
   DAILY_REPORT_PATH,
+  DAILY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL,
+  getDailyReportEditingBannerMessage,
+  getReportEditButtonAriaLabel,
   getReportFormFieldLabels,
+  getWeeklyReportEditingBannerMessage,
   PAST_DAILY_REPORTS_SECTION_LABEL,
   PAST_WEEKLY_REPORTS_SECTION_LABEL,
   REPORT_HEADER_NAV_LABEL,
-  REPORT_LIST_FILTER_BUTTON_LABEL,
+  REPORT_LIST_FILTER_CLEAR_BUTTON_LABEL,
+  REPORT_LIST_FILTER_DEBOUNCE_MS,
+  REPORT_LIST_FILTER_PERIOD_MODE_DATE_LABEL,
+  REPORT_LIST_FILTER_PERIOD_MODE_RANGE_LABEL,
   REPORT_LIST_FROM_FIELD_ID,
   REPORT_LIST_PAGE_TITLE,
   REPORT_LIST_DATE_FIELD_ID,
@@ -43,6 +48,7 @@ import {
   WEEKLY_REPORT_LIST_PATH,
   WEEKLY_REPORT_PAGE_TITLE,
   WEEKLY_REPORT_PATH,
+  WEEKLY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL,
   type DailyReportFormValues,
   type DailyReportResponse,
   type WeeklyReportResponse,
@@ -53,8 +59,6 @@ import { TraineeHomePage } from '../pages/TraineeHomePage';
 import { WeeklyReportListPage } from '../pages/WeeklyReportListPage';
 
 export {
-  DAILY_REPORT_DRAFT_SAVE_BUTTON_LABEL,
-  DAILY_REPORT_DRAFT_SAVE_SUCCESS_MESSAGE,
   PAST_DAILY_REPORTS_SECTION_LABEL,
   PAST_WEEKLY_REPORTS_SECTION_LABEL,
   REPORT_PERIOD_FILTER_CONFLICT_MESSAGE,
@@ -90,15 +94,29 @@ export const U_R29_WEEKLY_FIELD_LABELS = [
   'トレーナーへの相談',
 ] as const;
 
-/** U-R30: 一部項目のみ入力した日次下書き（仕様の「一部項目」） */
-export const U_R30_PARTIAL_DAILY_VALUES: DailyReportFormValues = {
+/** U-R30: 一覧編集対象の過去日次報告（一部項目を編集して再提出する） */
+export const U_R30_DAILY_DATE = '2026-07-28';
+
+export const U_R30_EXISTING_DAILY_VALUES: DailyReportFormValues = {
   doneToday: 'ペアプロでコードレビューを受けた',
   learnedToday: '命名規則の重要性',
-  blockers: '',
-  planTomorrow: '',
+  blockers: '特になし',
+  planTomorrow: '次の課題に取り組む',
 };
 
-export const U_R30_DAILY_DATE = '2026-07-29';
+export const U_R30_EXISTING_DAILY_REPORT: DailyReportResponse = {
+  id: 'report-u-r30',
+  traineeId: 'trainee-1',
+  type: 'daily',
+  periodKey: U_R30_DAILY_DATE,
+  status: 'submitted',
+  content: U_R30_EXISTING_DAILY_VALUES,
+};
+
+export const U_R30_EDITED_DAILY_VALUES: DailyReportFormValues = {
+  ...U_R30_EXISTING_DAILY_VALUES,
+  planTomorrow: 'ペアプロの振り返りをまとめる',
+};
 
 /** U-R31: 全項目入力した日次提出コンテンツ */
 export const U_R31_FULL_DAILY_VALUES: DailyReportFormValues = {
@@ -472,12 +490,43 @@ async function expectStatusFeedback(message: string): Promise<void> {
   ).toBeTruthy();
 }
 
-export function clickDailyReportDraftSave(): void {
-  clickButtonByName(DAILY_REPORT_DRAFT_SAVE_BUTTON_LABEL);
+/** 一覧カードの「編集」を押し、指定 periodKey の報告を左フォームへ読み込む */
+export function clickReportEdit(periodKey: string): void {
+  clickButtonByName(getReportEditButtonAriaLabel(periodKey));
 }
 
-export async function expectDailyReportDraftSaveSuccess(): Promise<void> {
-  await expectStatusFeedback(DAILY_REPORT_DRAFT_SAVE_SUCCESS_MESSAGE);
+export function expectDailyReportEditingBannerVisible(periodKey: string): void {
+  expect(
+    screen.getByText(getDailyReportEditingBannerMessage(periodKey)),
+  ).toBeTruthy();
+}
+
+export function expectWeeklyReportEditingBannerVisible(
+  periodKey: string,
+): void {
+  expect(
+    screen.getByText(getWeeklyReportEditingBannerMessage(periodKey)),
+  ).toBeTruthy();
+}
+
+export function expectDailyReportEditingBannerHidden(periodKey: string): void {
+  expect(
+    screen.queryByText(getDailyReportEditingBannerMessage(periodKey)),
+  ).toBeNull();
+}
+
+export function expectWeeklyReportEditingBannerHidden(periodKey: string): void {
+  expect(
+    screen.queryByText(getWeeklyReportEditingBannerMessage(periodKey)),
+  ).toBeNull();
+}
+
+export function clickDailyReportResetToCurrent(): void {
+  clickButtonByName(DAILY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL);
+}
+
+export function clickWeeklyReportResetToCurrent(): void {
+  clickButtonByName(WEEKLY_REPORT_RESET_TO_CURRENT_BUTTON_LABEL);
 }
 
 export function clickDailyReportSubmit(): void {
@@ -566,6 +615,29 @@ export function expectWeeklyReportListPageVisible(): void {
   ).toBeTruthy();
 }
 
+/** 期間の指定方法ラジオを「期間で指定（from/to）」に切り替える */
+export function selectReportListFilterRangeMode(): void {
+  fireEvent.click(
+    screen.getByRole('radio', {
+      name: REPORT_LIST_FILTER_PERIOD_MODE_RANGE_LABEL,
+    }),
+  );
+}
+
+/** 期間の指定方法ラジオを「特定日で指定」に切り替える */
+export function selectReportListFilterDateMode(): void {
+  fireEvent.click(
+    screen.getByRole('radio', {
+      name: REPORT_LIST_FILTER_PERIOD_MODE_DATE_LABEL,
+    }),
+  );
+}
+
+/**
+ * 報告書一覧の絞り込みフォームに値を入力する（U-R45〜U-R49）。
+ * from/to と date は排他ラジオで切り替わるため、指定された条件に応じて
+ * 対応するモードへ切り替えたうえで、非表示状態の入力欄は操作しない。
+ */
 export function fillReportListFilter(values: {
   q?: string;
   from?: string;
@@ -577,6 +649,16 @@ export function fillReportListFilter(values: {
       target: { value: values.q },
     });
   }
+  if (values.date !== undefined) {
+    selectReportListFilterDateMode();
+    fireEvent.change(document.getElementById(REPORT_LIST_DATE_FIELD_ID)!, {
+      target: { value: values.date },
+    });
+    return;
+  }
+  if (values.from !== undefined || values.to !== undefined) {
+    selectReportListFilterRangeMode();
+  }
   if (values.from !== undefined) {
     fireEvent.change(document.getElementById(REPORT_LIST_FROM_FIELD_ID)!, {
       target: { value: values.from },
@@ -587,16 +669,20 @@ export function fillReportListFilter(values: {
       target: { value: values.to },
     });
   }
-  if (values.date !== undefined) {
-    fireEvent.change(document.getElementById(REPORT_LIST_DATE_FIELD_ID)!, {
-      target: { value: values.date },
-    });
-  }
 }
 
-export function submitReportListFilter(): void {
+/** 絞り込み入力欄の変更後、デバウンス（300ms）による自動適用を待つ */
+export async function waitForReportListFilterDebounce(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) =>
+      setTimeout(resolve, REPORT_LIST_FILTER_DEBOUNCE_MS + 50),
+    );
+  });
+}
+
+export function clickReportListFilterClear(): void {
   fireEvent.click(
-    screen.getByRole('button', { name: REPORT_LIST_FILTER_BUTTON_LABEL }),
+    screen.getByRole('button', { name: REPORT_LIST_FILTER_CLEAR_BUTTON_LABEL }),
   );
 }
 

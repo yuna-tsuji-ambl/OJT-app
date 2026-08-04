@@ -8,6 +8,12 @@ import {
   applyDailyReportListFilter,
   applyWeeklyReportListFilter,
   buildPastDailyReportsOldestFirst,
+  clickDailyReportEdit,
+  clickDailyReportResetToCurrent,
+  clickReportListFilterClear,
+  createPastDailyReportFixture,
+  expectDailyReportEditingBannerHidden,
+  expectDailyReportEditingBannerVisible,
   expectDailyReportFieldValues,
   expectDashboardHasNoReportListLink,
   expectLegacyReportPathRedirectsToReports,
@@ -18,17 +24,17 @@ import {
   expectPastWeeklyReportPeriodKeysVisible,
   expectReportCommentNotVisible,
   expectReportCommentVisible,
-  expectReportListFilterConflictError,
   expectReportResponseStatus,
   expectTraineeReportsPageWithFormsAndLinks,
+  DAILY_REPORT_PAGE_TITLE,
   expectTrainerDailyReportContent,
   expectTrainerReportCount,
+  expectTrainerReportSplitLayout,
   expectTrainerWeeklyReportContent,
   expectWeeklyReportFieldValues,
   fillDailyReportFields,
   fillReportListFilter,
   fillWeeklyReportFields,
-  filterTrainerReportsByType,
   formatDailyReportPeriodKey,
   formatDailyReportPeriodKeyDaysAgo,
   formatWeeklyReportPeriodKey,
@@ -48,22 +54,24 @@ import {
   openWeeklyReportPage,
   putTraineeDailyReportViaApi,
   putTraineeWeeklyReportViaApi,
+  REPORT_LIST_DATE_LABEL,
+  REPORT_LIST_FROM_LABEL,
+  REPORT_LIST_TO_LABEL,
   REPORT_LIST_WEEKLY_DATE_LABEL,
-  REPORT_TYPE_FILTER_VALUE_DAILY,
   DAILY_REPORT_LEGACY_PATH,
   WEEKLY_REPORT_LEGACY_PATH,
-  saveDailyReportDraft,
+  waitForTrainerSplitReportListLoads,
+  WEEKLY_REPORT_PAGE_TITLE,
   seedPastDailyReportsViaApi,
+  selectReportListFilterDateMode,
   startEditTrainerReportComment,
   submitDailyReport,
   submitDailyReportExpectingValidationError,
-  submitReportListFilter,
   submitTrainerReportComment,
   submitWeeklyReport,
   trainerReportCard,
   updateTrainerReportComment,
   type DailyReportFieldValues,
-  type PartialDailyReportFieldValues,
   type SeededPastDailyReport,
   type SeededPastWeeklyReport,
   type WeeklyReportFieldValues,
@@ -75,21 +83,24 @@ import {
   REPORT_CI_GATE_TIMEOUT_MS,
 } from './helpers/reportCi';
 
-/** E-R01: 下書き用の一部項目 */
-const E_R01_PARTIAL_DAILY_VALUES = {
-  doneToday: 'E-R01 本日やったこと（下書き）',
-  learnedToday: 'E-R01 学んだこと（下書き）',
-} as const satisfies PartialDailyReportFieldValues;
-
-/** E-R01: 提出前に埋める残り項目 */
-const E_R01_REMAINING_DAILY_VALUES = {
+/** E-R01: 当日提出する日次報告の全項目 */
+const E_R01_FULL_DAILY_VALUES = {
+  doneToday: 'E-R01 本日やったこと',
+  learnedToday: 'E-R01 学んだこと',
   blockers: 'E-R01 困っていること',
   planTomorrow: 'E-R01 明日やること',
-} as const satisfies PartialDailyReportFieldValues;
+} as const satisfies DailyReportFieldValues;
 
-const E_R01_FULL_DAILY_VALUES = {
-  ...E_R01_PARTIAL_DAILY_VALUES,
-  ...E_R01_REMAINING_DAILY_VALUES,
+/** E-R01: 一覧編集で上書き対象とする前日の既存日次報告 */
+const E_R01_PAST_REPORT: SeededPastDailyReport = createPastDailyReportFixture(
+  1,
+  'E-R01',
+);
+
+/** E-R01: 編集して再提出する変更後の値（明日やることのみ変更） */
+const E_R01_EDITED_PAST_VALUES = {
+  ...E_R01_PAST_REPORT.content,
+  planTomorrow: 'E-R01 編集後の明日やること',
 } as const satisfies DailyReportFieldValues;
 
 // 同一 trainee・同一日/週は 1 件制約のため、ファイル内は直列実行する
@@ -97,42 +108,56 @@ test.describe('報告書 E2E', () => {
   test.describe.configure({ mode: 'serial' });
 
   /**
-   * E-R01: 日次報告の下書き保存から提出まで
+   * E-R01: 日次報告の提出から一覧編集による再提出まで
    * 観点: CUJ / 連携 / 操作性
    *
    * 手順:
-   * 1. 新卒で `/reports/daily` を開く
-   * 2. 一部項目を入力し下書き保存
-   * 3. 残りを入力し提出
+   * 1. 新卒でヘッダー「報告書」から `/reports` を開き、当日の全項目を入力して提出
+   * 2. 右ペインの前日報告カードの「編集」から当該報告を左フォームへ読み込む
+   * 3. 一部項目を変更して再提出し、「今日の報告に戻る」で当日フォームへ戻る
    *
    * 期待結果（表示）:
-   * - 下書き保存後に再表示すると入力内容が復元される
-   * - 提出成功のフィードバックが表示される
+   * - 編集読み込み時に編集中バナーが表示され、既存内容が復元される
+   * - 「今日の報告に戻る」でバナーが消える
    *
    * 期待結果（データ）:
-   * - 提出後の PUT レスポンスで `status=submitted` となる
+   * - いずれの提出も `status=submitted` となる
+   * - 編集・再提出は前日の periodKey を上書きし、新規作成しない
    *
    * 参照: docs/test-specs/report-feature.md E-R01
    */
-  test.describe('E-R01 日次報告の下書き保存から提出まで', () => {
-    test('一部入力で下書き保存後に復元し_残り入力して提出するとstatusがsubmittedになる', async ({
+  test.describe('E-R01 日次報告の提出から一覧編集による再提出まで', () => {
+    test('全項目入力して提出後_一覧編集から前日報告を上書き再提出できる', async ({
       page,
+      request,
     }) => {
+      await seedPastDailyReportsViaApi(request, [E_R01_PAST_REPORT]);
+
       await loginAsTrainee(page);
       await openDailyReportPage(page);
 
-      await fillDailyReportFields(page, E_R01_PARTIAL_DAILY_VALUES);
-      const draftResponse = await saveDailyReportDraft(page);
-      await expectReportResponseStatus(draftResponse, 'draft');
-
-      await openDailyReportPage(page);
-      await expectDailyReportFieldValues(page, E_R01_PARTIAL_DAILY_VALUES);
-
-      await fillDailyReportFields(page, E_R01_REMAINING_DAILY_VALUES);
-      await expectDailyReportFieldValues(page, E_R01_FULL_DAILY_VALUES);
-
+      await fillDailyReportFields(page, E_R01_FULL_DAILY_VALUES);
       const submitResponse = await submitDailyReport(page);
       await expectReportResponseStatus(submitResponse, 'submitted');
+
+      await clickDailyReportEdit(page, E_R01_PAST_REPORT.periodKey);
+      await expectDailyReportEditingBannerVisible(
+        page,
+        E_R01_PAST_REPORT.periodKey,
+      );
+      await expectDailyReportFieldValues(page, E_R01_PAST_REPORT.content);
+
+      await fillDailyReportFields(page, {
+        planTomorrow: E_R01_EDITED_PAST_VALUES.planTomorrow,
+      });
+      const editResponse = await submitDailyReport(page);
+      await expectReportResponseStatus(editResponse, 'submitted');
+
+      await clickDailyReportResetToCurrent(page);
+      await expectDailyReportEditingBannerHidden(
+        page,
+        E_R01_PAST_REPORT.periodKey,
+      );
     });
   });
 
@@ -536,25 +561,24 @@ test.describe('報告書 E2E', () => {
   } as const satisfies SeededPastWeeklyReport;
 
   /**
-   * E-R10: トレーナー報告一覧のフィルタ
+   * E-R10: トレーナー報告一覧の左右分割
    * 観点: CUJ / 連携 / 操作性
    *
    * 手順:
    * 1. API で担当新卒に日次・週次報告を混在投入する（前提データ）
    * 2. トレーナーで `/reports` を開く
-   * 3. 報告種別フィルタで `type=daily`（日次）を選択する
    *
    * 期待結果（表示）:
-   * - 日次報告のみが一覧に表示される
-   * - 週次報告は表示されない
+   * - 左に日次報告、右に週次報告が表示される
+   * - 各ペインに検索フィルタがある
    *
    * 期待結果（データ）:
-   * - GET `/api/reports?traineeId=...&type=daily` が呼ばれる
+   * - GET `/api/reports?traineeId=...&type=daily` と `type=weekly` が呼ばれる
    *
    * 参照: docs/test-specs/report-feature.md E-R10
    */
-  test.describe('E-R10 トレーナー報告一覧のフィルタ', () => {
-    test('type=dailyでフィルタ_日次報告のみが表示され週次は表示されない', async ({
+  test.describe('E-R10 トレーナー報告一覧の左右分割', () => {
+    test('reports表示_左日次右週次にそれぞれ表示されtype付きGETが呼ばれる', async ({
       page,
       request,
     }) => {
@@ -562,23 +586,24 @@ test.describe('報告書 E2E', () => {
       await putTraineeWeeklyReportViaApi(request, E_R10_WEEKLY_REPORT);
 
       await loginAsTrainer(page);
+      const loadsPromise = waitForTrainerSplitReportListLoads(page);
       await openReportListPage(page);
+      await loadsPromise;
 
-      await expectTrainerReportCount(page, E_R10_DAILY_REPORT.periodKey, 1);
-      await expectTrainerReportCount(page, E_R10_WEEKLY_REPORT.periodKey, 1);
-
-      const filterResponse = await filterTrainerReportsByType(
-        page,
-        REPORT_TYPE_FILTER_VALUE_DAILY,
-      );
-      expect(filterResponse.ok()).toBeTruthy();
-
+      await expectTrainerReportSplitLayout(page);
       await expectTrainerDailyReportContent(
         page,
         E_R10_DAILY_REPORT.periodKey,
         E_R10_DAILY_REPORT.content,
       );
-      await expectTrainerReportCount(page, E_R10_WEEKLY_REPORT.periodKey, 0);
+      await expectTrainerReportCount(page, E_R10_DAILY_REPORT.periodKey, 1);
+      await expectTrainerReportCount(page, E_R10_WEEKLY_REPORT.periodKey, 1);
+      await expect(
+        page.getByRole('region', { name: DAILY_REPORT_PAGE_TITLE }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('region', { name: WEEKLY_REPORT_PAGE_TITLE }),
+      ).toBeVisible();
     });
   });
 
@@ -818,13 +843,16 @@ test.describe('報告書 E2E', () => {
   });
 
   /**
-   * E-R15: 期間条件同時指定のエラー表示
-   * 観点: 異常系 / 操作性
+   * E-R15: 期間の指定方法（範囲/特定日）の排他 UI
+   * 観点: 異常系防止 / 操作性
+   *
+   * 期間の絞り込みは排他ラジオボタンで切り替わり、非選択モードの入力欄は
+   * 画面上に表示されないため、同時指定が構造的に発生しない（BR-R16）。
    *
    * 参照: docs/test-specs/report-feature.md E-R15
    */
-  test.describe('E-R15 期間条件同時指定のエラー表示', () => {
-    test('from/toとdate同時指定_エラー表示され一覧は更新されない', async ({
+  test.describe('E-R15 期間の指定方法（範囲/特定日）の排他 UI', () => {
+    test('特定日モードに切替時にfrom/to欄が非表示になり一覧はdateのみで絞り込まれる', async ({
       page,
       request,
     }) => {
@@ -838,19 +866,33 @@ test.describe('報告書 E2E', () => {
         E_R13_OTHER_DAILY_REPORT.periodKey,
       ]);
 
+      await expect(page.getByLabel(REPORT_LIST_FROM_LABEL)).toBeVisible();
+      await expect(page.getByLabel(REPORT_LIST_TO_LABEL)).toBeVisible();
+      await expect(page.getByLabel(REPORT_LIST_DATE_LABEL)).toHaveCount(0);
+
+      await selectReportListFilterDateMode(page);
+      await expect(page.getByLabel(REPORT_LIST_FROM_LABEL)).toHaveCount(0);
+      await expect(page.getByLabel(REPORT_LIST_TO_LABEL)).toHaveCount(0);
+      await expect(page.getByLabel(REPORT_LIST_DATE_LABEL)).toBeVisible();
+
       await fillReportListFilter(page, {
-        from: formatDailyReportPeriodKeyDaysAgo(30),
-        to: formatDailyReportPeriodKeyDaysAgo(0),
         date: E_R13_MATCH_DAILY_REPORT.periodKey,
       });
-      await submitReportListFilter(page);
+      const dateResponse = await applyDailyReportListFilter(page);
+      expect(dateResponse.ok()).toBeTruthy();
+      await expectPastDailyReportPeriodKeysVisible(page, [
+        E_R13_MATCH_DAILY_REPORT.periodKey,
+      ]);
+      await expectPastDailyReportPeriodKeysNotVisible(page, [
+        E_R13_OTHER_DAILY_REPORT.periodKey,
+      ]);
 
-      await expectReportListFilterConflictError(page);
+      await clickReportListFilterClear(page);
+      await expect(page.getByLabel(REPORT_LIST_FROM_LABEL)).toBeVisible();
       await expectPastDailyReportPeriodKeysVisible(page, [
         E_R13_MATCH_DAILY_REPORT.periodKey,
         E_R13_OTHER_DAILY_REPORT.periodKey,
       ]);
-      await expectPastDailyReportPeriodKeysNotVisible(page, []);
     });
   });
 

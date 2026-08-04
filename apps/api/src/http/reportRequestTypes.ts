@@ -34,17 +34,18 @@ export function parseListReportsQuery(query: unknown): ListReportsQuery | null {
     return null;
   }
 
+  const listQuery = parseOwnReportListQuery(query);
   const typeParam = readQueryParam(query.type);
 
   if (typeParam === null) {
-    return { traineeId };
+    return { traineeId, ...listQuery };
   }
 
   if (!isReportType(typeParam)) {
     return null;
   }
 
-  return { traineeId, type: typeParam };
+  return { traineeId, type: typeParam, ...listQuery };
 }
 
 export type OwnReportListQueryParams = {

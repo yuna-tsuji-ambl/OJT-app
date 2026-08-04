@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DAILY_REPORT_PAGE_TITLE,
@@ -9,10 +9,13 @@ import {
 } from '../domain/reportForm';
 import {
   clearAuthSession,
-  clickDailyReportDraftSave,
+  clickDailyReportResetToCurrent,
   clickDailyReportSubmit,
+  clickReportEdit,
+  clickReportListFilterClear,
   createTraineeHomeMessagingMock,
-  expectDailyReportDraftSaveSuccess,
+  expectDailyReportEditingBannerHidden,
+  expectDailyReportEditingBannerVisible,
   expectDailyReportFieldLabelsPerSpec,
   expectDailyReportFieldValues,
   expectDailyReportFormHidden,
@@ -22,7 +25,6 @@ import {
   expectDailyReportSubmitSuccess,
   expectPastDailyReportsVisible,
   expectPastWeeklyReportsVisible,
-  expectReportListFilterConflictError,
   expectTraineeHeaderReportNav,
   expectTraineeReportPageElementOrder,
   expectTraineeReportsInputPageVisible,
@@ -34,10 +36,13 @@ import {
   fillReportListFilter,
   navigateFromHeaderToReports,
   renderTraineeReportNavigation,
+  selectReportListFilterDateMode,
   selectWeeklyReportTypeToggle,
-  submitReportListFilter,
+  waitForReportListFilterDebounce,
   U_R30_DAILY_DATE,
-  U_R30_PARTIAL_DAILY_VALUES,
+  U_R30_EDITED_DAILY_VALUES,
+  U_R30_EXISTING_DAILY_REPORT,
+  U_R30_EXISTING_DAILY_VALUES,
   U_R31_FULL_DAILY_VALUES,
   U_R32_PAST_DAILY_REPORTS,
   U_R33_PAST_WEEKLY_REPORTS,
@@ -157,48 +162,58 @@ describe('報告書 UI（新卒）', () => {
     });
   });
 
-  describe('U-R30 日次報告の下書き保存 UI', () => {
-    it('一部項目入力して下書き保存_成功フィードバックが表示され再表示で内容が復元される', async () => {
-      fetchDailyReportMock.mockResolvedValue(null);
-      putDailyReportMock.mockImplementation(async (periodKey: string) => ({
-        id: 'report-u-r30',
-        traineeId: 'trainee-1',
-        type: 'daily',
-        periodKey,
-        status: 'draft',
-        content: U_R30_PARTIAL_DAILY_VALUES,
-      }));
+  describe('U-R30 一覧からの日次報告編集 UI', () => {
+    it('一覧の編集から過去報告を左フォームへ読み込み_編集して再提出すると当該日が上書きされ今日の報告に戻れる', async () => {
+      fetchOwnDailyReportsMock.mockResolvedValue([U_R30_EXISTING_DAILY_REPORT]);
+      fetchDailyReportMock.mockImplementation(async (periodKey: string) =>
+        periodKey === U_R30_DAILY_DATE ? U_R30_EXISTING_DAILY_REPORT : null,
+      );
+      putDailyReportMock.mockImplementation(
+        async (
+          periodKey: string,
+          input: { status: string; content: typeof U_R30_EDITED_DAILY_VALUES },
+        ) => ({
+          id: 'report-u-r30',
+          traineeId: 'trainee-1',
+          type: 'daily',
+          periodKey,
+          status: 'submitted',
+          content: input.content,
+        }),
+      );
 
-      const firstVisit = await renderTraineeReportNavigation(REPORT_PAGE_PATH);
-      await fillDailyReportFields(U_R30_PARTIAL_DAILY_VALUES);
-      clickDailyReportDraftSave();
+      await renderTraineeReportNavigation(REPORT_PAGE_PATH);
+      await expectPastDailyReportsVisible([U_R30_EXISTING_DAILY_REPORT]);
+
+      clickReportEdit(U_R30_DAILY_DATE);
+      expectDailyReportEditingBannerVisible(U_R30_DAILY_DATE);
+      await expectDailyReportFieldValues(U_R30_EXISTING_DAILY_VALUES);
+
+      await fillDailyReportFields({
+        planTomorrow: U_R30_EDITED_DAILY_VALUES.planTomorrow,
+      });
+      clickDailyReportSubmit();
 
       await waitFor(() => {
         expect(putDailyReportMock).toHaveBeenCalledWith(
-          expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          U_R30_DAILY_DATE,
           {
-            status: 'draft',
-            content: U_R30_PARTIAL_DAILY_VALUES,
+            status: 'submitted',
+            content: U_R30_EDITED_DAILY_VALUES,
           },
           expect.objectContaining({ userId: 'trainee-1', role: 'trainee' }),
         );
       });
-      await expectDailyReportDraftSaveSuccess();
+      await expectDailyReportSubmitSuccess();
 
-      const savedPeriodKey = putDailyReportMock.mock.calls[0]?.[0] as string;
-      firstVisit.unmount();
-
-      fetchDailyReportMock.mockResolvedValue({
-        id: 'report-u-r30',
-        traineeId: 'trainee-1',
-        type: 'daily',
-        periodKey: savedPeriodKey ?? U_R30_DAILY_DATE,
-        status: 'draft',
-        content: U_R30_PARTIAL_DAILY_VALUES,
+      clickDailyReportResetToCurrent();
+      expectDailyReportEditingBannerHidden(U_R30_DAILY_DATE);
+      await waitFor(() => {
+        expect(fetchDailyReportMock).toHaveBeenLastCalledWith(
+          expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          expect.objectContaining({ userId: 'trainee-1', role: 'trainee' }),
+        );
       });
-
-      await renderTraineeReportNavigation(REPORT_PAGE_PATH);
-      await expectDailyReportFieldValues(U_R30_PARTIAL_DAILY_VALUES);
     });
   });
 
@@ -323,7 +338,7 @@ describe('報告書 UI（新卒）', () => {
       await expectPastDailyReportsVisible(U_R45_DAILY_FILTER_REPORTS);
 
       fillReportListFilter({ q: 'ユニーク検索語アルファ' });
-      submitReportListFilter();
+      await waitForReportListFilterDebounce();
 
       await waitFor(() => {
         expect(fetchOwnDailyReportsMock).toHaveBeenLastCalledWith(
@@ -349,7 +364,7 @@ describe('報告書 UI（新卒）', () => {
       await expectPastDailyReportsVisible(U_R45_DAILY_FILTER_REPORTS);
 
       fillReportListFilter({ from: '2026-07-27', to: '2026-07-28' });
-      submitReportListFilter();
+      await waitForReportListFilterDebounce();
 
       await waitFor(() => {
         expect(fetchOwnDailyReportsMock).toHaveBeenLastCalledWith(
@@ -375,7 +390,7 @@ describe('報告書 UI（新卒）', () => {
       await expectPastDailyReportsVisible(U_R45_DAILY_FILTER_REPORTS);
 
       fillReportListFilter({ date: '2026-07-28' });
-      submitReportListFilter();
+      await waitForReportListFilterDebounce();
 
       await waitFor(() => {
         expect(fetchOwnDailyReportsMock).toHaveBeenLastCalledWith(
@@ -403,7 +418,7 @@ describe('報告書 UI（新卒）', () => {
       await expectPastWeeklyReportsVisible(U_R48_WEEKLY_FILTER_REPORTS);
 
       fillReportListFilter({ q: 'ユニーク検索語ベータ', date: '2026-W30' });
-      submitReportListFilter();
+      await waitForReportListFilterDebounce();
 
       await waitFor(() => {
         expect(fetchOwnWeeklyReportsMock).toHaveBeenLastCalledWith(
@@ -415,24 +430,48 @@ describe('報告書 UI（新卒）', () => {
     });
   });
 
-  describe('U-R49 期間条件同時指定のエラー UI', () => {
-    it('from/toとdate同時指定_エラー表示され一覧は更新されない', async () => {
+  describe('U-R49 期間の指定方法（範囲/特定日）の排他 UI', () => {
+    it('ラジオ切替で範囲欄と特定日欄が排他的に表示され_クリアで初期状態に戻る', async () => {
       fetchOwnDailyReportsMock.mockResolvedValue(U_R45_DAILY_FILTER_REPORTS);
 
       await renderTraineeReportNavigation('/reports/daily/list');
       await expectPastDailyReportsVisible(U_R45_DAILY_FILTER_REPORTS);
 
-      const callCountBefore = fetchOwnDailyReportsMock.mock.calls.length;
-      fillReportListFilter({
-        from: '2026-07-01',
-        to: '2026-07-31',
-        date: '2026-07-28',
-      });
-      submitReportListFilter();
+      expect(screen.getByLabelText('開始')).toBeTruthy();
+      expect(screen.getByLabelText('終了')).toBeTruthy();
+      expect(screen.queryByLabelText('特定日')).toBeNull();
 
-      await expectReportListFilterConflictError();
-      expect(fetchOwnDailyReportsMock.mock.calls.length).toBe(callCountBefore);
-      await expectPastDailyReportsVisible(U_R45_DAILY_FILTER_REPORTS);
+      fillReportListFilter({ from: '2026-07-27', to: '2026-07-28' });
+      await waitForReportListFilterDebounce();
+      await waitFor(() => {
+        expect(fetchOwnDailyReportsMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ userId: 'trainee-1', role: 'trainee' }),
+          { from: '2026-07-27', to: '2026-07-28' },
+        );
+      });
+
+      selectReportListFilterDateMode();
+      expect(screen.queryByLabelText('開始')).toBeNull();
+      expect(screen.queryByLabelText('終了')).toBeNull();
+      expect(screen.getByLabelText('特定日')).toBeTruthy();
+
+      await waitForReportListFilterDebounce();
+      await waitFor(() => {
+        expect(fetchOwnDailyReportsMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ userId: 'trainee-1', role: 'trainee' }),
+          {},
+        );
+      });
+
+      clickReportListFilterClear();
+      await waitFor(() => {
+        expect(fetchOwnDailyReportsMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ userId: 'trainee-1', role: 'trainee' }),
+          {},
+        );
+      });
+      expect(screen.getByLabelText('開始')).toBeTruthy();
+      expect(screen.getByLabelText('終了')).toBeTruthy();
     });
   });
 });
@@ -460,8 +499,16 @@ describe('報告書 UI（トレーナー）', () => {
   });
 
   describe('U-R35 トレーナー・報告一覧の表示', () => {
-    it('reports表示中_担当新卒の報告がReportCardで未読・最新順に一覧表示される', async () => {
-      fetchReportsMock.mockResolvedValue([...U_R35_ASSIGNED_TRAINEE_REPORTS]);
+    it('reports表示中_左日次右週次にReportCardで一覧表示される', async () => {
+      fetchReportsMock.mockImplementation(
+        async (_traineeId, _user, options = {}) => {
+          const all = [...U_R35_ASSIGNED_TRAINEE_REPORTS];
+          if (options.reportType) {
+            return all.filter((report) => report.type === options.reportType);
+          }
+          return all;
+        },
+      );
 
       await renderTrainerReportNavigation(REPORT_PAGE_PATH);
 
@@ -469,7 +516,12 @@ describe('報告書 UI（トレーナー）', () => {
         expect(fetchReportsMock).toHaveBeenCalledWith(
           'trainee-1',
           expect.objectContaining({ userId: 'trainer-1', role: 'trainer' }),
-          {},
+          expect.objectContaining({ reportType: 'daily' }),
+        );
+        expect(fetchReportsMock).toHaveBeenCalledWith(
+          'trainee-1',
+          expect.objectContaining({ userId: 'trainer-1', role: 'trainer' }),
+          expect.objectContaining({ reportType: 'weekly' }),
         );
       });
       expectReportListPageVisible();
@@ -480,7 +532,14 @@ describe('報告書 UI（トレーナー）', () => {
 
   describe('U-R36 トレーナー・報告詳細の表示', () => {
     it('一覧から提出済み報告を選択_詳細で日次content全項目が閲覧できる', async () => {
-      fetchReportsMock.mockResolvedValue([U_R36_SUBMITTED_DAILY_REPORT]);
+      fetchReportsMock.mockImplementation(
+        async (_traineeId, _user, options = {}) => {
+          if (options.reportType === 'weekly') {
+            return [];
+          }
+          return [U_R36_SUBMITTED_DAILY_REPORT];
+        },
+      );
       fetchReportByIdMock.mockResolvedValue(U_R36_SUBMITTED_DAILY_REPORT);
 
       await renderTrainerReportNavigation(REPORT_PAGE_PATH);

@@ -1,4 +1,7 @@
-import type { ReportResponse } from '../domain/reportForm';
+import {
+  formatReportPeriodKeyLabel,
+  type ReportResponse,
+} from '../domain/reportForm';
 import { ReportBodyContent } from './ReportBodyContent';
 import { ReportCommentsSection } from './ReportCommentsSection';
 
@@ -21,9 +24,11 @@ export function ReportDetailView({
   onStartEditComment,
   onUpdateComment,
 }: ReportDetailViewProps) {
+  const periodLabel = formatReportPeriodKeyLabel(report.periodKey);
+
   return (
     <section aria-label={report.periodKey}>
-      <h2>{report.periodKey}</h2>
+      <h2>{periodLabel}</h2>
       <ReportBodyContent report={report} />
       <ReportCommentsSection
         comments={report.comments}

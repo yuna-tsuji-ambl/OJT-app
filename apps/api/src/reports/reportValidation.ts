@@ -1,6 +1,5 @@
 import {
   REPORT_CONTENT_FIELDS_BY_TYPE,
-  REPORT_STATUS_SUBMITTED,
   type ReportType,
 } from './reportConstants.js';
 import type { PutReportInputByType } from './reportTypes.js';
@@ -18,6 +17,7 @@ function assertContentFields(
   assertValidReportInput(fields.every((field) => isValid(content[field])));
 }
 
+/** 下書き廃止（提出のみ）につき、全項目を常に必須とする */
 export function validateOwnedReportPutInput<TType extends ReportType>(
   reportType: TType,
   input: PutReportInputByType[TType],
@@ -29,8 +29,5 @@ export function validateOwnedReportPutInput<TType extends ReportType>(
     fields,
     isWithinReportContentFieldMaxLength,
   );
-
-  if (input.status === REPORT_STATUS_SUBMITTED) {
-    assertContentFields(input.content, fields, isNonEmptyString);
-  }
+  assertContentFields(input.content, fields, isNonEmptyString);
 }

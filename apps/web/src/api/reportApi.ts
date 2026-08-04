@@ -17,7 +17,7 @@ const REPORTS_API_PATH = '/api/reports';
 const DAILY_REPORT_API_BASE_PATH = '/api/reports/daily';
 const WEEKLY_REPORT_API_BASE_PATH = '/api/reports/weekly';
 
-export interface FetchReportsOptions {
+export interface FetchReportsOptions extends OwnReportListQuery {
   readonly reportType?: ReportFormType;
 }
 
@@ -32,6 +32,18 @@ function buildReportsListApiPath(
   const query = new URLSearchParams({ traineeId });
   if (options.reportType) {
     query.set('type', options.reportType);
+  }
+  if (options.q !== undefined && options.q.length > 0) {
+    query.set('q', options.q);
+  }
+  if (options.from !== undefined && options.from.length > 0) {
+    query.set('from', options.from);
+  }
+  if (options.to !== undefined && options.to.length > 0) {
+    query.set('to', options.to);
+  }
+  if (options.date !== undefined && options.date.length > 0) {
+    query.set('date', options.date);
   }
   return `${REPORTS_API_PATH}?${query.toString()}`;
 }
