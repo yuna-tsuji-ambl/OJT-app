@@ -45,7 +45,8 @@ export function ReportTypeToggle({ value, onChange }: ReportTypeToggleProps) {
             aria-pressed={isPressed}
             onClick={() => onChange(option.value)}
           >
-            {option.label}
+            <span className="report-type-toggle__dot" aria-hidden="true" />
+            <span className="report-type-toggle__label">{option.label}</span>
           </button>
         );
       })}

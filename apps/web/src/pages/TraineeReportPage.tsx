@@ -79,9 +79,12 @@ function TraineeReportPageContent() {
       className="page-section page-section--wide"
       aria-labelledby="trainee-reports-heading"
     >
-      <h1 id="trainee-reports-heading">報告書</h1>
-
-      <ReportTypeToggle value={reportType} onChange={setReportType} />
+      <div className="page-section__title-row">
+        <h1 id="trainee-reports-heading">報告書</h1>
+        <div className="page-section__title-meta">
+          <ReportTypeToggle value={reportType} onChange={setReportType} />
+        </div>
+      </div>
 
       <ReportSplitView
         left={
