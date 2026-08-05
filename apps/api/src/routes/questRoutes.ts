@@ -1,120 +1,91 @@
-import { Router, type Request, type Response } from 'express';
+import { Router } from 'express';
 import {
   approveQuest,
+  createQuest,
   getPendingQuestList,
   getQuestList,
+  getTrainerQuestProgressList,
   requestClearQuest,
 } from '../quest.js';
-import { sendQuestErrorResponse } from '../http/expressErrorResponse.js';
-import { readExpressUserContext } from '../http/expressUserContext.js';
+import { parseCreateQuestBody } from '../http/questRequestTypes.js';
 import { readRouteParam } from '../http/expressRouteParams.js';
-import type { QuestStore } from '../repositories/questStore.js';
-import type { SheetRepository } from '../repositories/sheetRepository.js';
-
-async function handleGetQuestList(
-  request: Request,
-  response: Response,
-  sheetRepository: SheetRepository,
-): Promise<void> {
-  try {
-    const context = readExpressUserContext(request);
-    const quests = await getQuestList(
-      context.userId,
-      context.role,
-      sheetRepository,
-    );
-    response.json(quests);
-  } catch (error) {
-    sendQuestErrorResponse(response, error);
-  }
-}
-
-async function handleGetPendingQuestList(
-  request: Request,
-  response: Response,
-  questStore: QuestStore,
-): Promise<void> {
-  try {
-    const context = readExpressUserContext(request);
-    const quests = await getPendingQuestList(
-      context.userId,
-      context.role,
-      questStore,
-    );
-    response.json(quests);
-  } catch (error) {
-    sendQuestErrorResponse(response, error);
-  }
-}
-
-async function handleRequestQuestClear(
-  request: Request,
-  response: Response,
-  questStore: QuestStore,
-): Promise<void> {
-  try {
-    const context = readExpressUserContext(request);
-    const quest = await requestClearQuest(
-      readRouteParam(request.params.questId),
-      context.userId,
-      context.role,
-      questStore,
-    );
-    response.json(quest);
-  } catch (error) {
-    sendQuestErrorResponse(response, error);
-  }
-}
-
-async function handleApproveQuest(
-  request: Request,
-  response: Response,
-  questStore: QuestStore,
-  sheetRepository: SheetRepository,
-): Promise<void> {
-  try {
-    const context = readExpressUserContext(request);
-    const quest = await approveQuest(
-      readRouteParam(request.params.questId),
-      context.userId,
-      context.role,
-      questStore,
-      sheetRepository,
-    );
-    response.json(quest);
-  } catch (error) {
-    sendQuestErrorResponse(response, error);
-  }
-}
+import { runQuestRoute } from '../http/runQuestRoute.js';
+import type { AssignmentRepository } from '../repositories/assignmentRepository.js';
 
 export function createQuestRouter(
-  questStore: QuestStore,
-  sheetRepository: SheetRepository,
+  assignmentRepository: AssignmentRepository,
 ): Router {
   const router = Router();
 
   router.get(
     '/quests',
     (request, response) =>
-      void handleGetQuestList(request, response, sheetRepository),
+      void runQuestRoute(request, response, (context) =>
+        getQuestList(context.userId, context.role, assignmentRepository),
+      ),
   );
 
   router.get(
     '/quests/pending',
     (request, response) =>
-      void handleGetPendingQuestList(request, response, questStore),
+      void runQuestRoute(request, response, (context) =>
+        getPendingQuestList(context.userId, context.role, assignmentRepository),
+      ),
   );
+
+  router.get(
+    '/quests/progress',
+    (request, response) =>
+      void runQuestRoute(request, response, (context) =>
+        getTrainerQuestProgressList(
+          context.userId,
+          context.role,
+          assignmentRepository,
+        ),
+      ),
+  );
+
+  router.post('/quests', (request, response) => {
+    const body = parseCreateQuestBody(request.body);
+
+    if (!body) {
+      response.status(400).json({ error: 'Invalid quest input' });
+      return;
+    }
+
+    void runQuestRoute(
+      request,
+      response,
+      (context) =>
+        createQuest(context.userId, context.role, body, assignmentRepository),
+      { successStatus: 201 },
+    );
+  });
 
   router.post(
     '/quests/:questId/request',
     (request, response) =>
-      void handleRequestQuestClear(request, response, questStore),
+      void runQuestRoute(request, response, (context) =>
+        requestClearQuest(
+          readRouteParam(request.params.questId),
+          context.userId,
+          context.role,
+          assignmentRepository,
+        ),
+      ),
   );
 
   router.post(
     '/quests/:questId/approve',
     (request, response) =>
-      void handleApproveQuest(request, response, questStore, sheetRepository),
+      void runQuestRoute(request, response, (context) =>
+        approveQuest(
+          readRouteParam(request.params.questId),
+          context.userId,
+          context.role,
+          assignmentRepository,
+        ),
+      ),
   );
 
   return router;

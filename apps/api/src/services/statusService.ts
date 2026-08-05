@@ -7,30 +7,46 @@ import type {
   QuickQuestionResult,
   QuickReplyResult,
 } from '../domain/chatTypes.js';
+import { TRAINER_STATUS } from '../domain/statusConstants.js';
 import type { TrainerStatusType } from '../domain/statusConstants.js';
 import type { TrainerStatusRecord } from '../domain/statusTypes.js';
-import {
-  createTrainerStatusRecord,
-  requireTrainerStatusRecord,
-} from '../domain/trainerStatus.js';
+import { createTrainerStatusRecord } from '../domain/trainerStatus.js';
 import type { UserContext } from '../domain/types.js';
 import type { ChatMessageStore } from '../repositories/chatMessageStore.js';
 import type { TrainerStatusStore } from '../repositories/trainerStatusStore.js';
+
+/** 未登録時はシードと同じ「集中モード」を返す（表示用。永続化はしない） */
+function resolveTrainerStatusRecord(
+  trainerId: string,
+  record: TrainerStatusRecord | null,
+): TrainerStatusRecord {
+  if (record) {
+    return record;
+  }
+  return createTrainerStatusRecord(trainerId, TRAINER_STATUS.FOCUS_MODE);
+}
 
 async function loadTrainerStatus(
   trainerId: string,
   trainerStatusStore: TrainerStatusStore,
 ): Promise<TrainerStatusRecord> {
   const record = await trainerStatusStore.getByUserId(trainerId);
-  return requireTrainerStatusRecord(trainerId, record);
+  return resolveTrainerStatusRecord(trainerId, record);
 }
 
-async function loadTrainerStatusForTrainee(
+async function loadTrainerStatusForViewer(
   trainerId: string,
   context: UserContext,
   trainerStatusStore: TrainerStatusStore,
 ): Promise<TrainerStatusRecord> {
-  ensureTrainee(context);
+  const isTraineeViewer = context.role === 'trainee';
+  const isOwnTrainerStatus =
+    context.role === 'trainer' && context.userId === trainerId;
+
+  if (!isTraineeViewer && !isOwnTrainerStatus) {
+    throw new ForbiddenError();
+  }
+
   return loadTrainerStatus(trainerId, trainerStatusStore);
 }
 
@@ -123,7 +139,7 @@ export class StatusService {
     context: UserContext,
     trainerStatusStore: TrainerStatusStore,
   ): Promise<TrainerStatusRecord> {
-    return loadTrainerStatusForTrainee(trainerId, context, trainerStatusStore);
+    return loadTrainerStatusForViewer(trainerId, context, trainerStatusStore);
   }
 
   async sendQuickQuestion(

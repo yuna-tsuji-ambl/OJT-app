@@ -1,45 +1,40 @@
-import { useEffect, useState } from 'react';
-import { fetchConditionAlerts, type ConditionAlert } from '../api/conditionApi';
-import { approveQuest, fetchPendingQuests, type Quest } from '../api/questApi';
 import { useAuth } from '../auth/AuthContext';
 import { ConditionAlertCard } from '../components/ConditionAlertCard';
 import { PendingQuestCard } from '../components/PendingQuestCard';
+import { TrainerQuestProgressCard } from '../components/TrainerQuestProgressCard';
+import { useTrainerDashboard } from '../hooks/useTrainerDashboard';
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const [alerts, setAlerts] = useState<ConditionAlert[]>([]);
-  const [pendingQuests, setPendingQuests] = useState<Quest[]>([]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    void fetchConditionAlerts(user).then(setAlerts);
-    void fetchPendingQuests(user).then(setPendingQuests);
-  }, [user]);
+  const { alerts, pendingQuests, progressQuests, approveQuestAndReload } =
+    useTrainerDashboard(user);
 
   if (!user) {
     return null;
   }
 
   const authUser = user;
-
-  async function handleApprove(questId: string): Promise<void> {
-    await approveQuest(questId, authUser);
-    setPendingQuests(await fetchPendingQuests(authUser));
-  }
+  const progressQuestIds = new Set(progressQuests.map((quest) => quest.id));
 
   return (
     <section className="page-section" aria-labelledby="dashboard-heading">
       <h1 id="dashboard-heading">ダッシュボード</h1>
-      {pendingQuests.map((quest) => (
-        <PendingQuestCard
+      {progressQuests.map((quest) => (
+        <TrainerQuestProgressCard
           key={quest.id}
           quest={quest}
-          onApprove={handleApprove}
+          onApprove={(questId) => approveQuestAndReload(questId, authUser)}
         />
       ))}
+      {pendingQuests
+        .filter((quest) => !progressQuestIds.has(quest.id))
+        .map((quest) => (
+          <PendingQuestCard
+            key={quest.id}
+            quest={quest}
+            onApprove={(questId) => approveQuestAndReload(questId, authUser)}
+          />
+        ))}
       {alerts.map((alert) => (
         <ConditionAlertCard key={alert.traineeId} alert={alert} />
       ))}

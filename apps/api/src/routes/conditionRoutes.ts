@@ -1,67 +1,77 @@
 import { Router } from 'express';
 import {
+  getConditionGraphData,
+  getConditionPageAlert,
   getLatestConditionRecord,
   listConditionAlerts,
   submitConditionRecord,
 } from '../condition.js';
-import { ConditionRecordNotFoundError } from '../domain/errors.js';
-import type { ConditionDraft } from '../domain/conditionTypes.js';
-import { readExpressUserContext } from '../http/expressUserContext.js';
+import { parseConditionDraftBody } from '../http/conditionRequestTypes.js';
+import { readRouteParam } from '../http/expressRouteParams.js';
+import { runConditionRoute } from '../http/runConditionRoute.js';
 import type { ConditionRecordStore } from '../repositories/conditionRecordStore.js';
 
 export function createConditionRouter(store: ConditionRecordStore): Router {
   const router = Router();
 
-  router.post('/condition', async (request, response) => {
-    try {
-      const context = readExpressUserContext(request);
-      const result = await submitConditionRecord(
-        request.body as ConditionDraft,
-        context.userId,
-        context.role,
-        store,
-      );
-      response.json(result);
-    } catch {
-      response.status(401).json({ error: 'Unauthorized' });
-    }
-  });
+  router.post('/condition', (request, response) => {
+    const draft = parseConditionDraftBody(request.body);
 
-  router.get('/condition/alerts', async (request, response) => {
-    try {
-      const context = readExpressUserContext(request);
-      const alerts = await listConditionAlerts(
-        context.userId,
-        context.role,
-        store,
-      );
-      response.json(alerts);
-    } catch {
-      response.status(401).json({ error: 'Unauthorized' });
+    if (!draft) {
+      response.status(400).json({ error: 'Invalid condition input' });
+      return;
     }
+
+    void runConditionRoute(request, response, (context) =>
+      submitConditionRecord(draft, context.userId, context.role, store),
+    );
   });
 
   router.get(
+    '/condition/alerts',
+    (request, response) =>
+      void runConditionRoute(request, response, (context) =>
+        listConditionAlerts(context.userId, context.role, store),
+      ),
+  );
+
+  router.get(
     '/condition/trainees/:traineeId/latest',
-    async (request, response) => {
-      try {
-        const context = readExpressUserContext(request);
-        const record = await getLatestConditionRecord(
-          request.params.traineeId,
+    (request, response) =>
+      void runConditionRoute(request, response, (context) =>
+        getLatestConditionRecord(
+          readRouteParam(request.params.traineeId),
           context.userId,
           context.role,
           store,
-        );
-        response.json(record);
-      } catch (error) {
-        if (error instanceof ConditionRecordNotFoundError) {
-          response.status(404).json({ error: 'Not found' });
-          return;
-        }
+        ),
+      ),
+  );
 
-        response.status(401).json({ error: 'Unauthorized' });
-      }
-    },
+  router.get(
+    '/condition/trainees/:traineeId/graph',
+    (request, response) =>
+      void runConditionRoute(request, response, (context) =>
+        getConditionGraphData(
+          readRouteParam(request.params.traineeId),
+          context.userId,
+          context.role,
+          store,
+        ),
+      ),
+  );
+
+  router.get(
+    '/condition/trainees/:traineeId/page-alert',
+    (request, response) =>
+      void runConditionRoute(request, response, (context) =>
+        getConditionPageAlert(
+          readRouteParam(request.params.traineeId),
+          context.userId,
+          context.role,
+          store,
+        ),
+      ),
   );
 
   return router;

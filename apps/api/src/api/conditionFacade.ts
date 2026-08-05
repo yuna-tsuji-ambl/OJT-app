@@ -3,14 +3,47 @@ import type {
   ConditionDraft,
   ConditionGraphData,
   ConditionHistoryRecord,
+  ConditionPageAlert,
   ConditionSubmitResult,
 } from '../domain/conditionTypes.js';
-import type { UserRole } from '../domain/types.js';
+import type { UserContext, UserRole } from '../domain/types.js';
 import { toUserContext } from '../domain/userContext.js';
 import type { ConditionRecordStore } from '../repositories/conditionRecordStore.js';
 import { ConditionService } from '../services/conditionService.js';
 
 const conditionService = new ConditionService();
+
+type StoreQuery<T> = (
+  service: ConditionService,
+  context: UserContext,
+  store: ConditionRecordStore,
+) => Promise<T>;
+
+type TrainerTraineeQuery<T> = (
+  service: ConditionService,
+  traineeId: string,
+  context: UserContext,
+  store: ConditionRecordStore,
+) => Promise<T>;
+
+async function runWithStore<T>(
+  userId: string,
+  role: UserRole,
+  store: ConditionRecordStore,
+  query: StoreQuery<T>,
+): Promise<T> {
+  return query(conditionService, toUserContext(userId, role), store);
+}
+
+async function runTrainerTraineeQuery<T>(
+  traineeId: string,
+  userId: string,
+  role: UserRole,
+  store: ConditionRecordStore,
+  query: TrainerTraineeQuery<T>,
+): Promise<T> {
+  return query(conditionService, traineeId, toUserContext(userId, role), store);
+}
 
 export function createConditionDraft(values: ConditionDraft): ConditionDraft {
   return conditionService.createDraft(values);
@@ -35,10 +68,11 @@ export async function submitConditionRecord(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionSubmitResult> {
-  return conditionService.submitRecord(
-    draft,
-    toUserContext(userId, role),
+  return runWithStore(
+    userId,
+    role,
     conditionRecordStore,
+    (service, context, store) => service.submitRecord(draft, context, store),
   );
 }
 
@@ -48,10 +82,12 @@ export async function getConditionGraphData(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionGraphData> {
-  return conditionService.getGraphData(
+  return runTrainerTraineeQuery(
     traineeId,
-    toUserContext(userId, role),
+    userId,
+    role,
     conditionRecordStore,
+    (service, id, context, store) => service.getGraphData(id, context, store),
   );
 }
 
@@ -61,10 +97,12 @@ export async function getConditionAlert(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionAlert> {
-  return conditionService.getAlert(
+  return runTrainerTraineeQuery(
     traineeId,
-    toUserContext(userId, role),
+    userId,
+    role,
     conditionRecordStore,
+    (service, id, context, store) => service.getAlert(id, context, store),
   );
 }
 
@@ -73,9 +111,11 @@ export async function listConditionAlerts(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionAlert[]> {
-  return conditionService.listAlerts(
-    toUserContext(userId, role),
+  return runWithStore(
+    userId,
+    role,
     conditionRecordStore,
+    (service, context, store) => service.listAlerts(context, store),
   );
 }
 
@@ -85,9 +125,27 @@ export async function getLatestConditionRecord(
   role: UserRole,
   conditionRecordStore: ConditionRecordStore,
 ): Promise<ConditionHistoryRecord> {
-  return conditionService.getLatestRecord(
+  return runTrainerTraineeQuery(
     traineeId,
-    toUserContext(userId, role),
+    userId,
+    role,
     conditionRecordStore,
+    (service, id, context, store) =>
+      service.getLatestRecord(id, context, store),
+  );
+}
+
+export async function getConditionPageAlert(
+  traineeId: string,
+  userId: string,
+  role: UserRole,
+  conditionRecordStore: ConditionRecordStore,
+): Promise<ConditionPageAlert> {
+  return runTrainerTraineeQuery(
+    traineeId,
+    userId,
+    role,
+    conditionRecordStore,
+    (service, id, context, store) => service.getPageAlert(id, context, store),
   );
 }

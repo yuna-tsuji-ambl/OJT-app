@@ -84,6 +84,36 @@ describe('U-S02 トレーナーステータスの確認', () => {
     expect(result.userId).toBe(trainerUserId);
     expect(result.status).toBe('質問OK');
   });
+
+  it('getTrainerStatus_トレーナーメッセージ画面_自身のステータスが返る', async () => {
+    const result = await getTrainerStatus(
+      trainerUserId,
+      trainerUserId,
+      'trainer',
+      trainerStatusStore,
+    );
+
+    expect(trainerStatusStore.getByUserId).toHaveBeenCalledWith(trainerUserId);
+    expect(result.userId).toBe(trainerUserId);
+    expect(result.status).toBe('質問OK');
+  });
+
+  it('getTrainerStatus_ステータス未登録_デフォルト集中モードが返る', async () => {
+    trainerStatusStore = {
+      getByUserId: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const result = await getTrainerStatus(
+      trainerUserId,
+      trainerUserId,
+      'trainer',
+      trainerStatusStore,
+    );
+
+    expect(result.userId).toBe(trainerUserId);
+    expect(result.status).toBe('集中モード');
+  });
 });
 
 /**

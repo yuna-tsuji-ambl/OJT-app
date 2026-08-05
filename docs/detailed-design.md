@@ -8,12 +8,12 @@
 
 ## 1. ドキュメント管理
 
-| 項目           | 内容                                                                                            |
-| -------------- | ----------------------------------------------------------------------------------------------- |
-| 関連文書       | [README.md](../README.md)、[docs/test-specs/](./test-specs/)                                    |
-| テスト仕様書   | 機能ごとのテストシナリオの正（TDD ワークフロー）                                                |
-| 本書の位置づけ | **アーキテクチャ・API・画面・データモデル・開発範囲の正**。実装前に §2.5 のステータスを確認する |
-| ステータス凡例 | 本書 §2.5 を参照（`実装済` / `一部実装` / `設計済・未着手` / `計画のみ`）                       |
+| 項目           | 内容                                                                                                                                                                                                                                            |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 関連文書       | [README.md](../README.md)、[docs/test-specs/](./test-specs/)（学び: [learning-feature.md](./test-specs/learning-feature.md)）、[api.md](./api.md)、[db.md](./db.md)、[reliability.md](./reliability.md)、[observability.md](./observability.md) |
+| テスト仕様書   | 機能ごとのテストシナリオの正（TDD ワークフロー）                                                                                                                                                                                                |
+| 本書の位置づけ | **アーキテクチャ・API・画面・データモデル・開発範囲の正**。実装前に §2.5 のステータスを確認する                                                                                                                                                 |
+| ステータス凡例 | 本書 §2.5 を参照（`実装済` / `一部実装` / `設計済・未着手` / `計画のみ`）                                                                                                                                                                       |
 
 ### 1.1 改訂履歴
 
@@ -66,48 +66,51 @@
 
 #### 機能一覧
 
-| ID   | 機能                                   | ステータス         | 優先 | 詳細       | テスト仕様書                                              |
-| ---- | -------------------------------------- | ------------------ | ---- | ---------- | --------------------------------------------------------- |
-| F-01 | クエスト管理（一覧・申請・承認）       | **一部実装**       | —    | §7.1       | [quest-feature.md](./test-specs/quest-feature.md)         |
-| F-02 | コンディション記録（モヤモヤ・温度計） | **一部実装**       | —    | §7.2       | [condition-feature.md](./test-specs/condition-feature.md) |
-| F-03 | トレーナーステータス・クイック質問     | **一部実装**       | —    | §7.3       | [status-feature.md](./test-specs/status-feature.md)       |
-| F-04 | Firestore 永続化                       | **実装済**         | —    | §9         | —                                                         |
-| F-05 | モック認証・ロール制御                 | **実装済**         | —    | §5         | —                                                         |
-| F-06 | 課題管理（トレーナー入力・スプシ代替） | **設計済・未着手** | P1   | §7.4       | 未作成                                                    |
-| F-07 | 日次・週次報告書                       | **設計済・未着手** | P1   | §7.5       | 未作成                                                    |
-| F-08 | 目標・タスク管理（ガントチャート）     | **設計済・未着手** | P2   | §7.6       | 未作成                                                    |
-| F-09 | 学び共有（デイリーログ + リンク）      | **設計済・未着手** | P2   | §7.7       | 未作成                                                    |
-| F-10 | 本番認証（Identity Platform 等）       | **計画のみ**       | —    | §5.4       | —                                                         |
-| F-11 | 複数新卒・複数トレーナー               | **計画のみ**       | —    | §13        | —                                                         |
-| F-12 | Google Sheets 連携                     | **廃止予定**       | —    | §7.1（旧） | —                                                         |
+| ID   | 機能                                   | ステータス   | 優先 | 詳細       | テスト仕様書                                                                                                                                                                                                                                                                             |
+| ---- | -------------------------------------- | ------------ | ---- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01 | クエスト管理（一覧・申請・承認）       | **実装済**   | —    | §7.1       | [quest-feature.md](./test-specs/quest-feature.md)                                                                                                                                                                                                                                        |
+| F-02 | コンディション記録（モヤモヤ・温度計） | **一部実装** | —    | §7.2       | [condition-feature.md](./test-specs/condition-feature.md)                                                                                                                                                                                                                                |
+| F-03 | トレーナーステータス・クイック質問     | **一部実装** | —    | §7.3       | [status-feature.md](./test-specs/status-feature.md)、[message-feature.md](./test-specs/message-feature.md)、[message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)、[message-announcement-feature.md](./test-specs/message-announcement-feature.md) |
+| F-04 | Firestore 永続化                       | **実装済**   | —    | §9         | —                                                                                                                                                                                                                                                                                        |
+| F-05 | モック認証・ロール制御                 | **実装済**   | —    | §5         | —                                                                                                                                                                                                                                                                                        |
+| F-06 | 課題管理（トレーナー入力・スプシ代替） | **実装済**   | P1   | §7.4       | [quest-feature.md](./test-specs/quest-feature.md)（F-01 移行節）                                                                                                                                                                                                                         |
+| F-07 | 日次・週次報告書                       | **実装済**   | P1   | §7.5       | [report-feature.md](./test-specs/report-feature.md)                                                                                                                                                                                                                                      |
+| F-08 | 目標・タスク管理（ガントチャート）     | **実装済**   | P2   | §7.6       | [goal-feature.md](./test-specs/goal-feature.md)                                                                                                                                                                                                                                          |
+| F-09 | 学び共有（デイリーログ + リンク）      | **実装済**   | P2   | §7.7       | [learning-feature.md](./test-specs/learning-feature.md)                                                                                                                                                                                                                                  |
+| F-10 | 本番認証（Identity Platform 等）       | **計画のみ** | —    | §5.4       | —                                                                                                                                                                                                                                                                                        |
+| F-11 | 複数新卒・複数トレーナー               | **計画のみ** | —    | §13        | —                                                                                                                                                                                                                                                                                        |
+| F-12 | Google Sheets 連携                     | **廃止予定** | —    | §7.1（旧） | —                                                                                                                                                                                                                                                                                        |
 
 #### 一部実装の既知ギャップ（F-01〜F-03）
 
-| ID   | ギャップ                                                                         | 対応予定                           |
-| ---- | -------------------------------------------------------------------------------- | ---------------------------------- |
-| F-01 | 課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし | F-06 実装時に置換                  |
-| F-02 | グラフ API はサービス層のみ。フロントに推移グラフなし                            | 別途 UI 実装                       |
-| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                       | ドメイン層で追加                   |
-| F-03 | メッセージ非リアルタイム（手動リロード）                                         | WebSocket / ポーリング（計画のみ） |
-| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                              | F-11                               |
+| ID   | ギャップ                                                                                    | 対応予定                                                                                                                                                                                                                                    |
+| ---- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01 | ~~課題データ源が `SheetRepository`（インメモリ）のまま。トレーナーによる CRUD なし~~        | **解消済**（`AssignmentRepository` + `/api/assignments`）                                                                                                                                                                                   |
+| F-02 | グラフ API はサービス層のみ。フロントに推移グラフなし                                       | 別途 UI 実装                                                                                                                                                                                                                                |
+| F-02 | 入力値 1〜5 のサーバー側バリデーション不足                                                  | ドメイン層で追加                                                                                                                                                                                                                            |
+| F-03 | メッセージ非リアルタイム（手動リロード）                                                    | WebSocket / ポーリング（計画のみ）                                                                                                                                                                                                          |
+| F-03 | 新卒・トレーナーが各 1 ユーザー固定                                                         | F-11                                                                                                                                                                                                                                        |
+| F-03 | トーク視認性・下展開レイアウト・テンプレと自由記述の同時送信・空トーク表示                  | [message-split-view-feature.md](./test-specs/message-split-view-feature.md)（スプリットビュー実装済）                                                                                                                                       |
+| F-03 | メッセージ送信時刻（T-C: 日付区切り＋`H:mm`）・トーク／メッセージのブックマーク             | [message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)（API・Web 実装済。E2E 未着手）                                                                                                                  |
+| F-03 | メッセージアナウンス（共有一覧・ステータス横導線）・トークプレビュー1行・BM取得エラー非表示 | [message-announcement-feature.md](./test-specs/message-announcement-feature.md)（API・Web 実装済 / [#30](https://github.com/yuna-tsuji-ambl/OJT-app/issues/30)）                                                                            |
+| F-03 | アナウンス／BM メッセージ一覧のメモ（各件）                                                 | [message-announcement-feature.md](./test-specs/message-announcement-feature.md)、[message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)（[#31](https://github.com/yuna-tsuji-ambl/OJT-app/issues/31)） |
 
 #### 実装フェーズとステータス
 
-| フェーズ | 内容                      | ステータス                |
-| -------- | ------------------------- | ------------------------- |
-| Phase 0  | Firestore Emulator 基盤   | **完了**                  |
-| Phase 1  | 既存機能の Firestore 移行 | **完了**                  |
-| Phase 2  | 課題管理（§7.4）          | **未着手** ← 次の開発候補 |
-| Phase 3  | 日次・週次報告（§7.5）    | 未着手                    |
-| Phase 4  | 学び共有（§7.7）          | 未着手                    |
-| Phase 5  | ガント（§7.6）            | 未着手                    |
-| Phase 6  | BigQuery 分析（任意）     | 計画のみ                  |
+| フェーズ | 内容                      | ステータス |
+| -------- | ------------------------- | ---------- |
+| Phase 0  | Firestore Emulator 基盤   | **完了**   |
+| Phase 1  | 既存機能の Firestore 移行 | **完了**   |
+| Phase 2  | 課題管理（§7.4）          | **完了**   |
+| Phase 3  | 日次・週次報告（§7.5）    | **完了**   |
+| Phase 4  | 学び共有（§7.7）          | 実装済     |
+| Phase 5  | ガント（§7.6）            | 実装済     |
+| Phase 6  | BigQuery 分析（任意）     | 計画のみ   |
 
 #### 開発対象外（現時点）
 
 以下は **設計済・未着手** または **計画のみ** のため、明示的な依頼がない限り実装しない。
 
-- F-06〜F-09（新機能 4 件）
 - F-10 本番認証
 - F-11 マルチユーザー
 - F-12 Google Sheets 連携（新規実装）
@@ -116,21 +119,29 @@
 
 進捗管理は GitHub Issues を正とする。仕様の正は引き続き本書。
 
-| 設計 ID          | GitHub Issue                                                | タイトル                                               |
-| ---------------- | ----------------------------------------------------------- | ------------------------------------------------------ |
-| F-01（ギャップ） | [#4](https://github.com/yuna-tsuji-ambl/OJT-app/issues/4)   | クエスト: SheetRepository 廃止と課題データへの移行     |
-| F-02（ギャップ） | [#5](https://github.com/yuna-tsuji-ambl/OJT-app/issues/5)   | コンディション: 推移グラフのフロントエンド表示         |
-| F-02（ギャップ） | [#6](https://github.com/yuna-tsuji-ambl/OJT-app/issues/6)   | コンディション: 入力値 1〜5 のサーバー側バリデーション |
-| F-03（ギャップ） | [#7](https://github.com/yuna-tsuji-ambl/OJT-app/issues/7)   | クイック質問: メッセージのリアルタイム更新             |
-| F-06             | [#8](https://github.com/yuna-tsuji-ambl/OJT-app/issues/8)   | 課題管理（トレーナー入力・スプシ代替）                 |
-| F-07             | [#9](https://github.com/yuna-tsuji-ambl/OJT-app/issues/9)   | 日次・週次報告書                                       |
-| F-09             | [#10](https://github.com/yuna-tsuji-ambl/OJT-app/issues/10) | 学び共有（デイリーログ + リンク）                      |
-| F-08             | [#11](https://github.com/yuna-tsuji-ambl/OJT-app/issues/11) | 目標・ガントチャート管理                               |
-| F-11             | [#12](https://github.com/yuna-tsuji-ambl/OJT-app/issues/12) | 複数新卒・複数トレーナー対応                           |
-| F-10             | [#13](https://github.com/yuna-tsuji-ambl/OJT-app/issues/13) | 本番認証（Identity Platform 等）                       |
-| —                | [#14](https://github.com/yuna-tsuji-ambl/OJT-app/issues/14) | E2E テストの本格運用                                   |
-| Phase 6          | [#15](https://github.com/yuna-tsuji-ambl/OJT-app/issues/15) | BigQuery 分析連携（任意）                              |
-| F-12             | [#16](https://github.com/yuna-tsuji-ambl/OJT-app/issues/16) | SheetRepository の段階的廃止・削除                     |
+| 設計 ID            | GitHub Issue                                                | タイトル                                               |
+| ------------------ | ----------------------------------------------------------- | ------------------------------------------------------ |
+| F-01（ギャップ）   | [#4](https://github.com/yuna-tsuji-ambl/OJT-app/issues/4)   | クエスト: SheetRepository 廃止と課題データへの移行     |
+| F-02（ギャップ）   | [#5](https://github.com/yuna-tsuji-ambl/OJT-app/issues/5)   | コンディション: 推移グラフのフロントエンド表示         |
+| F-02（ギャップ）   | [#6](https://github.com/yuna-tsuji-ambl/OJT-app/issues/6)   | コンディション: 入力値 1〜5 のサーバー側バリデーション |
+| F-03（ギャップ）   | [#7](https://github.com/yuna-tsuji-ambl/OJT-app/issues/7)   | クイック質問: メッセージのリアルタイム更新             |
+| F-06               | [#8](https://github.com/yuna-tsuji-ambl/OJT-app/issues/8)   | 課題管理（トレーナー入力・スプシ代替）                 |
+| F-07               | [#9](https://github.com/yuna-tsuji-ambl/OJT-app/issues/9)   | 日次・週次報告書                                       |
+| F-07（UI）         | [#33](https://github.com/yuna-tsuji-ambl/OJT-app/issues/33) | 報告書: 日次/週次トグルと左右レイアウト                |
+| F-07（UX）         | [#34](https://github.com/yuna-tsuji-ambl/OJT-app/issues/34) | 報告書: 下書き廃止・一覧編集・検索UX改善               |
+| F-07（トレーナー） | [#35](https://github.com/yuna-tsuji-ambl/OJT-app/issues/35) | 報告書: トレーナー左右レイアウト（日次/週次）と検索    |
+| F-09               | [#10](https://github.com/yuna-tsuji-ambl/OJT-app/issues/10) | 学び共有（デイリーログ + リンク）                      |
+| F-08               | [#11](https://github.com/yuna-tsuji-ambl/OJT-app/issues/11) | 目標・ガントチャート管理                               |
+| F-11               | [#12](https://github.com/yuna-tsuji-ambl/OJT-app/issues/12) | 複数新卒・複数トレーナー対応                           |
+| F-03（UI 改善）    | [#27](https://github.com/yuna-tsuji-ambl/OJT-app/issues/27) | メッセージ画面のスプリットビューと送信改善             |
+| F-03（スタンプ）   | [#28](https://github.com/yuna-tsuji-ambl/OJT-app/issues/28) | トレーナー返信スタンプの拡充（ST1〜ST10）              |
+| F-03（時刻・BM）   | [#29](https://github.com/yuna-tsuji-ambl/OJT-app/issues/29) | メッセージ送信時刻表示（T-C）とブックマーク            |
+| F-03（アナウンス） | [#30](https://github.com/yuna-tsuji-ambl/OJT-app/issues/30) | メッセージアナウンス: 共有一覧とステータス横導線       |
+| F-03（メモ）       | [#31](https://github.com/yuna-tsuji-ambl/OJT-app/issues/31) | アナウンス・BMメッセージ一覧のメモ                     |
+| F-10               | [#13](https://github.com/yuna-tsuji-ambl/OJT-app/issues/13) | 本番認証（Identity Platform 等）                       |
+| —                  | [#14](https://github.com/yuna-tsuji-ambl/OJT-app/issues/14) | E2E テストの本格運用                                   |
+| Phase 6            | [#15](https://github.com/yuna-tsuji-ambl/OJT-app/issues/15) | BigQuery 分析連携（任意）                              |
+| F-12               | [#16](https://github.com/yuna-tsuji-ambl/OJT-app/issues/16) | SheetRepository の段階的廃止・削除                     |
 
 PR では `Closes #8` のように Issue 番号を記載して自動クローズする。
 
@@ -139,7 +150,7 @@ PR では `Closes #8` のように Issue 番号を記載して自動クローズ
 - [ ] 本番認証（Identity Platform / Firebase Auth 等）
 - [ ] E2E テスト本格運用（Playwright 設定済み、仕様書整備中）
 - [ ] 複数新卒・複数トレーナー対応
-- [ ] コンディション推移グラフのフロントエンド表示
+- [ ] コンディション推移の折れ線グラフ表示（フロントエンド）
 - [ ] リアルタイムメッセージ更新（WebSocket / SSE 等）
 - [ ] BigQuery 連携（分析・ダッシュボード集計用。§9.4 参照）
 - [ ] ~~Google Sheets API 連携~~ → **課題管理機能で代替**（`SheetRepository` は段階的に廃止予定）
@@ -233,15 +244,15 @@ OJT-app-1/
 
 ### 4.1 開発・ビルドコマンド
 
-| コマンド           | 説明                            |
-| ------------------ | ------------------------------- |
-| `npm run dev`      | フロント開発サーバー（:5173）   |
-| `npm run dev:api`  | API サーバー（:8080）           |
-| `npm run dev:all`  | 両方同時起動                    |
-| `npm run build`    | shared → api → web の順でビルド |
-| `npm test`         | API 単体・結合テスト            |
-| `npm run test:e2e` | Playwright E2E                  |
-| `npm start`        | ビルド済み API 起動（本番相当） |
+| コマンド           | 説明                                                                    |
+| ------------------ | ----------------------------------------------------------------------- |
+| `npm run dev`      | フロント開発サーバー（:5173）                                           |
+| `npm run dev:api`  | API サーバー（:8080）                                                   |
+| `npm run dev:all`  | 両方同時起動                                                            |
+| `npm run build`    | shared → api → web の順でビルド                                         |
+| `npm test`         | API 単体・結合テスト（CI では続けて `npm test -w @ojt-app/web` も実行） |
+| `npm run test:e2e` | Playwright E2E                                                          |
+| `npm start`        | ビルド済み API 起動（本番相当）                                         |
 
 ### 4.2 ローカル開発時のプロキシ
 
@@ -301,27 +312,29 @@ Vite（`apps/web/vite.config.ts`）が `/api` および `/health` を `localhost
 
 ### 6.1 画面一覧・ルーティング
 
-| パス                   | ページ                    | ロール           | 概要                                                 |
-| ---------------------- | ------------------------- | ---------------- | ---------------------------------------------------- |
-| `/login`               | LoginPage                 | 未ログイン       | ロール選択ログイン                                   |
-| `/home`                | TraineeHomePage           | trainee          | トレーナーステータス表示、クイック質問、チャット履歴 |
-| `/condition/weekly`    | WeeklyConditionPage       | trainee          | 週次コンディション入力                               |
-| `/quests`              | QuestListPage             | trainee          | クエスト一覧・クリア申請                             |
-| `/dashboard`           | DashboardPage             | trainer          | 申請中クエスト承認、コンディションアラート           |
-| `/status/settings`     | TrainerStatusSettingsPage | trainer          | トレーナーステータス変更                             |
-| `/messages`            | TrainerMessagesPage       | trainer          | 受信質問・簡易返信                                   |
-| `/trainees/:traineeId` | TraineeDetailPage         | trainer（想定）  | 新卒の最新コンディション表示                         |
-| **（追加予定）**       |                           |                  |                                                      |
-| `/assignments`         | AssignmentListPage        | trainee          | トレーナー登録課題の一覧・クリア申請                 |
-| `/assignments/manage`  | AssignmentManagePage      | trainer          | 課題の作成・編集・削除                               |
-| `/reports/daily`       | DailyReportPage           | trainee          | 日次報告書の作成・編集                               |
-| `/reports/weekly`      | WeeklyReportPage          | trainee          | 週次報告書の作成・編集                               |
-| `/reports`             | ReportListPage            | trainer          | 担当新卒の報告書一覧・閲覧                           |
-| `/goals`               | GoalGanttPage             | trainee, trainer | 目標・タスクのガントチャート表示                     |
-| `/goals/manage`        | GoalManagePage            | trainer          | 目標・タスクの登録・期間設定                         |
-| `/learnings`           | LearningFeedPage          | trainee, trainer | 学び共有タイムライン                                 |
-| `/learnings/new`       | LearningCreatePage        | trainee          | その日の学び + リンク投稿                            |
-| `*`                    | —                         | —                | `/login` へリダイレクト                              |
+| パス                   | ページ                                        | ロール           | 概要                                                                                                            |
+| ---------------------- | --------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| `/login`               | LoginPage                                     | 未ログイン       | ロール選択ログイン                                                                                              |
+| `/home`                | TraineeHomePage                               | trainee          | トレーナーステータス表示、クイック質問、チャット履歴                                                            |
+| `/condition/weekly`    | WeeklyConditionPage                           | trainee          | 週次コンディション入力                                                                                          |
+| `/quests`              | —（`/assignments` へリダイレクト）            | trainee          | 旧 URL 互換                                                                                                     |
+| `/assignments`         | AssignmentListPage                            | trainee          | トレーナー登録課題の一覧・クリア申請                                                                            |
+| `/assignments/manage`  | AssignmentManagePage                          | trainer          | 課題の作成・編集・削除                                                                                          |
+| `/dashboard`           | DashboardPage                                 | trainer          | 申請中課題承認、コンディションアラート                                                                          |
+| `/status/settings`     | TrainerStatusSettingsPage                     | trainer          | トレーナーステータス変更                                                                                        |
+| `/messages`            | TrainerMessagesPage                           | trainer          | 自身のステータス表示、受信質問・簡易返信                                                                        |
+| `/trainees/:traineeId` | TraineeDetailPage                             | trainer（想定）  | 新卒の最新コンディション表示                                                                                    |
+| **（追加予定）**       |                                               |                  |                                                                                                                 |
+| `/reports`             | TraineeReportPage / ReportListPage（trainer） | trainee, trainer | 新卒: 日次/週次トグル＋左入力／右一覧。トレーナー: 左=日次一覧／右=週次一覧＋各検索。ヘッダー「報告書」から遷移 |
+| `/reports/daily/list`  | TraineeDailyReportListPage                    | trainee          | 過去日次一覧（本文検索、`from`/`to` または `date`。同時指定はエラー）                                           |
+| `/reports/weekly/list` | TraineeWeeklyReportListPage                   | trainee          | 過去週次一覧（本文検索、`from`/`to` または `date`＝日付/週キー両可。同時指定はエラー）                          |
+| `/reports/daily`       | —（`/reports` へリダイレクト）                | trainee          | 旧日次入力 URL 互換                                                                                             |
+| `/reports/weekly`      | —（`/reports` へリダイレクト）                | trainee          | 旧週次入力 URL 互換                                                                                             |
+| `/goals`               | GoalGanttPage                                 | trainee, trainer | 目標・タスクのガントチャート表示（バー移動・端ドラッグで期間変更可）。ヘッダー「目標」から遷移                  |
+| `/goals/manage`        | GoalManagePage                                | trainee, trainer | 目標の登録・変更（双方）。削除はトレーナーのみ                                                                  |
+| `/learnings`           | LearningFeedPage                              | trainee, trainer | 学び共有タイムライン                                                                                            |
+| `/learnings/new`       | LearningCreatePage                            | trainee          | その日の学び + リンク投稿                                                                                       |
+| `*`                    | —                                             | —                | `/login` へリダイレクト                                                                                         |
 
 **レイアウト**: ログイン後は `Layout` コンポーネント（ヘッダーナビ + ログアウト）でラップ。
 
@@ -338,9 +351,12 @@ flowchart LR
   Dashboard --> Detail["/trainees/:id"]
   Home --> Assignments["/assignments"]
   Dashboard --> AssignManage["/assignments/manage"]
-  Home --> DailyReport["/reports/daily"]
-  Home --> WeeklyReport["/reports/weekly"]
-  Dashboard --> ReportList["/reports"]
+  Home --> Reports["/reports"]
+  Dashboard --> Reports
+  DailyList["/reports/daily/list"]
+  WeeklyList["/reports/weekly/list"]
+  DailyOld["/reports/daily"] -->|redirect| Reports
+  WeeklyOld["/reports/weekly"] -->|redirect| Reports
   Home --> Goals["/goals"]
   Dashboard --> GoalManage["/goals/manage"]
   Home --> Learnings["/learnings"]
@@ -349,48 +365,52 @@ flowchart LR
 
 ### 6.3 主要 UI コンポーネント
 
-| コンポーネント            | 利用画面           | 役割                             |
-| ------------------------- | ------------------ | -------------------------------- |
-| `ConditionSlider`         | 週次入力           | 1〜5 のスライダー入力            |
-| `QuestCard`               | クエスト一覧       | クエスト表示・申請ボタン         |
-| `PendingQuestCard`        | ダッシュボード     | 申請中クエスト・承認ボタン       |
-| `ConditionAlertCard`      | ダッシュボード     | SOS アラート表示                 |
-| `TrainerStatusPanel`      | ホーム             | トレーナー現在ステータス         |
-| `TrainerStatusRadioGroup` | ステータス設定     | ステータス切替                   |
-| `QuestionForm`            | ホーム             | 質問テンプレ選択・送信           |
-| `ReplyStampBar`           | メッセージ         | 返信スタンプ送信                 |
-| `ChatHistory`             | ホーム、メッセージ | チャット履歴表示                 |
-| **（追加予定）**          |                    |                                  |
-| `AssignmentForm`          | 課題管理           | 課題 CRUD フォーム               |
-| `AssignmentCard`          | 課題一覧           | 課題表示・申請                   |
-| `ReportForm`              | 日次/週次報告      | テンプレート入力フォーム         |
-| `ReportCard`              | 報告一覧           | 報告サマリー表示                 |
-| `GanttChart`              | 目標管理           | 期間バー可視化（ライブラリ TBD） |
-| `GoalForm`                | 目標管理           | タスク名・期間・依存の入力       |
-| `LearningPostCard`        | 学び共有           | メモ + リンク一覧表示            |
-| `LinkInputList`           | 学び投稿           | 複数 URL 入力                    |
+| コンポーネント            | 利用画面           | 役割                                                           |
+| ------------------------- | ------------------ | -------------------------------------------------------------- |
+| `ConditionSlider`         | 週次入力           | 1〜5 のスライダー入力                                          |
+| `QuestCard`               | クエスト一覧       | クエスト表示・申請ボタン                                       |
+| `PendingQuestCard`        | ダッシュボード     | 申請中クエスト・承認ボタン                                     |
+| `ConditionAlertCard`      | ダッシュボード     | SOS アラート表示                                               |
+| `TrainerStatusPanel`      | ホーム・メッセージ | トレーナー現在ステータス                                       |
+| `TrainerStatusRadioGroup` | ステータス設定     | ステータス切替                                                 |
+| `QuestionForm`            | ホーム             | 質問テンプレ選択・送信                                         |
+| `ReplyStampBar`           | メッセージ         | 返信スタンプ送信                                               |
+| ~~`ChatHistory`~~         | —                  | スプリットビュー移行に伴い廃止（右ペインのスレッド履歴へ統合） |
+| `AssignmentForm`          | 課題管理           | 課題 CRUD フォーム                                             |
+| `AssignmentCard`          | 課題一覧           | 課題表示・申請                                                 |
+| `ReportForm`              | 日次/週次報告      | テンプレート入力フォーム                                       |
+| `ReportTypeToggle`        | 新卒 `/reports`    | 日次／週次の切替（aria-pressed）                               |
+| `ReportSplitView`         | 新卒 `/reports`    | 左入力／右一覧の左右分割                                       |
+| `ReportListFilter`        | 新卒報告一覧       | 本文検索・期間/特定日排他・クリア・デバウンス反映              |
+| `ReportCard`              | 報告一覧           | 報告サマリー表示・編集導線                                     |
+| `GanttChart`              | 目標管理           | 期間バー可視化（ライブラリ TBD）                               |
+| `GoalForm`                | 目標管理           | タスク名・期間・依存の入力                                     |
+| `LearningPostCard`        | 学び共有           | メモ + リンク一覧表示                                          |
+| `LinkInputList`           | 学び投稿           | 複数 URL 入力                                                  |
 
 ### 6.4 画面別 API 利用
 
-| 画面                      | 呼び出し API                                                                           |
-| ------------------------- | -------------------------------------------------------------------------------------- |
-| TraineeHomePage           | `GET /api/status/trainer/:id`, `POST /api/status/messages`, `GET /api/status/messages` |
-| WeeklyConditionPage       | `POST /api/condition`                                                                  |
-| QuestListPage             | `GET /api/quests`, `POST /api/quests/:id/request`                                      |
-| DashboardPage             | `GET /api/quests/pending`, `POST /api/quests/:id/approve`, `GET /api/condition/alerts` |
-| TrainerStatusSettingsPage | `GET /api/status/trainer/:id`, `PUT /api/status`                                       |
-| TrainerMessagesPage       | `GET /api/status/messages`, `POST /api/status/messages`                                |
-| TraineeDetailPage         | `GET /api/condition/trainees/:id/latest`                                               |
-| **（追加予定）**          |                                                                                        |
-| AssignmentListPage        | `GET /api/assignments`                                                                 |
-| AssignmentManagePage      | `GET/POST/PUT/DELETE /api/assignments`                                                 |
-| DailyReportPage           | `GET/PUT /api/reports/daily/:date`                                                     |
-| WeeklyReportPage          | `GET/PUT /api/reports/weekly/:weekKey`                                                 |
-| ReportListPage            | `GET /api/reports?traineeId=`                                                          |
-| GoalGanttPage             | `GET /api/goals`                                                                       |
-| GoalManagePage            | `GET/POST/PUT/DELETE /api/goals`                                                       |
-| LearningFeedPage          | `GET /api/learnings`                                                                   |
-| LearningCreatePage        | `POST /api/learnings`                                                                  |
+| 画面                                    | 呼び出し API                                                                                                                                                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TraineeHomePage                         | `GET /api/status/trainer/:id`, `POST /api/status/messages`, `GET /api/status/messages`                                                                                                                          |
+| WeeklyConditionPage                     | `POST /api/condition`                                                                                                                                                                                           |
+| QuestListPage                           | `GET /api/assignments`, `POST /api/assignments/:id/request`（旧 `/api/quests` 互換あり）                                                                                                                        |
+| AssignmentListPage                      | `GET /api/assignments`, `POST /api/assignments/:id/request`                                                                                                                                                     |
+| AssignmentManagePage                    | `GET/POST/PUT/DELETE /api/assignments`                                                                                                                                                                          |
+| DashboardPage                           | `GET /api/assignments/pending`, `POST /api/assignments/:id/approve`, `GET /api/condition/alerts`                                                                                                                |
+| TrainerStatusSettingsPage               | `GET /api/status/trainer/:id`, `PUT /api/status`                                                                                                                                                                |
+| TrainerMessagesPage                     | `GET /api/status/trainer/:id`, `GET /api/status/messages`, `POST /api/status/messages`                                                                                                                          |
+| TraineeDetailPage                       | `GET /api/condition/trainees/:id/latest`                                                                                                                                                                        |
+| **（追加予定）**                        |                                                                                                                                                                                                                 |
+| TraineeReportPage（trainee `/reports`） | `GET/PUT /api/reports/daily/:date`、`GET/PUT /api/reports/weekly/:weekKey`。右ペイン一覧は `GET /api/reports/daily` または `GET /api/reports/weekly`（選択種別に同期）。専用一覧 URL はディープリンク互換で維持 |
+| TraineeDailyReportListPage              | `GET /api/reports/daily?q=&from=&to=` または `?date=`（排他。同時指定時は「期間の範囲指定と特定日は同時に使えません。どちらか一方だけを指定してください。」）                                                   |
+| TraineeWeeklyReportListPage             | `GET /api/reports/weekly?q=&from=&to=` または `?date=`（日付/週キー両対応。同時指定時のエラー文言は日次と同様）                                                                                                 |
+| ReportListPage（trainer `/reports`）    | 左日次・右週次のスプリット。各ペインで `GET /api/reports?traineeId=&type=daily                                                                                                                                  | weekly&q=&from=&to=`または`date=`。導線はヘッダー「報告書」 |
+| ReportDetailPage                        | `GET /api/reports/:id`、`POST/PUT /api/reports/:id/comments`（トレーナー）                                                                                                                                      |
+| GoalGanttPage                           | `GET /api/goals`                                                                                                                                                                                                |
+| GoalManagePage                          | `GET/POST/PUT/DELETE /api/goals`                                                                                                                                                                                |
+| LearningFeedPage                        | `GET /api/learnings`                                                                                                                                                                                            |
+| LearningCreatePage                      | `POST /api/learnings`                                                                                                                                                                                           |
 
 ---
 
@@ -483,8 +503,16 @@ type QuestStatus = '未クリア' | '申請中' | 'クリア';
 
 #### 7.2.3 アラート判定
 
-- **条件**: 直近記録の `mental === 1`（`CONDITION_ALERT_THRESHOLD`）
+**ダッシュボード（SOSアラート）**
+
+- **条件**: 直近記録の業務量・理解度・メンタルのいずれかが `1`（`CONDITION_ALERT_THRESHOLD`）
 - **メッセージ**: 「要フォロー」（`CONDITION_ALERT_MESSAGE`）
+
+**コンディション画面**
+
+- **条件**: ダッシュボードと同様（直近記録のいずれかが `1`）
+- **メッセージ**: 「新卒が不安定です。」（`CONDITION_PAGE_ALERT_MESSAGE`）
+
 - **監視対象新卒**: `MONITORED_TRAINEE_IDS = ['trainee-1']`（固定）
 
 #### 7.2.4 処理フロー
@@ -505,10 +533,20 @@ type QuestStatus = '未クリア' | '申請中' | 'クリア';
 1. ロール検証（trainer）
 2. 指定新卒の最新履歴を返却（なければ 404）
 
-**グラフデータ（サービス層のみ、API 未公開）**:
+**グラフデータ（トレーナー）**:
 
-- `ConditionService.getGraphData` / `buildConditionGraphData` で 3 項目の時系列データを生成
-- フロントエンドでのグラフ描画は **未実装**
+1. ロール検証（trainer）
+2. 指定新卒の履歴から `buildConditionGraphData` で 3 項目の時系列データを返却
+
+- `GET /api/condition/trainees/:traineeId/graph` で公開済み
+- トレーナーコンディション画面で推移を**折れ線グラフ**表示（横軸: `labels`、系列: `workload` / `comprehension` / `mental`）
+
+**コンディション画面アラート（トレーナー）**:
+
+1. ロール検証（trainer）
+2. 指定新卒の履歴から `buildConditionPageAlert` で画面用アラートを返却
+
+- `GET /api/condition/trainees/:traineeId/page-alert` で公開済み
 
 #### 7.2.5 ドメインモデル
 
@@ -523,10 +561,13 @@ interface ConditionHistoryRecord extends ConditionDraft {
   recordedAt: string; // ISO 8601
 }
 
-interface ConditionAlert {
-  traineeId: string;
+interface ConditionPageAlert {
   hasAlert: boolean;
   message: string;
+}
+
+interface ConditionAlert extends ConditionPageAlert {
+  traineeId: string;
   latestMental: number;
 }
 
@@ -535,7 +576,11 @@ interface ConditionGraphData {
   workload: number[];
   comprehension: number[];
   mental: number[];
+  rows: ConditionHistoryRecord[];
 }
+
+/** 推移表の1行。履歴レコードと同一構造 */
+type ConditionGraphTableRow = ConditionHistoryRecord;
 ```
 
 #### 7.2.6 テスト仕様
@@ -593,6 +638,37 @@ interface ConditionGraphData {
 1. 参加者（trainerId または traineeId）のみ閲覧可
 2. それ以外は 403
 
+**送信時刻表示（T-C・着手中）**:
+
+1. 右ペイン履歴で、メッセージがあるローカル日付ごとに日付区切りを表示する
+2. 各吹き出し近傍に `H:mm`（クライアントローカル）を表示する
+3. 当該トークにメッセージが無い日の日付区切りは出さない
+4. トーク一覧の最終やり取り日時（`updatedAt`）は既存仕様を維持
+
+**ブックマーク（確定・[#29](https://github.com/yuna-tsuji-ambl/OJT-app/issues/29)）**:
+
+- 個人所有。新卒・トレーナー双方。自分・相手どちらのメッセージも BM 可
+- UI: トーク行 ♥・吹き出し ♥・BM トークフィルタ・BM メッセージ一覧
+- 永続化: Firestore `messageBookmarks`、API `/api/message-bookmarks`
+- 本体削除時はカスケード削除。件数上限なし
+- 取得失敗時は画面にエラーを出さず空一覧として扱う（更新失敗のアラートは可）
+- メッセージ BM 各件に **個人メモ**（`memo`、最大 500 文字）。PATCH `/api/message-bookmarks/:id`（所有者のみ）
+- 詳細: [message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)
+
+**メッセージアナウンス（確定・[#30](https://github.com/yuna-tsuji-ambl/OJT-app/issues/30)）**:
+
+- **ペア共有所有**。新卒・トレーナー双方が、自分／相手メッセージをアナウンス可・解除可（参加者ならどちらでも解除可）
+- 1 メッセージにつき最大 1 件（`messageId` で幂等）
+- UI: 吹き出し横のトグル（♥ とは別）・タイトル行ステータス横の「アナウンスメッセージ〇件」・右ペイン一覧（BM メッセージ一覧と同型）
+- 並び替え: 送信時刻／アナウンス追加 × 昇降順。追加フィルタ: すべて／新卒アナウンスのみ／トレーナーアナウンスのみ（アナウンスした人のロール）
+- 各件に **ペア共有メモ**（`memo`、最大 500 文字）。PATCH `/api/message-announcements/:id`（参加者なら可）
+- 永続化: Firestore `messageAnnouncements`、API `/api/message-announcements`
+- 詳細: [message-announcement-feature.md](./test-specs/message-announcement-feature.md)
+
+**トーク一覧プレビュー**:
+
+- 先頭メッセージ表示は CSS で **1 行まで**（省略記号）
+
 #### 7.3.5 ドメインモデル
 
 ```typescript
@@ -611,11 +687,17 @@ interface ChatMessage {
 
 #### 7.3.6 テスト仕様
 
-→ [docs/test-specs/status-feature.md](./test-specs/status-feature.md)
+| 対象                        | 仕様書                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| トレーナーステータス        | [status-feature.md](./test-specs/status-feature.md)（U-S01〜U-S02）                                           |
+| 質問・メッセージ・スレッド  | [message-feature.md](./test-specs/message-feature.md)（U-M / E-M 系）                                         |
+| 送信時刻・ブックマーク      | [message-timestamp-bookmark-feature.md](./test-specs/message-timestamp-bookmark-feature.md)（U-TB / U-BM 系） |
+| メッセージアナウンス        | [message-announcement-feature.md](./test-specs/message-announcement-feature.md)（U-AN / I-AN 系）             |
+| ステータス＋質問の E2E 統合 | [status-feature.md](./test-specs/status-feature.md)（E-S01）                                                  |
 
 ---
 
-### 7.4 課題管理（トレーナー入力・スプシ代替） `設計済・未着手（F-06）`
+### 7.4 課題管理（トレーナー入力・スプシ代替） `実装済（F-06）`
 
 #### 7.4.1 概要
 
@@ -671,15 +753,17 @@ interface Assignment {
 
 #### 7.4.5 テスト仕様
 
-→ `docs/test-specs/assignment-feature.md`（新規作成予定）
+→ `docs/test-specs/quest-feature.md`「F-01 ギャップ解消: SheetRepository 廃止と AssignmentRepository 移行」（U-A / I-A / E-A 系）
 
 ---
 
-### 7.5 日次・週次報告書 `設計済・未着手（F-07）`
+### 7.5 日次・週次報告書 `実装済（F-07）`
 
 #### 7.5.1 概要
 
 新卒が**日次**および**週次**の振り返りをテンプレートに沿って記録し、トレーナーが一覧・詳細を閲覧する。コンディション（§7.2）とは別に、**文章ベースの業務報告**を担う。
+
+新卒の `/reports` はページ上部の**日次報告／週次報告トグル**（初期選択は日次）と、**左: 入力フォーム＋提出／右: フィルタ＋過去一覧**のスプリット構成とする。切替に応じて左フォームと右一覧の種別を同期する。右一覧カードの「編集」で当該報告を左フォームへ読み込み、提出で同一 `periodKey` を上書きできる。フィルタは本文検索と期間モード（範囲／特定日の排他ラジオ）、クリア、入力のデバウンス即時反映とする。専用一覧（`/reports/daily/list`・`/reports/weekly/list`）はディープリンク互換のため当面維持する。下書き（`draft`）は廃止し、提出（`submitted`）のみを受け付ける。
 
 #### 7.5.2 報告種別
 
@@ -690,19 +774,19 @@ interface Assignment {
 
 #### 7.5.3 ユースケース
 
-| UC-ID  | アクター | 操作                             | 結果                       |
-| ------ | -------- | -------------------------------- | -------------------------- |
-| UC-R01 | trainee  | 日次報告を作成・下書き保存・提出 | 指定日の報告が DB に保存   |
-| UC-R02 | trainee  | 週次報告を作成・提出             | 指定週の報告が DB に保存   |
-| UC-R03 | trainee  | 過去の自分の報告を閲覧           | 日付/週で一覧・詳細表示    |
-| UC-R04 | trainer  | 担当新卒の報告一覧を閲覧         | 未読・最新順で表示         |
-| UC-R05 | trainer  | 報告にコメント（任意・Phase 2）  | 新卒がフィードバックを確認 |
+| UC-ID  | アクター | 操作                            | 結果                                                                                                                                                                     |
+| ------ | -------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| UC-R01 | trainee  | 日次報告を作成・提出            | 指定日の報告が DB に `status=submitted` で保存（全項目必須。`draft` は拒否）                                                                                             |
+| UC-R02 | trainee  | 週次報告を作成・提出            | 指定週の報告が DB に保存                                                                                                                                                 |
+| UC-R03 | trainee  | 過去の自分の報告を閲覧・編集    | `/reports` 右ペイン、または専用一覧で閲覧。カード「編集」で左フォームへ読込→提出で上書き。本文全体検索。期間は UI 上排他（範囲／特定日）。週次の値は日付と週キーの両方可 |
+| UC-R04 | trainer  | 担当新卒の報告一覧を閲覧        | `/reports` で左=日次・右=週次を同時表示。各ペインで本文検索・期間絞り込み（新卒一覧と同 UI）。一覧は最新順                                                               |
+| UC-R05 | trainer  | 報告にコメント（任意・Phase 2） | 新卒がフィードバックを確認                                                                                                                                               |
 
 #### 7.5.4 ドメインモデル
 
 ```typescript
 type ReportType = 'daily' | 'weekly';
-type ReportStatus = 'draft' | 'submitted';
+type ReportStatus = 'submitted'; // draft は廃止（PUT では拒否）
 
 interface DailyReportContent {
   doneToday: string; // 本日やったこと
@@ -718,6 +802,13 @@ interface WeeklyReportContent {
   questionsForTrainer: string; // トレーナーへの相談
 }
 
+interface ReportComment {
+  id: string;
+  authorId: string;
+  content: string;
+  createdAt: string;
+}
+
 interface Report {
   id: string;
   traineeId: string;
@@ -725,6 +816,7 @@ interface Report {
   periodKey: string; // '2026-07-06' or '2026-W27'
   content: DailyReportContent | WeeklyReportContent;
   status: ReportStatus;
+  comments: ReportComment[]; // UC-R05（Phase 2）
   submittedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -733,32 +825,35 @@ interface Report {
 
 #### 7.5.5 テスト仕様
 
-→ `docs/test-specs/report-feature.md`（新規作成予定）
+→ `docs/test-specs/report-feature.md`
 
 ---
 
-### 7.6 目標・タスク管理（ガントチャート） `設計済・未着手（F-08）`
+### 7.6 目標・タスク管理（ガントチャート） `実装済（F-08）`
 
 #### 7.6.1 概要
 
-OJT 期間中の**目標（タスク）**を期間付きで登録し、**ガントチャート**で進捗・スケジュールを可視化する。トレーナーが目標を登録し、新卒が進捗を更新する（またはトレーナーが更新）。
+OJT 期間中の**目標（タスク）**を期間付きで登録し、**ガントチャート**で進捗・スケジュールを可視化する。  
+**新卒・トレーナー双方が作成・変更でき、同一データとして連動する。削除はトレーナーのみ。**
 
 #### 7.6.2 ユースケース
 
-| UC-ID  | アクター          | 操作                                               | 結果                       |
-| ------ | ----------------- | -------------------------------------------------- | -------------------------- |
-| UC-G01 | trainer           | 目標タスクを登録（名前、開始日、終了日、担当新卒） | ガントにバー表示           |
-| UC-G02 | trainer / trainee | 進捗率（0〜100%）・ステータスを更新                | バー表示が更新             |
-| UC-G03 | trainee / trainer | ガントチャートで全体スケジュールを閲覧             | 期間横軸 + タスクバー      |
-| UC-G04 | trainer           | タスク間の依存関係を設定（Phase 2）                | 先行タスク完了後に着手可能 |
+| UC-ID  | アクター          | 操作                                                                 | 結果                       |
+| ------ | ----------------- | -------------------------------------------------------------------- | -------------------------- |
+| UC-G01 | trainer / trainee | 目標タスクを登録（名前、開始日、終了日。トレーナーは担当新卒指定可） | ガントにバー表示（連動）   |
+| UC-G02 | trainer / trainee | 進捗率（0〜100%）・ステータス・タイトル・期間を更新                  | バー表示が更新（連動）     |
+| UC-G03 | trainee / trainer | ガントチャートで全体スケジュールを閲覧・バー移動・期間変更           | 期間横軸 + タスクバー      |
+| UC-G04 | trainer           | 目標を削除                                                           | 双方の一覧・ガントから消失 |
+| UC-G05 | trainer           | タスク間の依存関係を設定（Phase 2）                                  | 先行タスク完了後に着手可能 |
 
 #### 7.6.3 ガントチャート UI
 
-| 項目           | 方針                                                                                                                       |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| ライブラリ候補 | [frappe-gantt](https://github.com/frappe/gantt)（軽量）、[gantt-task-react](https://github.com/MaTeMaTuK/gantt-task-react) |
-| 初版スコープ   | 読み取り専用ガント + 別画面で CRUD。ドラッグによる期間変更は Phase 2                                                       |
-| 表示単位       | 週 / 月切替（Phase 2）                                                                                                     |
+| 項目         | 方針                                                                                           |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| 実装         | 自前ガント（CSS + ポインタ操作）。外部ガントライブラリは未使用                                 |
+| 初版スコープ | `/goals` で閲覧・バー移動・端ドラッグ期間変更。`/goals/manage` で CRUD（削除はトレーナーのみ） |
+| 横軸         | **日単位**。軸ラベル「日付（日）」と `M/D` 目盛りを表示（期間が長い場合は間引き）              |
+| 表示単位切替 | 週 / 月切替（Phase 2）                                                                         |
 
 #### 7.6.4 ドメインモデル
 
@@ -789,11 +884,11 @@ interface GanttViewModel {
 
 #### 7.6.5 テスト仕様
 
-→ `docs/test-specs/goal-feature.md`（新規作成予定）
+→ [`docs/test-specs/goal-feature.md`](./test-specs/goal-feature.md)
 
 ---
 
-### 7.7 学び共有（デイリーログ + リンク） `設計済・未着手（F-09）`
+### 7.7 学び共有（デイリーログ + リンク） `実装済（F-09）`
 
 #### 7.7.1 概要
 
@@ -837,7 +932,7 @@ interface LearningPost {
 
 #### 7.7.5 テスト仕様
 
-→ `docs/test-specs/learning-feature.md`（新規作成予定）
+→ [`docs/test-specs/learning-feature.md`](./test-specs/learning-feature.md)
 
 ---
 
@@ -878,11 +973,13 @@ interface LearningPost {
 
 ### 8.4 コンディション API
 
-| メソッド | パス                                        | ロール  | 説明         | 成功                         |
-| -------- | ------------------------------------------- | ------- | ------------ | ---------------------------- |
-| POST     | `/api/condition`                            | trainee | 記録送信     | 200 `ConditionSubmitResult`  |
-| GET      | `/api/condition/alerts`                     | trainer | アラート一覧 | 200 `ConditionAlert[]`       |
-| GET      | `/api/condition/trainees/:traineeId/latest` | trainer | 最新記録     | 200 `ConditionHistoryRecord` |
+| メソッド | パス                                            | ロール  | 説明         | 成功                         |
+| -------- | ----------------------------------------------- | ------- | ------------ | ---------------------------- |
+| POST     | `/api/condition`                                | trainee | 記録送信     | 200 `ConditionSubmitResult`  |
+| GET      | `/api/condition/alerts`                         | trainer | アラート一覧 | 200 `ConditionAlert[]`       |
+| GET      | `/api/condition/trainees/:traineeId/latest`     | trainer | 最新記録     | 200 `ConditionHistoryRecord` |
+| GET      | `/api/condition/trainees/:traineeId/graph`      | trainer | 推移グラフ   | 200 `ConditionGraphData`     |
+| GET      | `/api/condition/trainees/:traineeId/page-alert` | trainer | 画面アラート | 200 `ConditionPageAlert`     |
 
 **POST `/api/condition` リクエストボディ**:
 
@@ -912,12 +1009,20 @@ interface LearningPost {
 
 ### 8.5 ステータス・メッセージ API
 
-| メソッド | パス                             | ロール            | 説明             | 成功                      |
-| -------- | -------------------------------- | ----------------- | ---------------- | ------------------------- |
-| PUT      | `/api/status`                    | trainer           | ステータス更新   | 200 `TrainerStatusRecord` |
-| GET      | `/api/status/trainer/:trainerId` | trainee           | ステータス取得   | 200 `TrainerStatusRecord` |
-| GET      | `/api/status/messages`           | 参加者            | メッセージ一覧   | 200 `ChatMessage[]`       |
-| POST     | `/api/status/messages`           | trainee / trainer | 質問 or 返信送信 | 200 `ChatMessageResult`   |
+| メソッド | パス                             | ロール                        | 説明                                               | 成功                        |
+| -------- | -------------------------------- | ----------------------------- | -------------------------------------------------- | --------------------------- |
+| PUT      | `/api/status`                    | trainer                       | ステータス更新                                     | 200 `TrainerStatusRecord`   |
+| GET      | `/api/status/trainer/:trainerId` | trainee / trainer（自身のみ） | ステータス取得。未登録時はデフォルト「集中モード」 | 200 `TrainerStatusRecord`   |
+| GET      | `/api/status/messages`           | 参加者                        | メッセージ一覧                                     | 200 `ChatMessage[]`         |
+| POST     | `/api/status/messages`           | trainee / trainer             | 質問 or 返信送信                                   | 200 `ChatMessageResult`     |
+| GET      | `/api/message-bookmarks`         | trainee / trainer             | 自分のブックマーク一覧（`?targetType=` 任意）      | 200 `MessageBookmark[]`     |
+| POST     | `/api/message-bookmarks`         | trainee / trainer             | ブックマーク追加（幂等）                           | 201 `MessageBookmark`       |
+| DELETE   | `/api/message-bookmarks/:id`     | trainee / trainer（所有者）   | ブックマーク解除                                   | 204                         |
+| PATCH    | `/api/message-bookmarks/:id`     | trainee / trainer（所有者）   | メモ更新（`{ memo }`）                             | 200 `MessageBookmark`       |
+| GET      | `/api/message-announcements`     | trainee / trainer（参加者）   | ペア共有のアナウンス一覧                           | 200 `MessageAnnouncement[]` |
+| POST     | `/api/message-announcements`     | trainee / trainer（参加者）   | アナウンス追加（幂等。既存なら既存返却）           | 201 `MessageAnnouncement`   |
+| DELETE   | `/api/message-announcements/:id` | trainee / trainer（参加者）   | アナウンス解除（参加者なら誰でも可）               | 204                         |
+| PATCH    | `/api/message-announcements/:id` | trainee / trainer（参加者）   | 共有メモ更新（`{ memo }`）                         | 200 `MessageAnnouncement`   |
 
 **PUT `/api/status` リクエストボディ**:
 
@@ -938,10 +1043,20 @@ interface LearningPost {
 { "trainerId": "trainer-1", "content": "〇〇の件で3分いいですか？" }
 ```
 
-**POST `/api/status/messages` リクエスト（トレーナー・返信）**:
+**POST `/api/status/messages` リクエスト（トレーナー・新規自由記述）**:
 
 ```json
-{ "traineeId": "trainee-1", "content": "後で話そう" }
+{ "traineeId": "trainee-1", "content": "進捗共有の時間をください" }
+```
+
+**POST `/api/status/messages` リクエスト（トレーナー・ルーム返信・自由記述）**:
+
+```json
+{
+  "threadId": "thread-1",
+  "traineeId": "trainee-1",
+  "content": "15時に声をかけてください"
+}
 ```
 
 **エラー**:
@@ -969,32 +1084,37 @@ interface LearningPost {
 
 #### 8.6.2 報告書
 
-| メソッド | パス                           | ロール           | 説明                            |
-| -------- | ------------------------------ | ---------------- | ------------------------------- |
-| GET      | `/api/reports/daily/:date`     | trainee          | 指定日の日次報告取得            |
-| PUT      | `/api/reports/daily/:date`     | trainee          | 日次報告の保存・提出            |
-| GET      | `/api/reports/weekly/:weekKey` | trainee          | 指定週の週次報告取得            |
-| PUT      | `/api/reports/weekly/:weekKey` | trainee          | 週次報告の保存・提出            |
-| GET      | `/api/reports`                 | trainer          | 報告一覧（`?traineeId=&type=`） |
-| GET      | `/api/reports/:id`             | trainer, trainee | 報告詳細                        |
+| メソッド | パス                       | ロール  | 説明                                                                                                                                            |
+| -------- | -------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET      | `/api/reports/daily`       | trainee | 自分の過去日次報告一覧（UC-R03）。`q`=本文全体検索。期間は `from`/`to` または `date`（`YYYY-MM-DD`、同時指定は 400）                            |
+| GET      | `/api/reports/daily/:date` | trainee | 指定日の日次報告取得                                                                                                                            |
+| PUT      | `/api/reports/daily/:date` | trainee | 日次報告の保存・提出                                                                                                                            |
+| GET      | `/api/reports/weekly`      | trainee | 自分の過去週次報告一覧（UC-R03）。`q`=本文全体検索。期間は `from`/`to` または `date`（`YYYY-MM-DD`＝含む週、または `YYYY-Www`。同時指定は 400） |
+
+| GET | `/api/reports/weekly/:weekKey` | trainee | 指定週の週次報告取得 |
+| PUT | `/api/reports/weekly/:weekKey` | trainee | 週次報告の保存・提出 |
+| GET | `/api/reports` | trainer | 報告一覧（`?traineeId=&type=&q=&from=&to=` または `date=`。期間条件は `type` 指定時） |
+| GET | `/api/reports/:id` | trainer, trainee | 報告詳細 |
+| POST | `/api/reports/:id/comments` | trainer | 報告コメント追加（UC-R05） |
+| PUT | `/api/reports/:id/comments/:commentId` | trainer | 報告コメント更新（UC-R05） |
 
 #### 8.6.3 目標・ガント
 
-| メソッド | パス             | ロール           | 説明                              |
-| -------- | ---------------- | ---------------- | --------------------------------- |
-| GET      | `/api/goals`     | trainee, trainer | ガント用目標一覧（`?traineeId=`） |
-| POST     | `/api/goals`     | trainer          | 目標作成                          |
-| PUT      | `/api/goals/:id` | trainer, trainee | 目標更新（進捗含む）              |
-| DELETE   | `/api/goals/:id` | trainer          | 目標削除                          |
+| メソッド | パス             | ロール           | 説明                                                  |
+| -------- | ---------------- | ---------------- | ----------------------------------------------------- |
+| GET      | `/api/goals`     | trainee, trainer | ガント用目標一覧（`?traineeId=`。新卒は省略時に自身） |
+| POST     | `/api/goals`     | trainee, trainer | 目標作成（双方。連動）                                |
+| PUT      | `/api/goals/:id` | trainee, trainer | 目標更新（タイトル・期間・進捗・ステータス等）        |
+| DELETE   | `/api/goals/:id` | trainer          | 目標削除（新卒は 403）                                |
 
 #### 8.6.4 学び共有
 
-| メソッド | パス                 | ロール           | 説明                                   |
-| -------- | -------------------- | ---------------- | -------------------------------------- |
-| GET      | `/api/learnings`     | trainee, trainer | タイムライン（`?authorId=&from=&to=`） |
-| POST     | `/api/learnings`     | trainee          | 学び投稿                               |
-| PUT      | `/api/learnings/:id` | trainee          | 投稿更新（Phase 2）                    |
-| DELETE   | `/api/learnings/:id` | trainee          | 投稿削除（Phase 2）                    |
+| メソッド | パス                 | ロール           | 説明                                                            |
+| -------- | -------------------- | ---------------- | --------------------------------------------------------------- |
+| GET      | `/api/learnings`     | trainee, trainer | タイムライン（`?authorId=&from=&to=`。`date`/`createdAt` 降順） |
+| POST     | `/api/learnings`     | trainee          | 学び投稿（201。トレーナーは 403）                               |
+| PUT      | `/api/learnings/:id` | trainee          | 投稿更新（Phase 2）                                             |
+| DELETE   | `/api/learnings/:id` | trainee          | 投稿削除（Phase 2）                                             |
 
 #### 8.6.5 その他（既存拡張）
 
@@ -1013,12 +1133,12 @@ interface LearningPost {
 | **インメモリ** | `DB_PROVIDER` 未設定 or `memory` | Vitest、簡易ローカル起動           |
 | **Firestore**  | `DB_PROVIDER=firestore`          | ローカル Emulator / Cloud Run 本番 |
 
-| データ               | ストア IF                        | インメモリ実装                                   | Firestore 実装                  |
-| -------------------- | -------------------------------- | ------------------------------------------------ | ------------------------------- |
-| クエスト             | `QuestStore` + `SheetRepository` | `InMemoryQuestStore` + `InMemorySheetRepository` | `FirestoreQuestRepository`      |
-| コンディション履歴   | `ConditionRecordStore`           | `InMemoryConditionRecordStore`                   | `FirestoreConditionRecordStore` |
-| トレーナーステータス | `TrainerStatusStore`             | `InMemoryTrainerStatusStore`                     | `FirestoreTrainerStatusStore`   |
-| チャットメッセージ   | `ChatMessageStore`               | `InMemoryChatMessageStore`                       | `FirestoreChatMessageStore`     |
+| データ               | ストア IF              | インメモリ実装                 | Firestore 実装                  |
+| -------------------- | ---------------------- | ------------------------------ | ------------------------------- |
+| クエスト / 課題      | `AssignmentRepository` | `InMemoryAssignmentRepository` | `FirestoreAssignmentRepository` |
+| コンディション履歴   | `ConditionRecordStore` | `InMemoryConditionRecordStore` | `FirestoreConditionRecordStore` |
+| トレーナーステータス | `TrainerStatusStore`   | `InMemoryTrainerStatusStore`   | `FirestoreTrainerStatusStore`   |
+| チャットメッセージ   | `ChatMessageStore`     | `InMemoryChatMessageStore`     | `FirestoreChatMessageStore`     |
 
 **切替**: `createPersistence()`（`apps/api/src/repositories/createPersistence.ts`）が `server.ts` 起動時に選択する。
 
@@ -1162,16 +1282,18 @@ flowchart TB
 
 ### 9.5 Firestore コレクション設計（確定）
 
-| コレクション       | ドキュメント ID | 主要フィールド                                                  | 状態           |
-| ------------------ | --------------- | --------------------------------------------------------------- | -------------- |
-| `quests`           | `{questId}`     | majorItem, minorItem, achievementLevel, status                  | **実装済**     |
-| `conditionRecords` | auto            | traineeId, workload, comprehension, mental, recordedAt          | **実装済**     |
-| `trainerStatuses`  | `{userId}`      | status                                                          | **実装済**     |
-| `chatMessages`     | auto            | conversationKey, senderId, receiverId, content, type, createdAt | **実装済**     |
-| `assignments`      | auto            | traineeId, title, ...                                           | 未実装（§7.4） |
-| `reports`          | auto            | traineeId, type, periodKey, content, status                     | 未実装（§7.5） |
-| `goals`            | auto            | traineeId, startDate, endDate, progress, status                 | 未実装（§7.6） |
-| `learningPosts`    | auto            | authorId, date, title, body, links                              | 未実装（§7.7） |
+| コレクション           | ドキュメント ID          | 主要フィールド                                                                                                    | 状態                       |
+| ---------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `quests`               | `{questId}`              | majorItem, minorItem, achievementLevel, status                                                                    | **実装済**                 |
+| `conditionRecords`     | auto                     | traineeId, workload, comprehension, mental, recordedAt                                                            | **実装済**                 |
+| `trainerStatuses`      | `{userId}`               | status                                                                                                            | **実装済**                 |
+| `chatMessages`         | auto                     | conversationKey, senderId, receiverId, content, type, createdAt                                                   | **実装済**                 |
+| `assignments`          | auto                     | traineeId, title, ...                                                                                             | **実装済**（§7.4）         |
+| `reports`              | auto                     | traineeId, type, periodKey, content, status, comments                                                             | 一部実装（§7.5）           |
+| `goals`                | auto                     | traineeId, startDate, endDate, progress, status                                                                   | 実装済（§7.6）             |
+| `learningPosts`        | auto                     | authorId, date, title, body, links                                                                                | 実装済（§7.7）             |
+| `messageBookmarks`     | 所有者+ターゲット複合 ID | ownerUserId, targetType, threadId, messageId?, memo?, createdAt                                                   | 実装済（§7.3 / #29 / #31） |
+| `messageAnnouncements` | `{messageId}`            | threadId, messageId, announcedByUserId, announcedByRole, senderId?, content?, messageCreatedAt?, memo?, createdAt | 実装済（§7.3 / #30 / #31） |
 
 **複合インデックス**（`firestore.indexes.json`）:
 
@@ -1188,8 +1310,8 @@ flowchart TB
 | **Phase 1** | 既存機能の Firestore 移行            | condition, status, chat, quest の Firestore repo | **完了**   |
 | **Phase 2** | 課題管理（§7.4）                     | Assignment CRUD + 既存申請フロー接続             | **未着手** |
 | **Phase 3** | 報告書（§7.5）                       | 日次・週次 API + 画面                            | 未着手     |
-| **Phase 4** | 学び共有（§7.7）                     | タイムライン API + 画面                          | 未着手     |
-| **Phase 5** | ガント（§7.6）                       | Goal CRUD + Gantt UI                             | 未着手     |
+| **Phase 4** | 学び共有（§7.7）                     | タイムライン API + 画面                          | 実装済     |
+| **Phase 5** | ガント（§7.6）                       | Goal CRUD + Gantt UI                             | 実装済     |
 | **Phase 6** | BigQuery エクスポート（任意）        | 週次バッチ、分析ダッシュボード                   | 計画のみ   |
 
 ---
@@ -1223,10 +1345,10 @@ flowchart TB
 
 ### 11.2 テスト種別
 
-| 種別       | 配置                               | 実行               |
-| ---------- | ---------------------------------- | ------------------ |
-| 単体・結合 | `apps/api/src/__tests__/*.test.ts` | `npm test`         |
-| E2E        | `tests/*.spec.test.ts`             | `npm run test:e2e` |
+| 種別       | 配置                              | 実行                                    |
+| ---------- | --------------------------------- | --------------------------------------- |
+| 単体・結合 | `apps/api` / `apps/web` の Vitest | `npm test` / `npm test -w @ojt-app/web` |
+| E2E        | `tests/*.spec.test.ts`            | `npm run test:e2e`                      |
 
 ### 11.3 機能別テスト仕様書
 

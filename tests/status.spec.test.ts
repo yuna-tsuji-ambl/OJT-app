@@ -1,22 +1,34 @@
 import { test, expect, type Page } from '@playwright/test';
+import {
+  loginAsTrainee,
+  loginAsTrainer,
+  logout,
+} from './helpers/playwright-auth';
+import {
+  messageThread,
+  messageThreadHistory,
+  openMessageThread,
+  openTrainerMessages,
+  sendFreeTextMessage,
+  sendTrainerStampReply,
+  STAMP_ST1_LABEL,
+  REALTIME_UPDATE_TIMEOUT_MS,
+} from './helpers/message';
 
 const TRAINER_STATUS_QUEST_OK = '質問OK';
-const QUESTION_TEMPLATE = '〇〇の件で3分いいですか？';
-const REPLY_STAMP = '後で話そう';
+const TRAINER_STATUS_FOCUS_MODE = '集中モード';
+const E_S01_QUESTION_CONTENT = 'ステータス確認E2Eの質問です';
 
-async function loginAsTrainee(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByRole('button', { name: '新卒としてログイン' }).click();
-}
-
-async function loginAsTrainer(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByRole('button', { name: 'トレーナーとしてログイン' }).click();
-}
-
-async function logout(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'ログアウト' }).click();
-  await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible();
+function isStatusUpdateResponse(response: {
+  url: () => string;
+  request: () => { method: () => string };
+  ok: () => boolean;
+}): boolean {
+  return (
+    response.url().includes('/api/status') &&
+    ['POST', 'PUT', 'PATCH'].includes(response.request().method()) &&
+    response.ok()
+  );
 }
 
 async function openTrainerStatusSettings(page: Page): Promise<void> {
@@ -27,17 +39,21 @@ async function openTrainerStatusSettings(page: Page): Promise<void> {
 }
 
 async function setTrainerStatus(page: Page, status: string): Promise<void> {
-  const updateResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/status') &&
-      ['POST', 'PUT', 'PATCH'].includes(response.request().method()) &&
-      response.ok(),
-  );
+  const radio = page.getByRole('radio', { name: status });
+  // 既に選択済みだと change が飛ばないため、一度別ステータスへ切り替えてから戻す
+  if (await radio.isChecked()) {
+    const otherStatus =
+      status === TRAINER_STATUS_QUEST_OK
+        ? TRAINER_STATUS_FOCUS_MODE
+        : TRAINER_STATUS_QUEST_OK;
+    const otherUpdate = page.waitForResponse(isStatusUpdateResponse);
+    await page.getByRole('radio', { name: otherStatus }).check();
+    await otherUpdate;
+  }
 
-  await page.getByRole('radio', { name: status }).check();
-
+  const updateResponse = page.waitForResponse(isStatusUpdateResponse);
+  await radio.check();
   await updateResponse;
-  await expect(page.getByText(status)).toBeVisible();
 }
 
 async function openTraineeHome(page: Page): Promise<void> {
@@ -49,50 +65,29 @@ function trainerStatusRegion(page: Page) {
   return page.getByRole('region', { name: '先輩のステータス' });
 }
 
-function chatHistory(page: Page) {
-  return page.getByRole('log', { name: 'チャット履歴' });
-}
-
-async function sendQuickQuestion(page: Page): Promise<void> {
-  const sendResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/status/messages') &&
-      response.request().method() === 'POST' &&
-      response.ok(),
-  );
-
-  await page.getByRole('button', { name: QUESTION_TEMPLATE }).click();
-  await page.getByRole('button', { name: '送信' }).click();
-
-  await sendResponse;
-  await expect(chatHistory(page).getByText(QUESTION_TEMPLATE)).toBeVisible();
-}
-
-async function openTrainerMessages(page: Page): Promise<void> {
-  await page.getByRole('link', { name: 'メッセージ' }).click();
-  await expect(page.getByRole('heading', { name: 'メッセージ' })).toBeVisible();
-}
-
-async function replyWithStamp(page: Page, stamp: string): Promise<void> {
-  const replyResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/status/messages') &&
-      response.request().method() === 'POST' &&
-      response.ok(),
-  );
-
-  await expect(chatHistory(page).getByText(QUESTION_TEMPLATE)).toBeVisible();
-  await page.getByRole('button', { name: stamp }).click();
-
-  await replyResponse;
+async function replyWithStampInThread(
+  page: Page,
+  stampLabel: string,
+): Promise<void> {
+  await expect(
+    messageThread(page, E_S01_QUESTION_CONTENT).first(),
+  ).toBeVisible();
+  await openMessageThread(page, E_S01_QUESTION_CONTENT);
+  await sendTrainerStampReply(page, stampLabel);
 }
 
 async function expectReplyStampOnTrainee(
   page: Page,
-  stamp: string,
+  stampLabel: string,
 ): Promise<void> {
   await openTraineeHome(page);
-  await expect(chatHistory(page).getByText(stamp)).toBeVisible();
+  await openMessageThread(page, E_S01_QUESTION_CONTENT);
+
+  await expect(
+    messageThreadHistory(page)
+      .getByRole('listitem')
+      .filter({ hasText: stampLabel }),
+  ).toBeVisible({ timeout: REALTIME_UPDATE_TIMEOUT_MS });
 }
 
 /**
@@ -102,12 +97,12 @@ async function expectReplyStampOnTrainee(
  * 手順:
  * 1. トレーナーでログインし、ステータスを「質問OK」に変更
  * 2. 新卒でログインし、先輩のステータスが「質問OK」であることを確認
- * 3. テンプレを使って質問を送信
- * 4. トレーナー画面に戻り、質問を受信したことを確認してスタンプで返信
+ * 3. 自由記述で質問を送信（並列 E2E とのスレッド衝突を避けるため固有文言を使用）
+ * 4. トレーナー画面でルームを開き、ST1 スタンプで返信
  * 5. 新卒で再ログインし、返信スタンプの表示を確認
  *
  * 期待結果（表示）:
- * - 新卒側のチャット履歴に、トレーナーからの返信スタンプが表示される
+ * - 新卒側のスレッド履歴に、トレーナーからの返信スタンプが表示される
  *
  * 期待結果（データ）:
  * - ステータス変更・質問送信・返信送信の API が成功し、再ログイン後も返信が維持される
@@ -123,16 +118,20 @@ test.describe('E-S01 ステータス確認と質問のEnd-to-End', () => {
     await logout(page);
     await loginAsTrainee(page);
     await openTraineeHome(page);
-    await expect(trainerStatusRegion(page)).toHaveText(TRAINER_STATUS_QUEST_OK);
-    await sendQuickQuestion(page);
+    // バッジ文言は「トレーナー：質問OK」（ラベル付き）。値の反映待ちを含む
+    await expect(trainerStatusRegion(page)).toBeVisible({ timeout: 15_000 });
+    await expect(trainerStatusRegion(page)).toContainText(
+      TRAINER_STATUS_QUEST_OK,
+    );
+    await sendFreeTextMessage(page, E_S01_QUESTION_CONTENT);
 
     await logout(page);
     await loginAsTrainer(page);
     await openTrainerMessages(page);
-    await replyWithStamp(page, REPLY_STAMP);
+    await replyWithStampInThread(page, STAMP_ST1_LABEL);
 
     await logout(page);
     await loginAsTrainee(page);
-    await expectReplyStampOnTrainee(page, REPLY_STAMP);
+    await expectReplyStampOnTrainee(page, STAMP_ST1_LABEL);
   });
 });

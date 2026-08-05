@@ -17,6 +17,7 @@ alwaysApply: true
 | 依存定義 | `package.json` / `requirements.txt` / `go.mod` / `Cargo.toml` 等 |
 | **詳細設計書** | **`docs/detailed-design.md`** — アーキテクチャ、API、画面、データモデル、**機能開発ステータス（§2.5）** |
 | ドキュメント | `README.md`、`docs/`、API 仕様 |
+| 横断仕様 | `docs/api.md` / `docs/db.md` / `docs/reliability.md` / `docs/observability.md` |
 | 設定ファイル | ビルド・Lint・テスト・CI の設定 |
 | 既存コード | ディレクトリ構成、命名、設計パターン、テスト配置 |
 

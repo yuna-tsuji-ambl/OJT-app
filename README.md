@@ -350,11 +350,11 @@ npm test
 
 `main` への push および Pull Request 作成時に [`.github/workflows/ci.yml`](.github/workflows/ci.yml) が自動実行されます。
 
-| ジョブ                      | 内容                            |
-| --------------------------- | ------------------------------- |
-| Lint & Format               | ESLint + Prettier チェック      |
-| Unit & Integration (Vitest) | API の単体・結合テスト          |
-| E2E (Playwright)            | ブラウザ E2E テスト（Chromium） |
+| ジョブ                      | 内容                                               |
+| --------------------------- | -------------------------------------------------- |
+| Lint & Format               | ESLint + Prettier チェック                         |
+| Unit & Integration (Vitest) | API および Web（`@ojt-app/web`）の単体・結合テスト |
+| E2E (Playwright)            | ブラウザ E2E テスト（Chromium）                    |
 
 E2E 失敗時は Playwright レポートが Artifacts としてダウンロードできます。
 

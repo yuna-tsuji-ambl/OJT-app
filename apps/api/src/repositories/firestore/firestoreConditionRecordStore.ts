@@ -1,4 +1,5 @@
 import type { Firestore } from '@google-cloud/firestore';
+import { createConditionHistoryRecord } from '../../domain/conditionHistory.js';
 import type {
   ConditionDraft,
   ConditionHistoryRecord,
@@ -20,8 +21,7 @@ export class FirestoreConditionRecordStore implements ConditionRecordStore {
   async save(userId: string, record: ConditionDraft): Promise<void> {
     const historyRecord: ConditionRecordDocument = {
       traineeId: userId,
-      ...record,
-      recordedAt: new Date().toISOString().slice(0, 10),
+      ...createConditionHistoryRecord(record),
     };
 
     await this.conditionRecordsCollection().add(historyRecord);

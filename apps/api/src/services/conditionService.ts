@@ -2,115 +2,33 @@ import { ensureTrainee, ensureTrainer } from '../domain/authorization.js';
 import {
   MONITORED_TRAINEE_IDS,
   CONDITION_FIELD,
+  type ConditionField,
 } from '../domain/conditionConstants.js';
-import { buildConditionAlert } from '../domain/conditionAlert.js';
+import {
+  buildConditionAlert,
+  buildConditionPageAlert,
+} from '../domain/conditionAlert.js';
 import {
   cloneConditionDraft,
   createSubmitResult,
+  prepareConditionRecordForSave,
   updateConditionDraftField,
 } from '../domain/conditionDraft.js';
 import { buildConditionGraphData } from '../domain/conditionGraph.js';
-import { requireLatestHistoryRecord } from '../domain/conditionHistory.js';
+import {
+  requireLatestHistoryRecord,
+  type TraineeHistoryTransform,
+} from '../domain/conditionHistory.js';
 import type {
   ConditionAlert,
   ConditionDraft,
   ConditionGraphData,
   ConditionHistoryRecord,
+  ConditionPageAlert,
   ConditionSubmitResult,
 } from '../domain/conditionTypes.js';
-import type { ConditionField } from '../domain/conditionConstants.js';
 import type { UserContext } from '../domain/types.js';
 import type { ConditionRecordStore } from '../repositories/conditionRecordStore.js';
-
-async function loadTraineeHistory(
-  traineeId: string,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionHistoryRecord[]> {
-  return conditionRecordStore.findHistoryByTraineeId(traineeId);
-}
-
-async function loadHistoryForTrainer(
-  traineeId: string,
-  context: UserContext,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionHistoryRecord[]> {
-  ensureTrainer(context);
-  return loadTraineeHistory(traineeId, conditionRecordStore);
-}
-
-async function persistConditionRecord(
-  userId: string,
-  draft: ConditionDraft,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionSubmitResult> {
-  await conditionRecordStore.save(userId, draft);
-  return createSubmitResult(draft);
-}
-
-async function submitRecordForTrainee(
-  draft: ConditionDraft,
-  context: UserContext,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionSubmitResult> {
-  ensureTrainee(context);
-  return persistConditionRecord(context.userId, draft, conditionRecordStore);
-}
-
-async function getGraphDataForTrainer(
-  traineeId: string,
-  context: UserContext,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionGraphData> {
-  const records = await loadHistoryForTrainer(
-    traineeId,
-    context,
-    conditionRecordStore,
-  );
-
-  return buildConditionGraphData(records);
-}
-
-async function getAlertForTrainer(
-  traineeId: string,
-  context: UserContext,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionAlert> {
-  const records = await loadHistoryForTrainer(
-    traineeId,
-    context,
-    conditionRecordStore,
-  );
-
-  return buildConditionAlert(traineeId, records);
-}
-
-async function listAlertsForTrainer(
-  context: UserContext,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionAlert[]> {
-  ensureTrainer(context);
-
-  return Promise.all(
-    MONITORED_TRAINEE_IDS.map(async (traineeId) => {
-      const records = await loadTraineeHistory(traineeId, conditionRecordStore);
-      return buildConditionAlert(traineeId, records);
-    }),
-  );
-}
-
-async function getLatestRecordForTrainer(
-  traineeId: string,
-  context: UserContext,
-  conditionRecordStore: ConditionRecordStore,
-): Promise<ConditionHistoryRecord> {
-  const records = await loadHistoryForTrainer(
-    traineeId,
-    context,
-    conditionRecordStore,
-  );
-
-  return requireLatestHistoryRecord(traineeId, records);
-}
 
 export class ConditionService {
   createDraft(values: ConditionDraft): ConditionDraft {
@@ -140,7 +58,10 @@ export class ConditionService {
     context: UserContext,
     conditionRecordStore: ConditionRecordStore,
   ): Promise<ConditionSubmitResult> {
-    return submitRecordForTrainee(draft, context, conditionRecordStore);
+    ensureTrainee(context);
+    const recordToSave = prepareConditionRecordForSave(draft);
+    await conditionRecordStore.save(context.userId, recordToSave);
+    return createSubmitResult(recordToSave);
   }
 
   async getGraphData(
@@ -148,7 +69,12 @@ export class ConditionService {
     context: UserContext,
     conditionRecordStore: ConditionRecordStore,
   ): Promise<ConditionGraphData> {
-    return getGraphDataForTrainer(traineeId, context, conditionRecordStore);
+    return this.withTraineeHistoryForTrainer(
+      traineeId,
+      context,
+      conditionRecordStore,
+      (_traineeId, records) => buildConditionGraphData(records),
+    );
   }
 
   async getAlert(
@@ -156,14 +82,25 @@ export class ConditionService {
     context: UserContext,
     conditionRecordStore: ConditionRecordStore,
   ): Promise<ConditionAlert> {
-    return getAlertForTrainer(traineeId, context, conditionRecordStore);
+    return this.withTraineeHistoryForTrainer(
+      traineeId,
+      context,
+      conditionRecordStore,
+      (id, records) => buildConditionAlert(id, records),
+    );
   }
 
   async listAlerts(
     context: UserContext,
     conditionRecordStore: ConditionRecordStore,
   ): Promise<ConditionAlert[]> {
-    return listAlertsForTrainer(context, conditionRecordStore);
+    ensureTrainer(context);
+
+    return Promise.all(
+      MONITORED_TRAINEE_IDS.map((traineeId) =>
+        this.getAlert(traineeId, context, conditionRecordStore),
+      ),
+    );
   }
 
   async getLatestRecord(
@@ -171,6 +108,55 @@ export class ConditionService {
     context: UserContext,
     conditionRecordStore: ConditionRecordStore,
   ): Promise<ConditionHistoryRecord> {
-    return getLatestRecordForTrainer(traineeId, context, conditionRecordStore);
+    return this.withTraineeHistoryForTrainer(
+      traineeId,
+      context,
+      conditionRecordStore,
+      (id, records) => requireLatestHistoryRecord(id, records),
+    );
+  }
+
+  async getPageAlert(
+    traineeId: string,
+    context: UserContext,
+    conditionRecordStore: ConditionRecordStore,
+  ): Promise<ConditionPageAlert> {
+    return this.withTraineeHistoryForTrainer(
+      traineeId,
+      context,
+      conditionRecordStore,
+      (_traineeId, records) => buildConditionPageAlert(records),
+    );
+  }
+
+  private async withTraineeHistoryForTrainer<T>(
+    traineeId: string,
+    context: UserContext,
+    conditionRecordStore: ConditionRecordStore,
+    transform: TraineeHistoryTransform<T>,
+  ): Promise<T> {
+    const records = await this.loadHistoryForTrainer(
+      traineeId,
+      context,
+      conditionRecordStore,
+    );
+
+    return transform(traineeId, records);
+  }
+
+  private async loadTraineeHistory(
+    traineeId: string,
+    conditionRecordStore: ConditionRecordStore,
+  ): Promise<ConditionHistoryRecord[]> {
+    return conditionRecordStore.findHistoryByTraineeId(traineeId);
+  }
+
+  private async loadHistoryForTrainer(
+    traineeId: string,
+    context: UserContext,
+    conditionRecordStore: ConditionRecordStore,
+  ): Promise<ConditionHistoryRecord[]> {
+    ensureTrainer(context);
+    return this.loadTraineeHistory(traineeId, conditionRecordStore);
   }
 }

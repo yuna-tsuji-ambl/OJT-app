@@ -1,0 +1,20 @@
+---
+description: ログ・トレーシング（OpenTelemetry）の最低ルール
+globs: apps/api/**/*,apps/web/src/**/*
+alwaysApply: false
+---
+
+# 可観測性ルール
+
+正本: `docs/observability.md`
+
+## 現状方針
+
+- OpenTelemetry は未導入。導入までは構造化可能なログ方針に従う
+- 秘密情報・トークン・パスワード・報告書本文などの PII/機微情報をログに出さない
+
+## 導入時（将来）
+
+- HTTP 入口で trace を開始し、リポジトリ境界に span を切る
+- 計装の詳細・必須属性は `docs/observability.md` を正とする
+- ライブラリ追加は依頼・レビュー前提（勝手に依存追加しない）
